@@ -1,0 +1,306 @@
+// =============================================================================
+// Echo Mail Database Schema
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// 업체 및 담당자 관리
+// =============================================================================
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  email     String   @unique
+  region    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 관계
+  contacts      Contact[]
+  emailLogs     EmailLog[]
+  notifications NotificationLog[]
+
+  @@map("companies")
+}
+
+model Contact {
+  id       String  @id @default(cuid())
+  name     String
+  phone    String
+  email    String?
+  position String?
+  isActive Boolean @default(true)
+
+  // 알림 설정
+  smsEnabled   Boolean @default(true)
+  kakaoEnabled Boolean @default(false)
+
+  // 관계
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contacts")
+}
+
+// =============================================================================
+// 납품 규칙 관리
+// =============================================================================
+
+model DeliveryRule {
+  id     String @id @default(cuid())
+  region String @unique
+
+  // 납품 규칙
+  morningCutoff   String // 오전 마감 시간 (HH:mm)
+  afternoonCutoff String // 오후 마감 시간 (HH:mm)
+
+  // 납기일 계산
+  morningDeliveryDays   Int @default(1) // 오전 주문 -> N일 후
+  afternoonDeliveryDays Int @default(2) // 오후 주문 -> N일 후
+
+  // 영업일 설정
+  excludeWeekends Boolean @default(true)
+  excludeHolidays Boolean @default(true)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("delivery_rules")
+}
+
+model Holiday {
+  id          String   @id @default(cuid())
+  date        DateTime @unique @db.Date
+  name        String
+  isRecurring Boolean  @default(false) // 매년 반복 여부
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("holidays")
+}
+
+// =============================================================================
+// 메일 처리 및 로그
+// =============================================================================
+
+model EmailLog {
+  id String @id @default(cuid())
+
+  // 메일 정보
+  messageId  String   @unique
+  subject    String
+  sender     String
+  recipient  String
+  receivedAt DateTime
+
+  // 첨부파일 정보
+  hasAttachment Boolean @default(false)
+  attachments   Json? // 첨부파일 목록
+
+  // 처리 상태
+  status      EmailStatus @default(RECEIVED)
+  processedAt DateTime?
+
+  // 업체 매칭
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  // 에러 정보
+  errorMessage String?
+
+  // 관계
+  notifications NotificationLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("email_logs")
+}
+
+enum EmailStatus {
+  RECEIVED // 수신됨
+  PROCESSED // 처리됨
+  MATCHED // 업체 매칭됨
+  FAILED // 처리 실패
+  IGNORED // 무시됨 (미등록 업체)
+}
+
+// =============================================================================
+// 알림 발송 관리
+// =============================================================================
+
+model NotificationLog {
+  id String @id @default(cuid())
+
+  // 발송 정보
+  type      NotificationType
+  recipient String // 전화번호 또는 카카오톡 ID
+  message   String
+
+  // 상태 관리
+  status      NotificationStatus @default(PENDING)
+  sentAt      DateTime?
+  deliveredAt DateTime?
+
+  // 재시도 정보
+  retryCount  Int       @default(0)
+  maxRetries  Int       @default(3)
+  nextRetryAt DateTime?
+
+  // 관련 정보
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  emailLogId String?
+  emailLog   EmailLog? @relation(fields: [emailLogId], references: [id])
+
+  // 에러 정보
+  errorMessage String?
+
+  // 비용 정보
+  cost Decimal? @db.Decimal(10, 4)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_logs")
+}
+
+enum NotificationType {
+  SMS
+  KAKAO_ALIMTALK
+  KAKAO_FRIENDTALK
+}
+
+enum NotificationStatus {
+  PENDING // 대기 중
+  SENDING // 발송 중
+  SENT // 발송됨
+  DELIVERED // 전달됨
+  FAILED // 실패
+  CANCELLED // 취소됨
+}
+
+// =============================================================================
+// 시스템 설정 및 관리
+// =============================================================================
+
+model SystemConfig {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       String
+  description String?
+  category    String  @default("general")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_configs")
+}
+
+model MessageTemplate {
+  id        String           @id @default(cuid())
+  name      String           @unique
+  type      NotificationType
+  subject   String? // 알림톡의 경우
+  content   String
+  variables Json? // 사용 가능한 변수 목록
+
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("message_templates")
+}
+
+// =============================================================================
+// 사용자 및 인증 (관리자용)
+// =============================================================================
+
+model User {
+  id       String   @id @default(cuid())
+  email    String   @unique
+  name     String?
+  password String
+  role     UserRole @default(ADMIN)
+
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+
+  // NextAuth.js 호환
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+// =============================================================================
+// NextAuth.js Models
+// =============================================================================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}

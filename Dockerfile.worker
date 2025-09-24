@@ -1,0 +1,51 @@
+# =============================================================================
+# Echo Mail Worker Service Dockerfile
+# 백그라운드 작업을 처리하는 워커 서비스용
+# =============================================================================
+
+FROM node:18-alpine AS base
+
+# 작업 디렉토리 설정
+WORKDIR /app
+
+# 시스템 의존성 설치
+RUN apk add --no-cache \
+    libc6-compat \
+    openssl \
+    bash \
+    curl
+
+# pnpm 설치
+RUN npm install -g pnpm
+
+# =============================================================================
+# Dependencies Stage
+# =============================================================================
+FROM base AS deps
+
+# 패키지 파일 복사
+COPY package.json pnpm-lock.yaml* ./
+
+# 의존성 설치
+RUN pnpm install --frozen-lockfile --production
+
+# =============================================================================
+# Worker Runtime
+# =============================================================================
+FROM base AS worker
+
+# 프로덕션 의존성 복사
+COPY --from=deps /app/node_modules ./node_modules
+
+# 필요한 소스 파일들 복사
+COPY workers/ ./workers/
+COPY lib/ ./lib/
+COPY types/ ./types/
+COPY prisma/ ./prisma/
+COPY package.json ./
+
+# 환경 변수 설정
+ENV NODE_ENV=production
+
+# 워커 실행 (기본적으로 notification worker)
+CMD ["node", "workers/notification.worker.js"]

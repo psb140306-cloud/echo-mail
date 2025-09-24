@@ -1,0 +1,94 @@
+# =============================================================================
+# Echo Mail Development Docker Compose
+# 개발 환경을 위한 간소화된 Docker Compose 설정
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: echomail-dev-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: echomail_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - echomail-dev-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: echomail-dev-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_dev_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - echomail-dev-network
+
+  # Echo Mail Application (Development Mode)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: echomail-dev-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/echomail_dev
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=dev-secret-key
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - echomail-dev-network
+    develop:
+      watch:
+        - action: sync
+          path: ./app
+          target: /app/app
+        - action: sync
+          path: ./components
+          target: /app/components
+        - action: sync
+          path: ./lib
+          target: /app/lib
+        - action: sync
+          path: ./types
+          target: /app/types
+        - action: rebuild
+          path: package.json
+
+networks:
+  echomail-dev-network:
+    driver: bridge
+    name: echomail-dev-network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+    name: echomail-dev-postgres-data
+  redis_dev_data:
+    driver: local
+    name: echomail-dev-redis-data

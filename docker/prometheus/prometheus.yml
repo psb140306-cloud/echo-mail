@@ -1,0 +1,51 @@
+# =============================================================================
+# Prometheus Configuration for Echo Mail
+# 메트릭 수집 및 모니터링 설정
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Echo Mail 애플리케이션 메트릭
+  - job_name: 'echomail-app'
+    static_configs:
+      - targets: ['app:3000']
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s
+
+  # Node.js 애플리케이션 메트릭
+  - job_name: 'echomail-worker'
+    static_configs:
+      - targets: ['notification-worker:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # PostgreSQL 메트릭 (postgres_exporter 사용시)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 60s
+
+  # Redis 메트릭 (redis_exporter 사용시)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 60s
+
+# 알림 규칙 (선택사항)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093

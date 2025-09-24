@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Echo Mail Light Theme */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Echo Mail Blue Primary */
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 217.2 91.2% 59.8%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217.2 91.2% 59.8%;
+
+    --radius: 0.5rem;
+
+    /* Echo Mail Custom Properties */
+    --echo-blue: 217.2 91.2% 59.8%;
+    --echo-blue-light: 215 100% 96.1%;
+    --echo-blue-dark: 217.2 32.6% 17.5%;
+    --echo-success: 142.1 76.2% 36.3%;
+    --echo-warning: 38.7 92% 50.2%;
+    --echo-danger: 0 84.2% 60.2%;
+    --echo-gray: 215.4 16.3% 46.9%;
+    --echo-gray-light: 210 40% 96.1%;
+  }
+
+  .dark {
+    /* Echo Mail Dark Theme */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Echo Mail Blue Primary - adjusted for dark */
+    --primary: 215 100% 82%;
+    --primary-foreground: 222.2 84% 4.9%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 215 100% 82%;
+    --accent-foreground: 222.2 84% 4.9%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 215 100% 82%;
+
+    /* Echo Mail Dark Custom Properties */
+    --echo-blue: 215 100% 82%;
+    --echo-blue-light: 217.2 32.6% 17.5%;
+    --echo-blue-dark: 215 100% 96.1%;
+    --echo-success: 142.1 70.6% 45.3%;
+    --echo-warning: 38.7 92% 50.2%;
+    --echo-danger: 0 62.8% 30.6%;
+    --echo-gray: 215 20.2% 65.1%;
+    --echo-gray-light: 217.2 32.6% 17.5%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .container {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Echo Mail Button Styles */
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-echo {
+    @apply inline-flex items-center justify-center rounded-md bg-echo-blue-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-echo-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-echo-blue-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-success {
+    @apply inline-flex items-center justify-center rounded-md bg-echo-success-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-echo-success-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-echo-success-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-warning {
+    @apply inline-flex items-center justify-center rounded-md bg-echo-warning-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-echo-warning-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-echo-warning-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-md bg-echo-danger-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-echo-danger-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-echo-danger-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  /* Echo Mail Card Styles */
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .card-echo {
+    @apply rounded-lg border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md;
+  }
+
+  .card-gradient {
+    @apply bg-gradient-to-br from-echo-blue-50 to-echo-blue-100 border-echo-blue-200;
+  }
+
+  /* Echo Mail Text Styles */
+  .gradient-text {
+    @apply bg-gradient-to-r from-echo-blue-600 to-echo-blue-700 bg-clip-text text-transparent;
+  }
+
+  .text-echo-primary {
+    @apply text-echo-blue-600 dark:text-echo-blue-400;
+  }
+
+  .text-echo-success {
+    @apply text-echo-success-600 dark:text-echo-success-400;
+  }
+
+  .text-echo-warning {
+    @apply text-echo-warning-600 dark:text-echo-warning-400;
+  }
+
+  .text-echo-danger {
+    @apply text-echo-danger-600 dark:text-echo-danger-400;
+  }
+
+  /* Echo Mail Status Indicators */
+  .status-active {
+    @apply inline-flex items-center rounded-full bg-echo-success-50 px-2.5 py-0.5 text-xs font-medium text-echo-success-800 ring-1 ring-echo-success-200;
+  }
+
+  .status-inactive {
+    @apply inline-flex items-center rounded-full bg-echo-gray-50 px-2.5 py-0.5 text-xs font-medium text-echo-gray-800 ring-1 ring-echo-gray-200;
+  }
+
+  .status-error {
+    @apply inline-flex items-center rounded-full bg-echo-danger-50 px-2.5 py-0.5 text-xs font-medium text-echo-danger-800 ring-1 ring-echo-danger-200;
+  }
+
+  .status-warning {
+    @apply inline-flex items-center rounded-full bg-echo-warning-50 px-2.5 py-0.5 text-xs font-medium text-echo-warning-800 ring-1 ring-echo-warning-200;
+  }
+}
+
+@layer utilities {
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(203 213 225);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(148 163 184);
+  }
+}

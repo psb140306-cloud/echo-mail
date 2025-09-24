@@ -1,0 +1,115 @@
+﻿# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE - VSCode
+.vscode/
+*.swp
+*.swo
+*~
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build output
+dist/
+build/
+out/
+*.log
+logs/
+
+# Testing
+coverage/
+*.lcov
+.nyc_output
+.pytest_cache/
+htmlcov/
+
+# Database
+*.sqlite
+*.db
+*.sqlite3
+
+# Redis dump
+dump.rdb
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.pid
+*.seed
+*.pid.lock
+
+# Docker
+*.dockerignore
+
+# Production
+*.pem
+*.key
+*.crt
+*.p12
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Package files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Uploaded files (if storing locally)
+uploads/
+media/
+
+# Session data
+sessions/
+
+# Lock files (keep package-lock.json)
+yarn.lock
+pnpm-lock.yaml
+
+# MCP ?ㅼ젙 諛?濡쒓렇 ?뚯씪
+.MCP.json.local
+.MCP.json
+mcp-logs/
+.mcp-cache/
+.mcp-temp/
+mcp-servers/*/logs/
+mcp-servers/*/cache/

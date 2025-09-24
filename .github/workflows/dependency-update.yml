@@ -1,0 +1,72 @@
+name: Dependency Update
+
+on:
+  schedule:
+    - cron: '0 9 * * 1' # 매주 월요일 오전 9시
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Update dependencies
+        run: |
+          npm update
+          npm audit fix --force
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run tests
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          npm run test:unit
+          npm run lint
+          npm run type-check
+
+      - name: Create Pull Request
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies'
+          title: 'chore: update dependencies'
+          body: |
+            ## 의존성 업데이트
+
+            이 PR은 자동으로 생성된 의존성 업데이트입니다.
+
+            ### 변경사항
+            - 패키지 업데이트
+            - 보안 취약점 수정
+
+            ### 테스트 결과
+            - ✅ 단위 테스트 통과
+            - ✅ 린트 검사 통과
+            - ✅ 타입 검사 통과
+
+            리뷰 후 병합해 주세요.
+          branch: dependency-updates
+          delete-branch: true

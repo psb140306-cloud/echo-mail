@@ -1,0 +1,248 @@
+version: '3.8'
+
+services:
+  # =============================================================================
+  # PostgreSQL 데이터베이스
+  # =============================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: echomail-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: echomail
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - echomail-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # Redis 캐시/세션 스토어
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: echomail-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - echomail-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # Echo Mail 웹 애플리케이션 (개발용)
+  # =============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: echomail-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/echomail
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - echomail-network
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync
+          path: ./app
+          target: /app/app
+        - action: sync
+          path: ./components
+          target: /app/components
+        - action: rebuild
+          path: package.json
+
+  # =============================================================================
+  # 메일 모니터링 서비스 (별도 컨테이너)
+  # =============================================================================
+  mail-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.mail-monitor
+    container_name: echomail-mail-monitor
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/echomail
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./mail-monitor:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - echomail-network
+
+  # =============================================================================
+  # 알림 발송 워커 서비스
+  # =============================================================================
+  notification-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: echomail-notification-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/echomail
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./worker:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - echomail-network
+
+  # =============================================================================
+  # 모니터링 및 관리 도구 (선택사항)
+  # =============================================================================
+
+  # Redis Commander (Redis GUI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: echomail-redis-commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - '8081:8081'
+    depends_on:
+      - redis
+    networks:
+      - echomail-network
+    profiles:
+      - tools
+
+  # pgAdmin (PostgreSQL GUI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: echomail-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@echomail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '5050:80'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - echomail-network
+    profiles:
+      - tools
+
+  # Prometheus (메트릭 수집)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: echomail-prometheus
+    restart: unless-stopped
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - echomail-network
+    profiles:
+      - monitoring
+
+  # Grafana (대시보드)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: echomail-grafana
+    restart: unless-stopped
+    ports:
+      - '3001:3000'
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - echomail-network
+    profiles:
+      - monitoring
+
+# =============================================================================
+# 네트워크 설정
+# =============================================================================
+networks:
+  echomail-network:
+    driver: bridge
+    name: echomail-network
+
+# =============================================================================
+# 볼륨 설정
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+    name: echomail-postgres-data
+
+  redis_data:
+    driver: local
+    name: echomail-redis-data
+
+  pgadmin_data:
+    driver: local
+    name: echomail-pgadmin-data
+
+  prometheus_data:
+    driver: local
+    name: echomail-prometheus-data
+
+  grafana_data:
+    driver: local
+    name: echomail-grafana-data
