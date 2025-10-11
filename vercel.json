@@ -68,6 +68,26 @@
     {
       "path": "/api/cron/cleanup-logs",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/trial-expiry",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/payment-retry",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/subscription-renewal",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/tenant-backup",
+      "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/cron/inactive-tenant-cleanup",
+      "schedule": "0 4 1 * *"
     }
   ]
 }

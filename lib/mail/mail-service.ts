@@ -1,6 +1,8 @@
 import { ImapClient, MailConfig, ProcessedEmail } from './imap-client'
 import { MailProcessor, ProcessingResult } from './mail-processor'
 import { logger } from '@/lib/utils/logger'
+import { trackEmailUsage, checkEmailLimit } from '@/lib/usage/usage-tracker'
+import { checkEmailUsageLimit } from '@/lib/usage/middleware'
 
 export class MailService {
   private imapClient: ImapClient
@@ -50,7 +52,6 @@ export class MailService {
 
       logger.info('메일 서비스 시작 완료')
       return true
-
     } catch (error) {
       logger.error('메일 서비스 시작 실패:', error)
       this.isRunning = false
@@ -75,7 +76,6 @@ export class MailService {
 
       this.isRunning = false
       logger.info('메일 서비스 중지 완료')
-
     } catch (error) {
       logger.error('메일 서비스 중지 실패:', error)
     }
@@ -85,12 +85,32 @@ export class MailService {
     try {
       logger.info(`새 메일 수신: ${email.subject}`, {
         from: email.from,
-        messageId: email.messageId
+        messageId: email.messageId,
       })
+
+      // 메일 처리 전 사용량 체크 (테넌트별로 체크해야 하지만, 현재는 전역으로 처리)
+      // TODO: 이메일에서 테넌트 정보를 추출하여 체크하도록 개선 필요
 
       const result: ProcessingResult = await this.mailProcessor.processEmail(email)
 
       if (result.success) {
+        // 메일 처리 성공시 사용량 추적
+        if (result.tenantId) {
+          const usageMetadata = {
+            messageId: email.messageId,
+            from: email.from,
+            subject: email.subject,
+            companyId: result.company?.id,
+            action: result.action,
+          }
+
+          await trackEmailUsage(result.tenantId, 1)
+          logger.debug('이메일 사용량 추적 완료', {
+            tenantId: result.tenantId,
+            messageId: email.messageId,
+          })
+        }
+
         switch (result.action) {
           case 'processed':
             logger.info(`메일 처리 완료: ${result.company?.name}`)
@@ -104,7 +124,6 @@ export class MailService {
       } else {
         logger.error(`메일 처리 실패: ${result.reason}`)
       }
-
     } catch (error) {
       logger.error('메일 처리 중 예상치 못한 오류:', error)
     }
@@ -136,7 +155,6 @@ export class MailService {
 
       logger.info(`수동 메일 확인 완료: ${emails.length}개 처리`)
       return emails
-
     } catch (error) {
       logger.error('수동 메일 확인 실패:', error)
       return []
@@ -159,7 +177,6 @@ export class MailService {
 
       logger.info(`날짜별 메일 확인 완료: ${emails.length}개 처리`)
       return emails
-
     } catch (error) {
       logger.error('날짜별 메일 확인 실패:', error)
       return []
@@ -171,7 +188,7 @@ export class MailService {
     return {
       isRunning: this.isRunning,
       isConnected: this.imapClient.connected,
-      isMonitoring: this.imapClient.monitoring
+      isMonitoring: this.imapClient.monitoring,
     }
   }
 }
@@ -185,11 +202,13 @@ export function createMailServiceFromEnv(): MailService {
     user: process.env.MAIL_USER!,
     password: process.env.MAIL_PASSWORD!,
     checkInterval: parseInt(process.env.MAIL_CHECK_INTERVAL || '60000'),
-    idleTimeout: parseInt(process.env.MAIL_IDLE_TIMEOUT || '300000')
+    idleTimeout: parseInt(process.env.MAIL_IDLE_TIMEOUT || '300000'),
   }
 
   if (!config.host || !config.user || !config.password) {
-    throw new Error('메일 설정이 완전하지 않습니다. MAIL_HOST, MAIL_USER, MAIL_PASSWORD를 확인하세요.')
+    throw new Error(
+      '메일 설정이 완전하지 않습니다. MAIL_HOST, MAIL_USER, MAIL_PASSWORD를 확인하세요.'
+    )
   }
 
   return new MailService(config)

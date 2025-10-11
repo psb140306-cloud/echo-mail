@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
-
-const prisma = new PrismaClient()
 
 // 담당자 생성 스키마
 const createContactSchema = z.object({
@@ -14,7 +13,7 @@ const createContactSchema = z.object({
   companyId: z.string().min(1, '업체 ID는 필수입니다'),
   isActive: z.boolean().optional(),
   smsEnabled: z.boolean().optional(),
-  kakaoEnabled: z.boolean().optional()
+  kakaoEnabled: z.boolean().optional(),
 })
 
 // 담당자 목록 조회
@@ -30,14 +29,14 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // 검색 조건 구성
-    const where: any = {}
+    const where: Prisma.ContactWhereInput = {}
 
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { phone: { contains: search } },
         { email: { contains: search, mode: 'insensitive' } },
-        { position: { contains: search, mode: 'insensitive' } }
+        { position: { contains: search, mode: 'insensitive' } },
       ]
     }
 
@@ -60,15 +59,15 @@ export async function GET(request: NextRequest) {
               name: true,
               email: true,
               region: true,
-              isActive: true
-            }
-          }
+              isActive: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
-        take: limit
+        take: limit,
       }),
-      prisma.contact.count({ where })
+      prisma.contact.count({ where }),
     ])
 
     // 응답 데이터 구성
@@ -79,8 +78,8 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     }
 
     logger.info(`담당자 목록 조회: ${contacts.length}개`, {
@@ -88,11 +87,10 @@ export async function GET(request: NextRequest) {
       limit,
       total,
       search,
-      companyId
+      companyId,
     })
 
     return NextResponse.json(response)
-
   } catch (error) {
     logger.error('담당자 목록 조회 실패:', error)
 
@@ -100,7 +98,7 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error: '담당자 목록 조회에 실패했습니다.',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -117,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     // 업체 존재 확인
     const company = await prisma.company.findUnique({
-      where: { id: validatedData.companyId }
+      where: { id: validatedData.companyId },
     })
 
     if (!company) {
@@ -125,7 +123,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: '존재하지 않는 업체입니다.',
-          field: 'companyId'
+          field: 'companyId',
         },
         { status: 400 }
       )
@@ -135,8 +133,8 @@ export async function POST(request: NextRequest) {
     const existingContact = await prisma.contact.findFirst({
       where: {
         companyId: validatedData.companyId,
-        phone: validatedData.phone
-      }
+        phone: validatedData.phone,
+      },
     })
 
     if (existingContact) {
@@ -144,7 +142,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: '해당 업체에 이미 등록된 전화번호입니다.',
-          field: 'phone'
+          field: 'phone',
         },
         { status: 400 }
       )
@@ -160,7 +158,7 @@ export async function POST(request: NextRequest) {
         companyId: validatedData.companyId,
         isActive: validatedData.isActive ?? true,
         smsEnabled: validatedData.smsEnabled ?? true,
-        kakaoEnabled: validatedData.kakaoEnabled ?? false
+        kakaoEnabled: validatedData.kakaoEnabled ?? false,
       },
       include: {
         company: {
@@ -169,27 +167,26 @@ export async function POST(request: NextRequest) {
             name: true,
             email: true,
             region: true,
-            isActive: true
-          }
-        }
-      }
+            isActive: true,
+          },
+        },
+      },
     })
 
     logger.info(`담당자 생성 완료: ${contact.name}`, {
       id: contact.id,
       company: company.name,
-      phone: contact.phone
+      phone: contact.phone,
     })
 
     return NextResponse.json(
       {
         success: true,
         data: contact,
-        message: '담당자가 성공적으로 생성되었습니다.'
+        message: '담당자가 성공적으로 생성되었습니다.',
       },
       { status: 201 }
     )
-
   } catch (error) {
     logger.error('담당자 생성 실패:', error)
 
@@ -198,10 +195,10 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: '입력값이 올바르지 않습니다.',
-          details: error.errors.map(err => ({
+          details: error.errors.map((err) => ({
             field: err.path.join('.'),
-            message: err.message
-          }))
+            message: err.message,
+          })),
         },
         { status: 400 }
       )
@@ -211,7 +208,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: '담당자 생성에 실패했습니다.',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

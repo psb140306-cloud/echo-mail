@@ -1,0 +1,346 @@
+# Echo Mail Alerting Rules
+# Prometheus 알림 규칙 정의
+
+groups:
+  # =============================================================================
+  # 시스템 리소스 알림
+  # =============================================================================
+  - name: system-resources
+    rules:
+      # 높은 CPU 사용률
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: '높은 CPU 사용률 감지'
+          description: '{{ $labels.instance }}에서 CPU 사용률이 {{ $value }}%입니다.'
+
+      # 매우 높은 CPU 사용률
+      - alert: CriticalCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 2m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: '심각한 CPU 사용률 감지'
+          description: '{{ $labels.instance }}에서 CPU 사용률이 {{ $value }}%로 매우 높습니다.'
+
+      # 높은 메모리 사용률
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: '높은 메모리 사용률 감지'
+          description: '{{ $labels.instance }}에서 메모리 사용률이 {{ $value }}%입니다.'
+
+      # 디스크 공간 부족
+      - alert: DiskSpaceLow
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+        annotations:
+          summary: '디스크 공간 부족'
+          description: '{{ $labels.instance }}의 {{ $labels.mountpoint }}에서 디스크 사용률이 {{ $value }}%입니다.'
+
+      # 심각한 디스크 공간 부족
+      - alert: DiskSpaceCritical
+        expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 95
+        for: 1m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: '심각한 디스크 공간 부족'
+          description: '{{ $labels.instance }}의 {{ $labels.mountpoint }}에서 디스크 사용률이 {{ $value }}%로 매우 높습니다.'
+
+  # =============================================================================
+  # 애플리케이션 헬스 알림
+  # =============================================================================
+  - name: application-health
+    rules:
+      # 애플리케이션 다운
+      - alert: ApplicationDown
+        expr: up{job="echomail-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: 'Echo Mail 애플리케이션 다운'
+          description: '{{ $labels.instance }}의 Echo Mail 애플리케이션이 응답하지 않습니다.'
+
+      # 헬스 체크 실패
+      - alert: HealthCheckFailed
+        expr: echomail_health_status != 1
+        for: 2m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: '헬스 체크 실패'
+          description: '{{ $labels.instance }}의 헬스 체크가 실패했습니다.'
+
+      # 높은 응답 시간
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, echomail_http_request_duration_seconds_bucket) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: '높은 응답 시간'
+          description: '95퍼센타일 응답 시간이 {{ $value }}초입니다.'
+
+      # 높은 에러율
+      - alert: HighErrorRate
+        expr: (rate(echomail_http_requests_total{status=~"5.."}[5m]) / rate(echomail_http_requests_total[5m])) * 100 > 5
+        for: 3m
+        labels:
+          severity: warning
+          category: application
+        annotations:
+          summary: '높은 에러율 감지'
+          description: '5xx 에러율이 {{ $value }}%입니다.'
+
+      # 심각한 에러율
+      - alert: CriticalErrorRate
+        expr: (rate(echomail_http_requests_total{status=~"5.."}[5m]) / rate(echomail_http_requests_total[5m])) * 100 > 20
+        for: 1m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: '심각한 에러율 감지'
+          description: '5xx 에러율이 {{ $value }}%로 매우 높습니다.'
+
+  # =============================================================================
+  # 데이터베이스 알림
+  # =============================================================================
+  - name: database
+    rules:
+      # PostgreSQL 다운
+      - alert: PostgreSQLDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: 'PostgreSQL 다운'
+          description: 'PostgreSQL 데이터베이스가 응답하지 않습니다.'
+
+      # 높은 데이터베이스 연결 수
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: '높은 데이터베이스 연결 수'
+          description: '데이터베이스 연결 사용률이 {{ $value }}%입니다.'
+
+      # 느린 쿼리 감지
+      - alert: SlowDatabaseQueries
+        expr: rate(pg_stat_database_tup_fetched[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: '느린 데이터베이스 쿼리 감지'
+          description: '데이터베이스에서 느린 쿼리가 감지되었습니다.'
+
+      # 데이터베이스 디스크 공간 부족
+      - alert: DatabaseDiskSpaceLow
+        expr: pg_database_size_bytes / (1024*1024*1024) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: '데이터베이스 디스크 공간 부족'
+          description: '데이터베이스 크기가 {{ $value }}GB입니다.'
+
+  # =============================================================================
+  # Redis 알림
+  # =============================================================================
+  - name: redis
+    rules:
+      # Redis 다운
+      - alert: RedisDown
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: 'Redis 다운'
+          description: 'Redis 서버가 응답하지 않습니다.'
+
+      # 높은 Redis 메모리 사용률
+      - alert: HighRedisMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: '높은 Redis 메모리 사용률'
+          description: 'Redis 메모리 사용률이 {{ $value }}%입니다.'
+
+      # Redis 연결 거부
+      - alert: RedisConnectionRejected
+        expr: increase(redis_rejected_connections_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: 'Redis 연결 거부'
+          description: 'Redis에서 {{ $value }}개의 연결이 거부되었습니다.'
+
+  # =============================================================================
+  # 비즈니스 메트릭 알림
+  # =============================================================================
+  - name: business-metrics
+    rules:
+      # 이메일 처리 실패율 증가
+      - alert: HighEmailFailureRate
+        expr: (rate(echomail_email_processed_total{status="failed"}[10m]) / rate(echomail_email_processed_total[10m])) * 100 > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: '이메일 처리 실패율 증가'
+          description: '이메일 처리 실패율이 {{ $value }}%입니다.'
+
+      # 알림 발송 실패율 증가
+      - alert: HighNotificationFailureRate
+        expr: (rate(echomail_notification_sent_total{status="failed"}[10m]) / rate(echomail_notification_sent_total[10m])) * 100 > 15
+        for: 5m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: '알림 발송 실패율 증가'
+          description: '알림 발송 실패율이 {{ $value }}%입니다.'
+
+      # 결제 실패율 증가
+      - alert: HighPaymentFailureRate
+        expr: (rate(echomail_payment_attempts_total{status="failed"}[10m]) / rate(echomail_payment_attempts_total[10m])) * 100 > 20
+        for: 3m
+        labels:
+          severity: critical
+          category: business
+        annotations:
+          summary: '결제 실패율 증가'
+          description: '결제 실패율이 {{ $value }}%입니다.'
+
+      # 사용자 가입률 급감
+      - alert: LowUserSignupRate
+        expr: rate(echomail_user_signups_total[1h]) < 1
+        for: 2h
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: '사용자 가입률 급감'
+          description: '시간당 사용자 가입률이 {{ $value }}명으로 낮습니다.'
+
+  # =============================================================================
+  # 보안 알림
+  # =============================================================================
+  - name: security
+    rules:
+      # 높은 4xx 에러율 (잠재적 공격)
+      - alert: HighClientErrorRate
+        expr: (rate(echomail_http_requests_total{status=~"4.."}[5m]) / rate(echomail_http_requests_total[5m])) * 100 > 30
+        for: 3m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: '높은 4xx 에러율 감지'
+          description: '4xx 에러율이 {{ $value }}%로 잠재적 공격이 의심됩니다.'
+
+      # 비정상적인 로그인 시도
+      - alert: AbnormalLoginAttempts
+        expr: rate(echomail_login_attempts_total{status="failed"}[10m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: '비정상적인 로그인 시도'
+          description: '분당 {{ $value }}회의 로그인 실패가 감지되었습니다.'
+
+      # SSL 인증서 만료 임박
+      - alert: SSLCertificateExpiringSoon
+        expr: (ssl_certificate_expiry_seconds - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: 'SSL 인증서 만료 임박'
+          description: 'SSL 인증서가 {{ $value }}일 후 만료됩니다.'
+
+  # =============================================================================
+  # 외부 의존성 알림
+  # =============================================================================
+  - name: external-dependencies
+    rules:
+      # IMAP 서버 연결 실패
+      - alert: IMAPConnectionFailed
+        expr: echomail_imap_connection_status != 1
+        for: 3m
+        labels:
+          severity: critical
+          category: external
+        annotations:
+          summary: 'IMAP 서버 연결 실패'
+          description: 'IMAP 서버에 연결할 수 없습니다.'
+
+      # SMS API 응답 시간 증가
+      - alert: SMSAPIHighLatency
+        expr: histogram_quantile(0.95, echomail_sms_api_duration_seconds_bucket) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: external
+        annotations:
+          summary: 'SMS API 응답 시간 증가'
+          description: 'SMS API 95퍼센타일 응답 시간이 {{ $value }}초입니다.'
+
+      # Kakao API 에러율 증가
+      - alert: KakaoAPIErrorRate
+        expr: (rate(echomail_kakao_api_requests_total{status="error"}[10m]) / rate(echomail_kakao_api_requests_total[10m])) * 100 > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: external
+        annotations:
+          summary: 'Kakao API 에러율 증가'
+          description: 'Kakao API 에러율이 {{ $value }}%입니다.'
+
+      # Toss API 응답 시간 증가
+      - alert: TossAPIHighLatency
+        expr: histogram_quantile(0.95, echomail_toss_api_duration_seconds_bucket) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: external
+        annotations:
+          summary: 'Toss API 응답 시간 증가'
+          description: 'Toss API 95퍼센타일 응답 시간이 {{ $value }}초입니다.'

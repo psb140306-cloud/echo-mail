@@ -21,7 +21,7 @@ const mockRequest = (method: string, body?: any, query?: any): NextApiRequest =>
     body: body || {},
     query: query || {},
     headers: {},
-    url: '/api/companies'
+    url: '/api/companies',
   } as NextApiRequest
 }
 
@@ -61,7 +61,7 @@ async function companiesHandler(req: NextApiRequest, res: NextApiResponse) {
     console.error('Companies API Error:', error)
     return res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error',
     })
   }
 }
@@ -89,7 +89,7 @@ async function companyByIdHandler(req: NextApiRequest, res: NextApiResponse) {
     console.error('Company API Error:', error)
     return res.status(500).json({
       success: false,
-      error: 'Internal server error'
+      error: 'Internal server error',
     })
   }
 }
@@ -106,7 +106,7 @@ async function handleGetCompanies(req: NextApiRequest, res: NextApiResponse) {
   if (search) {
     where.OR = [
       { name: { contains: search as string, mode: 'insensitive' } },
-      { email: { contains: search as string, mode: 'insensitive' } }
+      { email: { contains: search as string, mode: 'insensitive' } },
     ]
   }
 
@@ -122,12 +122,12 @@ async function handleGetCompanies(req: NextApiRequest, res: NextApiResponse) {
       include: {
         contacts: true,
         _count: {
-          select: { contacts: true }
-        }
+          select: { contacts: true },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     }),
-    mockPrismaClient.company.count({ where })
+    mockPrismaClient.company.count({ where }),
   ])
 
   return res.status(200).json({
@@ -137,8 +137,8 @@ async function handleGetCompanies(req: NextApiRequest, res: NextApiResponse) {
       page: pageNum,
       limit: limitNum,
       total,
-      pages: Math.ceil(total / limitNum)
-    }
+      pages: Math.ceil(total / limitNum),
+    },
   })
 }
 
@@ -149,19 +149,19 @@ async function handleCreateCompany(req: NextApiRequest, res: NextApiResponse) {
   if (!name || !email || !region) {
     return res.status(400).json({
       success: false,
-      error: 'Name, email, and region are required'
+      error: 'Name, email, and region are required',
     })
   }
 
   // 이메일 중복 검사
   const existingCompany = await mockPrismaClient.company.findUnique({
-    where: { email }
+    where: { email },
   })
 
   if (existingCompany) {
     return res.status(409).json({
       success: false,
-      error: 'Company with this email already exists'
+      error: 'Company with this email already exists',
     })
   }
 
@@ -174,8 +174,8 @@ async function handleCreateCompany(req: NextApiRequest, res: NextApiResponse) {
         region,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     })
 
     if (contacts.length > 0) {
@@ -187,8 +187,8 @@ async function handleCreateCompany(req: NextApiRequest, res: NextApiResponse) {
           smsEnabled: contact.smsEnabled ?? true,
           kakaoEnabled: contact.kakaoEnabled ?? true,
           createdAt: new Date(),
-          updatedAt: new Date()
-        }))
+          updatedAt: new Date(),
+        })),
       })
     }
 
@@ -198,7 +198,7 @@ async function handleCreateCompany(req: NextApiRequest, res: NextApiResponse) {
   return res.status(201).json({
     success: true,
     data: result,
-    message: 'Company created successfully'
+    message: 'Company created successfully',
   })
 }
 
@@ -209,24 +209,24 @@ async function handleGetCompanyById(req: NextApiRequest, res: NextApiResponse) {
     where: { id: id as string },
     include: {
       contacts: {
-        orderBy: { createdAt: 'asc' }
+        orderBy: { createdAt: 'asc' },
       },
       _count: {
-        select: { contacts: true }
-      }
-    }
+        select: { contacts: true },
+      },
+    },
   })
 
   if (!company) {
     return res.status(404).json({
       success: false,
-      error: 'Company not found'
+      error: 'Company not found',
     })
   }
 
   return res.status(200).json({
     success: true,
-    data: company
+    data: company,
   })
 }
 
@@ -236,26 +236,26 @@ async function handleUpdateCompany(req: NextApiRequest, res: NextApiResponse) {
 
   // 업체 존재 확인
   const existingCompany = await mockPrismaClient.company.findUnique({
-    where: { id: id as string }
+    where: { id: id as string },
   })
 
   if (!existingCompany) {
     return res.status(404).json({
       success: false,
-      error: 'Company not found'
+      error: 'Company not found',
     })
   }
 
   // 이메일 중복 검사 (자신 제외)
   if (email && email !== existingCompany.email) {
     const duplicateCompany = await mockPrismaClient.company.findUnique({
-      where: { email }
+      where: { email },
     })
 
     if (duplicateCompany) {
       return res.status(409).json({
         success: false,
-        error: 'Company with this email already exists'
+        error: 'Company with this email already exists',
       })
     }
   }
@@ -269,15 +269,15 @@ async function handleUpdateCompany(req: NextApiRequest, res: NextApiResponse) {
         ...(email && { email }),
         ...(region && { region }),
         ...(typeof isActive === 'boolean' && { isActive }),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     })
 
     // 담당자 정보 업데이트
     if (contacts) {
       // 기존 담당자 삭제
       await tx.contact.deleteMany({
-        where: { companyId: id as string }
+        where: { companyId: id as string },
       })
 
       // 새 담당자 생성
@@ -290,8 +290,8 @@ async function handleUpdateCompany(req: NextApiRequest, res: NextApiResponse) {
             smsEnabled: contact.smsEnabled ?? true,
             kakaoEnabled: contact.kakaoEnabled ?? true,
             createdAt: new Date(),
-            updatedAt: new Date()
-          }))
+            updatedAt: new Date(),
+          })),
         })
       }
     }
@@ -302,7 +302,7 @@ async function handleUpdateCompany(req: NextApiRequest, res: NextApiResponse) {
   return res.status(200).json({
     success: true,
     data: result,
-    message: 'Company updated successfully'
+    message: 'Company updated successfully',
   })
 }
 
@@ -310,31 +310,31 @@ async function handleDeleteCompany(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query
 
   const company = await mockPrismaClient.company.findUnique({
-    where: { id: id as string }
+    where: { id: id as string },
   })
 
   if (!company) {
     return res.status(404).json({
       success: false,
-      error: 'Company not found'
+      error: 'Company not found',
     })
   }
 
   await mockPrismaClient.$transaction(async (tx: any) => {
     // 관련 담당자 먼저 삭제
     await tx.contact.deleteMany({
-      where: { companyId: id as string }
+      where: { companyId: id as string },
     })
 
     // 업체 삭제
     await tx.company.delete({
-      where: { id: id as string }
+      where: { id: id as string },
     })
   })
 
   return res.status(200).json({
     success: true,
-    message: 'Company deleted successfully'
+    message: 'Company deleted successfully',
   })
 }
 
@@ -355,7 +355,7 @@ describe('Companies API Endpoints', () => {
           contacts: [],
           _count: { contacts: 0 },
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         {
           id: 'comp2',
@@ -366,8 +366,8 @@ describe('Companies API Endpoints', () => {
           contacts: [],
           _count: { contacts: 1 },
           createdAt: new Date(),
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       ]
 
       mockPrismaClient.company.findMany.mockResolvedValue(mockCompanies)
@@ -386,8 +386,8 @@ describe('Companies API Endpoints', () => {
           page: 1,
           limit: 10,
           total: 2,
-          pages: 1
-        }
+          pages: 1,
+        },
       })
     })
 
@@ -400,8 +400,8 @@ describe('Companies API Endpoints', () => {
           region: '서울',
           isActive: true,
           contacts: [],
-          _count: { contacts: 0 }
-        }
+          _count: { contacts: 0 },
+        },
       ]
 
       mockPrismaClient.company.findMany.mockResolvedValue(mockCompanies)
@@ -417,9 +417,9 @@ describe('Companies API Endpoints', () => {
           where: {
             OR: [
               { name: { contains: 'ABC', mode: 'insensitive' } },
-              { email: { contains: 'ABC', mode: 'insensitive' } }
-            ]
-          }
+              { email: { contains: 'ABC', mode: 'insensitive' } },
+            ],
+          },
         })
       )
 
@@ -438,7 +438,7 @@ describe('Companies API Endpoints', () => {
 
       expect(mockPrismaClient.company.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { region: '서울' }
+          where: { region: '서울' },
         })
       )
     })
@@ -456,7 +456,7 @@ describe('Companies API Endpoints', () => {
       expect(mockPrismaClient.company.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           skip: 0,
-          take: 10
+          take: 10,
         })
       )
     })
@@ -473,9 +473,9 @@ describe('Companies API Endpoints', () => {
             name: '담당자',
             phone: '010-1234-5678',
             email: 'contact@company.com',
-            position: '매니저'
-          }
-        ]
+            position: '매니저',
+          },
+        ],
       }
 
       const createdCompany = {
@@ -483,18 +483,18 @@ describe('Companies API Endpoints', () => {
         ...newCompany,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       mockPrismaClient.company.findUnique.mockResolvedValue(null) // 중복 없음
       mockPrismaClient.$transaction.mockImplementation(async (callback) => {
         return callback({
           company: {
-            create: jest.fn().mockResolvedValue(createdCompany)
+            create: jest.fn().mockResolvedValue(createdCompany),
           },
           contact: {
-            createMany: jest.fn().mockResolvedValue({ count: 1 })
-          }
+            createMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
         })
       })
 
@@ -507,13 +507,13 @@ describe('Companies API Endpoints', () => {
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: createdCompany,
-        message: 'Company created successfully'
+        message: 'Company created successfully',
       })
     })
 
     it('should validate required fields', async () => {
       const incompleteCompany = {
-        name: 'Test Company'
+        name: 'Test Company',
         // email과 region 누락
       }
 
@@ -525,7 +525,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(400)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Name, email, and region are required'
+        error: 'Name, email, and region are required',
       })
     })
 
@@ -533,12 +533,12 @@ describe('Companies API Endpoints', () => {
       const duplicateCompany = {
         name: 'Duplicate Company',
         email: 'existing@company.com',
-        region: '서울'
+        region: '서울',
       }
 
       mockPrismaClient.company.findUnique.mockResolvedValue({
         id: 'existing-id',
-        email: 'existing@company.com'
+        email: 'existing@company.com',
       })
 
       const req = mockRequest('POST', duplicateCompany)
@@ -549,7 +549,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(409)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Company with this email already exists'
+        error: 'Company with this email already exists',
       })
     })
 
@@ -557,7 +557,7 @@ describe('Companies API Endpoints', () => {
       const newCompany = {
         name: 'New Company',
         email: 'new@company.com',
-        region: '서울'
+        region: '서울',
       }
 
       mockPrismaClient.company.findUnique.mockResolvedValue(null)
@@ -571,7 +571,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(500)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error',
       })
     })
   })
@@ -589,12 +589,12 @@ describe('Companies API Endpoints', () => {
             id: 'contact-1',
             name: '담당자1',
             phone: '010-1111-2222',
-            email: 'contact1@company.com'
-          }
+            email: 'contact1@company.com',
+          },
         ],
         _count: { contacts: 1 },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       mockPrismaClient.company.findUnique.mockResolvedValue(mockCompany)
@@ -607,7 +607,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(200)
       expect(res.json).toHaveBeenCalledWith({
         success: true,
-        data: mockCompany
+        data: mockCompany,
       })
     })
 
@@ -622,7 +622,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(404)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Company not found'
+        error: 'Company not found',
       })
     })
 
@@ -635,7 +635,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(400)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Company ID is required'
+        error: 'Company ID is required',
       })
     })
   })
@@ -647,7 +647,7 @@ describe('Companies API Endpoints', () => {
         name: 'Old Name',
         email: 'old@company.com',
         region: '서울',
-        isActive: true
+        isActive: true,
       }
 
       const updateData = {
@@ -658,15 +658,15 @@ describe('Companies API Endpoints', () => {
           {
             name: '새담당자',
             phone: '010-9999-8888',
-            email: 'newcontact@company.com'
-          }
-        ]
+            email: 'newcontact@company.com',
+          },
+        ],
       }
 
       const updatedCompany = {
         ...existingCompany,
         ...updateData,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       mockPrismaClient.company.findUnique
@@ -676,12 +676,12 @@ describe('Companies API Endpoints', () => {
       mockPrismaClient.$transaction.mockImplementation(async (callback) => {
         return callback({
           company: {
-            update: jest.fn().mockResolvedValue(updatedCompany)
+            update: jest.fn().mockResolvedValue(updatedCompany),
           },
           contact: {
             deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
-            createMany: jest.fn().mockResolvedValue({ count: 1 })
-          }
+            createMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
         })
       })
 
@@ -694,7 +694,7 @@ describe('Companies API Endpoints', () => {
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: updatedCompany,
-        message: 'Company updated successfully'
+        message: 'Company updated successfully',
       })
     })
 
@@ -703,12 +703,12 @@ describe('Companies API Endpoints', () => {
         id: 'comp-id',
         name: 'Test Company',
         email: 'test@company.com',
-        region: '서울'
+        region: '서울',
       }
 
       const duplicateCompany = {
         id: 'other-comp-id',
-        email: 'duplicate@company.com'
+        email: 'duplicate@company.com',
       }
 
       mockPrismaClient.company.findUnique
@@ -723,7 +723,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(409)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Company with this email already exists'
+        error: 'Company with this email already exists',
       })
     })
 
@@ -732,22 +732,26 @@ describe('Companies API Endpoints', () => {
         id: 'comp-id',
         name: 'Test Company',
         email: 'test@company.com',
-        region: '서울'
+        region: '서울',
       }
 
       mockPrismaClient.company.findUnique.mockResolvedValue(existingCompany)
       mockPrismaClient.$transaction.mockImplementation(async (callback) => {
         return callback({
           company: {
-            update: jest.fn().mockResolvedValue(existingCompany)
-          }
+            update: jest.fn().mockResolvedValue(existingCompany),
+          },
         })
       })
 
-      const req = mockRequest('PUT', {
-        name: 'Updated Name',
-        email: 'test@company.com' // 같은 이메일
-      }, { id: 'comp-id' })
+      const req = mockRequest(
+        'PUT',
+        {
+          name: 'Updated Name',
+          email: 'test@company.com', // 같은 이메일
+        },
+        { id: 'comp-id' }
+      )
       const res = mockResponse()
 
       await companyByIdHandler(req, res)
@@ -762,18 +766,18 @@ describe('Companies API Endpoints', () => {
         id: 'comp-id',
         name: 'Test Company',
         email: 'test@company.com',
-        region: '서울'
+        region: '서울',
       }
 
       mockPrismaClient.company.findUnique.mockResolvedValue(existingCompany)
       mockPrismaClient.$transaction.mockImplementation(async (callback) => {
         return callback({
           contact: {
-            deleteMany: jest.fn().mockResolvedValue({ count: 2 })
+            deleteMany: jest.fn().mockResolvedValue({ count: 2 }),
           },
           company: {
-            delete: jest.fn().mockResolvedValue(existingCompany)
-          }
+            delete: jest.fn().mockResolvedValue(existingCompany),
+          },
         })
       })
 
@@ -785,7 +789,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(200)
       expect(res.json).toHaveBeenCalledWith({
         success: true,
-        message: 'Company deleted successfully'
+        message: 'Company deleted successfully',
       })
     })
 
@@ -800,7 +804,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(404)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Company not found'
+        error: 'Company not found',
       })
     })
   })
@@ -815,7 +819,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(405)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Method not allowed'
+        error: 'Method not allowed',
       })
     })
 
@@ -828,7 +832,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(405)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Method not allowed'
+        error: 'Method not allowed',
       })
     })
   })
@@ -845,7 +849,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(500)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error',
       })
     })
 
@@ -862,7 +866,7 @@ describe('Companies API Endpoints', () => {
       expect(res.status).toHaveBeenCalledWith(500)
       expect(res.json).toHaveBeenCalledWith({
         success: false,
-        error: 'Internal server error'
+        error: 'Internal server error',
       })
     })
   })
@@ -873,18 +877,18 @@ describe('Companies API Endpoints', () => {
         name: 'Test Company',
         email: 'test@company.com',
         region: '서울',
-        contacts: []
+        contacts: [],
       }
 
       mockPrismaClient.company.findUnique.mockResolvedValue(null)
       mockPrismaClient.$transaction.mockImplementation(async (callback) => {
         return callback({
           company: {
-            create: jest.fn().mockResolvedValue({ id: 'new-id', ...companyData })
+            create: jest.fn().mockResolvedValue({ id: 'new-id', ...companyData }),
           },
           contact: {
-            createMany: jest.fn()
-          }
+            createMany: jest.fn(),
+          },
         })
       })
 
@@ -901,15 +905,15 @@ describe('Companies API Endpoints', () => {
       const companyData = {
         name: longName,
         email: 'test@company.com',
-        region: '서울'
+        region: '서울',
       }
 
       mockPrismaClient.company.findUnique.mockResolvedValue(null)
       mockPrismaClient.$transaction.mockImplementation(async (callback) => {
         return callback({
           company: {
-            create: jest.fn().mockResolvedValue({ id: 'new-id', ...companyData })
-          }
+            create: jest.fn().mockResolvedValue({ id: 'new-id', ...companyData }),
+          },
         })
       })
 
@@ -936,9 +940,9 @@ describe('Companies API Endpoints', () => {
           where: {
             OR: [
               { name: { contains: '!@#$%^&*()', mode: 'insensitive' } },
-              { email: { contains: '!@#$%^&*()', mode: 'insensitive' } }
-            ]
-          }
+              { email: { contains: '!@#$%^&*()', mode: 'insensitive' } },
+            ],
+          },
         })
       )
     })
@@ -958,7 +962,7 @@ describe('Companies API Endpoints', () => {
       // 실제로는 제한된 값으로 쿼리되어야 함
       expect(mockPrismaClient.company.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          take: 10000 // 실제 구현에서는 제한해야 함
+          take: 10000, // 실제 구현에서는 제한해야 함
         })
       )
     })

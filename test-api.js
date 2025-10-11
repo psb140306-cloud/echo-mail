@@ -31,15 +31,15 @@ async function testAPI() {
       name: '테스트상사',
       email: 'test@testcompany.co.kr',
       region: '서울',
-      isActive: true
+      isActive: true,
     }
 
     const createResponse = await fetch(`${API_BASE}/companies`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(newCompany)
+      body: JSON.stringify(newCompany),
     })
 
     const createData = await createResponse.json()
@@ -49,7 +49,7 @@ async function testAPI() {
     } else {
       console.log('❌ 업체 생성 실패:', createData.error)
       if (createData.details) {
-        createData.details.forEach(detail => {
+        createData.details.forEach((detail) => {
           console.log(`   - ${detail.field}: ${detail.message}`)
         })
       }
@@ -75,15 +75,15 @@ async function testAPI() {
       console.log('\n1-4. 업체 수정')
       const updateData = {
         name: '테스트상사(수정됨)',
-        region: '부산'
+        region: '부산',
       }
 
       const updateResponse = await fetch(`${API_BASE}/companies/${createdCompanyId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(updateData),
       })
 
       const updateResult = await updateResponse.json()
@@ -122,15 +122,15 @@ async function testAPI() {
         position: '구매담당',
         companyId: createdCompanyId,
         smsEnabled: true,
-        kakaoEnabled: false
+        kakaoEnabled: false,
       }
 
       const createContactResponse = await fetch(`${API_BASE}/contacts`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newContact)
+        body: JSON.stringify(newContact),
       })
 
       const createContactData = await createContactResponse.json()
@@ -165,22 +165,24 @@ async function testAPI() {
       const updateContactData = {
         name: '김테스트(수정됨)',
         position: '구매과장',
-        kakaoEnabled: true
+        kakaoEnabled: true,
       }
 
       const updateContactResponse = await fetch(`${API_BASE}/contacts/${createdContactId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updateContactData)
+        body: JSON.stringify(updateContactData),
       })
 
       const updateContactResult = await updateContactResponse.json()
       if (updateContactResult.success) {
         console.log(`✅ 담당자 수정 성공: ${updateContactResult.data.name}`)
         console.log(`   - 직책: ${updateContactResult.data.position}`)
-        console.log(`   - 카카오 알림: ${updateContactResult.data.kakaoEnabled ? '활성화' : '비활성화'}`)
+        console.log(
+          `   - 카카오 알림: ${updateContactResult.data.kakaoEnabled ? '활성화' : '비활성화'}`
+        )
       } else {
         console.log('❌ 담당자 수정 실패:', updateContactResult.error)
       }
@@ -226,22 +228,22 @@ async function testAPI() {
     const invalidCompany = {
       name: '', // 빈 이름
       email: 'invalid-email', // 잘못된 이메일
-      region: ''
+      region: '',
     }
 
     const invalidResponse = await fetch(`${API_BASE}/companies`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(invalidCompany)
+      body: JSON.stringify(invalidCompany),
     })
 
     const invalidData = await invalidResponse.json()
     if (!invalidData.success) {
       console.log('✅ 검증 에러 처리 성공:')
       if (invalidData.details) {
-        invalidData.details.forEach(detail => {
+        invalidData.details.forEach((detail) => {
           console.log(`   - ${detail.field}: ${detail.message}`)
         })
       }
@@ -269,7 +271,7 @@ async function testAPI() {
     if (createdContactId) {
       console.log('\n5-1. 테스트 담당자 삭제')
       const deleteContactResponse = await fetch(`${API_BASE}/contacts/${createdContactId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
 
       const deleteContactData = await deleteContactResponse.json()
@@ -284,7 +286,7 @@ async function testAPI() {
     if (createdCompanyId) {
       console.log('\n5-2. 테스트 업체 삭제')
       const deleteResponse = await fetch(`${API_BASE}/companies/${createdCompanyId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
 
       const deleteData = await deleteResponse.json()
@@ -296,7 +298,6 @@ async function testAPI() {
     }
 
     console.log('\n🎉 API 테스트 완료!')
-
   } catch (error) {
     console.error('\n❌ API 테스트 중 오류 발생:', error.message)
   }

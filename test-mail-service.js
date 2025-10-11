@@ -25,7 +25,7 @@ async function testMailConnection() {
 
   try {
     // 동적 import를 사용하여 ES 모듈 로드
-    const { ImapClient } = await import('./lib/mail/imap-client.js')
+    const { ImapClient } = await import('./lib/mail/imap-client.ts')
 
     const config = {
       host: process.env.MAIL_HOST,
@@ -33,7 +33,7 @@ async function testMailConnection() {
       secure: process.env.MAIL_SECURE === 'true',
       user: process.env.MAIL_USER,
       password: process.env.MAIL_PASSWORD,
-      checkInterval: 10000 // 테스트용 짧은 간격
+      checkInterval: 10000, // 테스트용 짧은 간격
     }
 
     console.log('🔄 IMAP 클라이언트 생성 중...')
@@ -81,7 +81,6 @@ async function testMailConnection() {
     console.log('✅ 연결 해제 완료')
 
     console.log('\n🎉 메일 서비스 테스트 완료!')
-
   } catch (error) {
     console.error('❌ 테스트 실패:', error.message)
 

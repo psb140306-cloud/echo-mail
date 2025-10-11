@@ -41,13 +41,13 @@ class PerformanceMonitor {
         current: {
           heapUsed: endMemory.heapUsed / 1024 / 1024,
           heapTotal: endMemory.heapTotal / 1024 / 1024,
-          external: endMemory.external / 1024 / 1024
-        }
+          external: endMemory.external / 1024 / 1024,
+        },
       },
       cpu: {
         user: endCpu.user / 1000, // microseconds to milliseconds
-        system: endCpu.system / 1000
-      }
+        system: endCpu.system / 1000,
+      },
     }
   }
 }
@@ -67,10 +67,10 @@ class TestDataGenerator {
           position: '매니저',
           smsEnabled: true,
           kakaoEnabled: i % 2 === 0,
-          isActive: true
-        }
+          isActive: true,
+        },
       ],
-      isActive: true
+      isActive: true,
     }))
   }
 
@@ -95,14 +95,17 @@ class TestDataGenerator {
 
 처리 시간을 측정합니다.
           `,
-          attachments: i % 3 === 0 ? [
-            {
-              filename: `발주서_${company.name.replace(/\s+/g, '_')}_${i + 1}.pdf`,
-              contentType: 'application/pdf',
-              size: 1024 * (50 + (i % 50)), // 50-100KB
-              content: Buffer.alloc(1024 * (50 + (i % 50)), 'test')
-            }
-          ] : []
+          attachments:
+            i % 3 === 0
+              ? [
+                  {
+                    filename: `발주서_${company.name.replace(/\s+/g, '_')}_${i + 1}.pdf`,
+                    contentType: 'application/pdf',
+                    size: 1024 * (50 + (i % 50)), // 50-100KB
+                    content: Buffer.alloc(1024 * (50 + (i % 50)), 'test'),
+                  },
+                ]
+              : [],
         })
       }
     }
@@ -139,7 +142,7 @@ describe('Bulk Email Processing Performance Tests', () => {
       db.company.deleteMany(),
       db.contact.deleteMany(),
       db.emailLog.deleteMany(),
-      db.notificationLog.deleteMany()
+      db.notificationLog.deleteMany(),
     ])
 
     // Redis 초기화
@@ -157,7 +160,7 @@ describe('Bulk Email Processing Performance Tests', () => {
       const companies = TestDataGenerator.generateCompanies(1)
       const company = await db.company.create({
         data: companies[0],
-        include: { contacts: true }
+        include: { contacts: true },
       })
 
       const emails = TestDataGenerator.generateEmails([company])
@@ -177,17 +180,23 @@ describe('Bulk Email Processing Performance Tests', () => {
       expect(result.emailLog).toBeDefined()
 
       // 성능 기준 검증
-      expect(metrics.duration).toBeLessThan(config.performanceThresholds.emailProcessing.singleEmail)
-      expect(metrics.memory.current.heapUsed).toBeLessThan(config.performanceThresholds.memory.baseline)
+      expect(metrics.duration).toBeLessThan(
+        config.performanceThresholds.emailProcessing.singleEmail
+      )
+      expect(metrics.memory.current.heapUsed).toBeLessThan(
+        config.performanceThresholds.memory.baseline
+      )
 
-      console.log(`Single Email Processing: ${metrics.duration.toFixed(2)}ms, Memory: ${metrics.memory.current.heapUsed.toFixed(2)}MB`)
+      console.log(
+        `Single Email Processing: ${metrics.duration.toFixed(2)}ms, Memory: ${metrics.memory.current.heapUsed.toFixed(2)}MB`
+      )
     })
 
     it('should handle email with large attachment efficiently', async () => {
       const companies = TestDataGenerator.generateCompanies(1)
       const company = await db.company.create({
         data: companies[0],
-        include: { contacts: true }
+        include: { contacts: true },
       })
 
       // 대용량 첨부파일 이메일
@@ -203,9 +212,9 @@ describe('Bulk Email Processing Performance Tests', () => {
             filename: 'large_document.pdf',
             contentType: 'application/pdf',
             size: 1024 * 1024 * 5, // 5MB
-            content: Buffer.alloc(1024 * 1024 * 5, 'large')
-          }
-        ]
+            content: Buffer.alloc(1024 * 1024 * 5, 'large'),
+          },
+        ],
       }
 
       monitor.start()
@@ -213,9 +222,13 @@ describe('Bulk Email Processing Performance Tests', () => {
       const metrics = monitor.end()
 
       expect(result.success).toBe(true)
-      expect(metrics.duration).toBeLessThan(config.performanceThresholds.emailProcessing.singleEmail * 2) // 대용량은 2배 허용
+      expect(metrics.duration).toBeLessThan(
+        config.performanceThresholds.emailProcessing.singleEmail * 2
+      ) // 대용량은 2배 허용
 
-      console.log(`Large Attachment Processing: ${metrics.duration.toFixed(2)}ms, Memory: ${metrics.memory.current.heapUsed.toFixed(2)}MB`)
+      console.log(
+        `Large Attachment Processing: ${metrics.duration.toFixed(2)}ms, Memory: ${metrics.memory.current.heapUsed.toFixed(2)}MB`
+      )
     })
   })
 
@@ -231,7 +244,7 @@ describe('Bulk Email Processing Performance Tests', () => {
       for (const companyData of companiesData) {
         const company = await db.company.create({
           data: companyData,
-          include: { contacts: true }
+          include: { contacts: true },
         })
         companies.push(company)
       }
@@ -251,7 +264,7 @@ describe('Bulk Email Processing Performance Tests', () => {
       for (let i = 0; i < emails.length; i += batchSize) {
         const batch = emails.slice(i, i + batchSize)
         const batchResults = await Promise.all(
-          batch.map(email => mailProcessor.processEmail(email))
+          batch.map((email) => mailProcessor.processEmail(email))
         )
         results.push(...batchResults)
 
@@ -264,12 +277,16 @@ describe('Bulk Email Processing Performance Tests', () => {
       const metrics = monitor.end()
 
       // 결과 검증
-      const successCount = results.filter(r => r.success).length
+      const successCount = results.filter((r) => r.success).length
       expect(successCount).toBe(emails.length)
 
       // 성능 기준 검증
-      expect(metrics.duration).toBeLessThan(config.performanceThresholds.emailProcessing.bulkEmail100)
-      expect(metrics.memory.current.heapUsed).toBeLessThan(config.performanceThresholds.memory.afterBulkProcessing)
+      expect(metrics.duration).toBeLessThan(
+        config.performanceThresholds.emailProcessing.bulkEmail100
+      )
+      expect(metrics.memory.current.heapUsed).toBeLessThan(
+        config.performanceThresholds.memory.afterBulkProcessing
+      )
 
       // 처리율 계산
       const emailsPerSecond = (emails.length / metrics.duration) * 1000
@@ -286,7 +303,7 @@ describe('Bulk Email Processing Performance Tests', () => {
       const companiesData = TestDataGenerator.generateCompanies(companyCount)
 
       // 업체들 병렬 생성
-      const companyPromises = companiesData.map(data =>
+      const companyPromises = companiesData.map((data) =>
         db.company.create({ data, include: { contacts: true } })
       )
       const companies = await Promise.all(companyPromises)
@@ -298,19 +315,21 @@ describe('Bulk Email Processing Performance Tests', () => {
 
       // 모든 이메일을 동시에 처리
       const results = await Promise.allSettled(
-        emails.map(email => mailProcessor.processEmail(email))
+        emails.map((email) => mailProcessor.processEmail(email))
       )
 
       const metrics = monitor.end()
 
       // 결과 분석
-      const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length
-      const failed = results.filter(r => r.status === 'rejected' || !r.value?.success).length
+      const successful = results.filter((r) => r.status === 'fulfilled' && r.value.success).length
+      const failed = results.filter((r) => r.status === 'rejected' || !r.value?.success).length
 
       expect(successful).toBeGreaterThan(emails.length * 0.95) // 95% 이상 성공
       expect(failed).toBeLessThan(emails.length * 0.05) // 5% 미만 실패
 
-      console.log(`Concurrent Processing: ${successful}/${emails.length} succeeded in ${metrics.duration.toFixed(2)}ms`)
+      console.log(
+        `Concurrent Processing: ${successful}/${emails.length} succeeded in ${metrics.duration.toFixed(2)}ms`
+      )
     })
   })
 
@@ -332,7 +351,7 @@ describe('Bulk Email Processing Performance Tests', () => {
         for (const companyData of companies) {
           const company = await db.company.create({
             data: companyData,
-            include: { contacts: true }
+            include: { contacts: true },
           })
           createdCompanies.push(company)
         }
@@ -349,7 +368,7 @@ describe('Bulk Email Processing Performance Tests', () => {
           db.notificationLog.deleteMany(),
           db.emailLog.deleteMany(),
           db.contact.deleteMany(),
-          db.company.deleteMany()
+          db.company.deleteMany(),
         ])
 
         // 가비지 컬렉션 강제 실행
@@ -361,10 +380,12 @@ describe('Bulk Email Processing Performance Tests', () => {
           iteration,
           heapUsed: currentMemory.heapUsed / 1024 / 1024,
           heapTotal: currentMemory.heapTotal / 1024 / 1024,
-          external: currentMemory.external / 1024 / 1024
+          external: currentMemory.external / 1024 / 1024,
         })
 
-        console.log(`Iteration ${iteration + 1}: Heap ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`)
+        console.log(
+          `Iteration ${iteration + 1}: Heap ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`
+        )
       }
 
       // 메모리 누수 검사
@@ -375,7 +396,9 @@ describe('Bulk Email Processing Performance Tests', () => {
       // 메모리 증가가 50MB 이하여야 함 (메모리 누수 없음)
       expect(memoryIncrease).toBeLessThan(50)
 
-      console.log(`Memory leak test: ${memoryIncrease.toFixed(2)}MB increase over ${iterations} iterations`)
+      console.log(
+        `Memory leak test: ${memoryIncrease.toFixed(2)}MB increase over ${iterations} iterations`
+      )
     })
 
     it('should handle memory pressure gracefully', async () => {
@@ -392,7 +415,7 @@ describe('Bulk Email Processing Performance Tests', () => {
         const companies = TestDataGenerator.generateCompanies(5)
         const company = await db.company.create({
           data: companies[0],
-          include: { contacts: true }
+          include: { contacts: true },
         })
 
         const emails = TestDataGenerator.generateEmails([company], 5)
@@ -418,11 +441,10 @@ describe('Bulk Email Processing Performance Tests', () => {
         const metrics = monitor.end()
 
         // 메모리 압박 상황에서도 처리 가능해야 함
-        const successCount = results.filter(r => r.success).length
+        const successCount = results.filter((r) => r.success).length
         expect(successCount).toBeGreaterThan(emails.length * 0.8) // 80% 이상 성공
 
         console.log(`Memory pressure test: ${successCount}/${emails.length} succeeded`)
-
       } finally {
         // 메모리 정리
         largeDataSets.length = 0
@@ -449,7 +471,7 @@ describe('Bulk Email Processing Performance Tests', () => {
           for (const companyData of batch) {
             const company = await tx.company.create({
               data: companyData,
-              include: { contacts: true }
+              include: { contacts: true },
             })
             createdCompanies.push(company)
           }
@@ -465,7 +487,9 @@ describe('Bulk Email Processing Performance Tests', () => {
       const totalCompanies = await db.company.count()
       expect(totalCompanies).toBe(companyCount)
 
-      console.log(`Bulk Company Creation (${companyCount} companies): ${metrics.duration.toFixed(2)}ms`)
+      console.log(
+        `Bulk Company Creation (${companyCount} companies): ${metrics.duration.toFixed(2)}ms`
+      )
     })
 
     it('should handle complex queries efficiently', async () => {
@@ -474,7 +498,7 @@ describe('Bulk Email Processing Performance Tests', () => {
       for (const companyData of companies) {
         await db.company.create({
           data: companyData,
-          include: { contacts: true }
+          include: { contacts: true },
         })
       }
 
@@ -489,35 +513,29 @@ describe('Bulk Email Processing Performance Tests', () => {
             {
               contacts: {
                 some: {
-                  AND: [
-                    { isActive: true },
-                    { smsEnabled: true }
-                  ]
-                }
-              }
-            }
-          ]
+                  AND: [{ isActive: true }, { smsEnabled: true }],
+                },
+              },
+            },
+          ],
         },
         include: {
           contacts: {
-            where: { isActive: true }
+            where: { isActive: true },
           },
           emailLogs: {
             where: {
-              status: 'PROCESSED'
+              status: 'PROCESSED',
             },
             include: {
               notifications: {
-                where: { status: 'SENT' }
-              }
-            }
-          }
+                where: { status: 'SENT' },
+              },
+            },
+          },
         },
-        orderBy: [
-          { createdAt: 'desc' },
-          { name: 'asc' }
-        ],
-        take: 20
+        orderBy: [{ createdAt: 'desc' }, { name: 'asc' }],
+        take: 20,
       })
 
       const metrics = monitor.end()
@@ -525,7 +543,9 @@ describe('Bulk Email Processing Performance Tests', () => {
       expect(complexQueryResult).toHaveLength(20)
       expect(metrics.duration).toBeLessThan(config.performanceThresholds.database.complexQuery)
 
-      console.log(`Complex Query: ${metrics.duration.toFixed(2)}ms, ${complexQueryResult.length} results`)
+      console.log(
+        `Complex Query: ${metrics.duration.toFixed(2)}ms, ${complexQueryResult.length} results`
+      )
     })
   })
 
@@ -539,20 +559,18 @@ describe('Bulk Email Processing Performance Tests', () => {
       for (const companyData of companies) {
         await db.company.create({
           data: companyData,
-          include: { contacts: true }
+          include: { contacts: true },
         })
       }
 
       const emails = TestDataGenerator.generateEmails(companies.slice(0, 5), 5)
 
-      const results = await Promise.all(
-        emails.map(email => mailProcessor.processEmail(email))
-      )
+      const results = await Promise.all(emails.map((email) => mailProcessor.processEmail(email)))
 
-      expect(results.filter(r => r.success)).toHaveLength(emails.length)
+      expect(results.filter((r) => r.success)).toHaveLength(emails.length)
 
       // 처리 후 리소스 정리 확인
-      await new Promise(resolve => setTimeout(resolve, 1000)) // 정리 시간 대기
+      await new Promise((resolve) => setTimeout(resolve, 1000)) // 정리 시간 대기
 
       const finalConnections = await redis.client('info', 'clients')
 

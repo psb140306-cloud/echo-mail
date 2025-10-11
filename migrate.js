@@ -17,18 +17,17 @@ try {
   console.log('📦 Prisma Client 생성...')
   execSync('npx prisma generate', {
     stdio: 'inherit',
-    env: { ...process.env }
+    env: { ...process.env },
   })
 
   // 2. Database push
   console.log('📡 데이터베이스 스키마 push...')
   execSync('npx prisma db push --skip-generate', {
     stdio: 'inherit',
-    env: { ...process.env }
+    env: { ...process.env },
   })
 
   console.log('✅ 마이그레이션 완료!')
-
 } catch (error) {
   console.error('❌ 마이그레이션 실패:', error.message)
   process.exit(1)

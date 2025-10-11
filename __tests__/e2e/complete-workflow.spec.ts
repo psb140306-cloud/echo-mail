@@ -35,9 +35,11 @@ async function simulateEmailReceive(page: Page, email: MockEmail) {
   // 개발자 도구 또는 테스트 API를 통해 이메일 수신 시뮬레이션
   await page.evaluate((emailData) => {
     // WebSocket이나 Server-Sent Events로 실시간 이메일 수신 시뮬레이션
-    window.dispatchEvent(new CustomEvent('email-received', {
-      detail: emailData
-    }))
+    window.dispatchEvent(
+      new CustomEvent('email-received', {
+        detail: emailData,
+      })
+    )
   }, email)
 }
 
@@ -56,7 +58,7 @@ test.describe('Complete Workflow E2E Tests', () => {
         contactName: '김테스트',
         contactPhone: '010-9999-9999',
         contactEmail: 'kim@workflow.com',
-        position: '매니저'
+        position: '매니저',
       }
 
       await page.goto('/companies')
@@ -124,10 +126,10 @@ ${companyData.name}입니다.
           {
             filename: '발주서_워크플로우테스트_20240115.pdf',
             contentType: 'application/pdf',
-            size: 1024 * 50 // 50KB
-          }
+            size: 1024 * 50, // 50KB
+          },
         ],
-        receivedAt: new Date()
+        receivedAt: new Date(),
       }
 
       // 실시간 모니터링 활성화
@@ -146,7 +148,9 @@ ${companyData.name}입니다.
       await page.click('button[role="tab"]:has-text("이메일 로그")')
 
       // 새로운 이메일 로그 확인 (최대 30초 대기)
-      await expect(page.locator(`tr:has-text("${testEmail.messageId}")`)).toBeVisible({ timeout: 30000 })
+      await expect(page.locator(`tr:has-text("${testEmail.messageId}")`)).toBeVisible({
+        timeout: 30000,
+      })
 
       // 처리 상태 확인
       const emailRow = page.locator(`tr:has-text("${testEmail.messageId}")`)
@@ -159,12 +163,16 @@ ${companyData.name}입니다.
       await page.click('button[role="tab"]:has-text("알림 로그")')
 
       // SMS 알림 발송 확인
-      const smsNotification = page.locator(`tr:has-text("${companyData.contactPhone}"):has-text("SMS")`)
+      const smsNotification = page.locator(
+        `tr:has-text("${companyData.contactPhone}"):has-text("SMS")`
+      )
       await expect(smsNotification).toBeVisible({ timeout: 30000 })
       await expect(smsNotification.locator('.badge')).toContainText(/전송완료|전송중/)
 
       // 카카오톡 알림 발송 확인
-      const kakaoNotification = page.locator(`tr:has-text("${companyData.contactPhone}"):has-text("카카오")`)
+      const kakaoNotification = page.locator(
+        `tr:has-text("${companyData.contactPhone}"):has-text("카카오")`
+      )
       await expect(kakaoNotification).toBeVisible({ timeout: 30000 })
 
       // === 6단계: 납기일 계산 확인 ===
@@ -188,10 +196,12 @@ ${companyData.name}입니다.
 
       // 대시보드 통계 확인
       const emailsTodayElement = page.locator('[data-testid="emails-today"] .stat-value')
-      const notificationsTodayElement = page.locator('[data-testid="notifications-today"] .stat-value')
+      const notificationsTodayElement = page.locator(
+        '[data-testid="notifications-today"] .stat-value'
+      )
 
-      const emailsToday = parseInt(await emailsTodayElement.textContent() || '0')
-      const notificationsToday = parseInt(await notificationsTodayElement.textContent() || '0')
+      const emailsToday = parseInt((await emailsTodayElement.textContent()) || '0')
+      const notificationsToday = parseInt((await notificationsTodayElement.textContent()) || '0')
 
       expect(emailsToday).toBeGreaterThan(0)
       expect(notificationsToday).toBeGreaterThan(0)
@@ -228,10 +238,10 @@ ${companyData.name}입니다.
           {
             filename: '발주서_신규업체_20240115.xlsx',
             contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            size: 1024 * 30
-          }
+            size: 1024 * 30,
+          },
         ],
-        receivedAt: new Date()
+        receivedAt: new Date(),
       }
 
       // 실시간 모니터링 활성화
@@ -246,7 +256,9 @@ ${companyData.name}입니다.
       await page.goto('/companies/unregistered')
 
       // 미등록 업체 목록에서 확인
-      await expect(page.locator(`tr:has-text("new@unregistered-company.com")`)).toBeVisible({ timeout: 30000 })
+      await expect(page.locator(`tr:has-text("new@unregistered-company.com")`)).toBeVisible({
+        timeout: 30000,
+      })
 
       const unregisteredRow = page.locator(`tr:has-text("new@unregistered-company.com")`)
 
@@ -313,18 +325,18 @@ ${companyData.name}입니다.
         {
           name: '대량테스트1 주식회사',
           email: 'bulk1@test.com',
-          phone: '010-1111-1111'
+          phone: '010-1111-1111',
         },
         {
           name: '대량테스트2 주식회사',
           email: 'bulk2@test.com',
-          phone: '010-2222-2222'
+          phone: '010-2222-2222',
         },
         {
           name: '대량테스트3 주식회사',
           email: 'bulk3@test.com',
-          phone: '010-3333-3333'
-        }
+          phone: '010-3333-3333',
+        },
       ]
 
       // 업체들을 빠르게 등록
@@ -355,7 +367,7 @@ ${companyData.name}입니다.
         from: company.email,
         to: 'order@echomail.com',
         body: `대량 처리 테스트 이메일 ${index + 1}`,
-        receivedAt: new Date()
+        receivedAt: new Date(),
       }))
 
       // 동시 전송
@@ -368,7 +380,9 @@ ${companyData.name}입니다.
 
       // 모든 이메일이 처리되었는지 확인 (최대 60초 대기)
       for (const email of emails) {
-        await expect(page.locator(`tr:has-text("${email.messageId}")`)).toBeVisible({ timeout: 60000 })
+        await expect(page.locator(`tr:has-text("${email.messageId}")`)).toBeVisible({
+          timeout: 60000,
+        })
       }
 
       // 처리 상태 확인
@@ -394,14 +408,14 @@ ${companyData.name}입니다.
       // 처리 성능 통계 확인
       const avgProcessingTime = page.locator('[data-testid="avg-processing-time"]')
       if (await avgProcessingTime.isVisible()) {
-        const processingTime = parseFloat(await avgProcessingTime.textContent() || '0')
+        const processingTime = parseFloat((await avgProcessingTime.textContent()) || '0')
         expect(processingTime).toBeLessThan(10) // 10초 이하 평균 처리 시간
       }
 
       // 성공률 확인
       const successRate = page.locator('[data-testid="success-rate"]')
       if (await successRate.isVisible()) {
-        const rate = parseFloat(await successRate.textContent() || '0')
+        const rate = parseFloat((await successRate.textContent()) || '0')
         expect(rate).toBeGreaterThan(95) // 95% 이상 성공률
       }
     })
@@ -413,7 +427,7 @@ ${companyData.name}입니다.
       const companyData = {
         name: '복구테스트 주식회사',
         email: 'recovery@test.com',
-        phone: '010-7777-7777'
+        phone: '010-7777-7777',
       }
 
       await page.goto('/companies')
@@ -429,14 +443,14 @@ ${companyData.name}입니다.
 
       // === 2단계: 네트워크 장애 시뮬레이션 ===
       // SMS API 실패 응답 설정
-      await page.route('**/api/notifications/sms', route => {
+      await page.route('**/api/notifications/sms', (route) => {
         route.fulfill({
           status: 500,
           contentType: 'application/json',
           body: JSON.stringify({
             error: 'SMS_GATEWAY_ERROR',
-            message: 'SMS gateway temporarily unavailable'
-          })
+            message: 'SMS gateway temporarily unavailable',
+          }),
         })
       })
 
@@ -447,7 +461,7 @@ ${companyData.name}입니다.
         from: companyData.email,
         to: 'order@echomail.com',
         body: '복구 테스트용 발주서입니다.',
-        receivedAt: new Date()
+        receivedAt: new Date(),
       }
 
       await page.goto('/logs')
@@ -471,14 +485,14 @@ ${companyData.name}입니다.
       // === 5단계: 수동 재시도 ===
       // 네트워크 복구 시뮬레이션
       await page.unroute('**/api/notifications/sms')
-      await page.route('**/api/notifications/sms', route => {
+      await page.route('**/api/notifications/sms', (route) => {
         route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             success: true,
-            messageId: 'recovery-sms-' + Date.now()
-          })
+            messageId: 'recovery-sms-' + Date.now(),
+          }),
         })
       })
 
@@ -487,7 +501,9 @@ ${companyData.name}입니다.
 
       // === 6단계: 복구 확인 ===
       // 성공 상태로 변경 확인
-      await expect(failedNotification.locator('.badge')).toContainText(/성공|전송완료/, { timeout: 15000 })
+      await expect(failedNotification.locator('.badge')).toContainText(/성공|전송완료/, {
+        timeout: 15000,
+      })
 
       // 재시도 로그 확인
       const retryLog = page.locator('.retry-log')
@@ -500,22 +516,23 @@ ${companyData.name}입니다.
 
       // 시스템 오류 알림이 있었는지 확인
       const adminNotifications = page.locator('.admin-notification')
-      if (await adminNotifications.count() > 0) {
+      if ((await adminNotifications.count()) > 0) {
         await expect(adminNotifications.first()).toContainText(/SMS|알림|오류/)
       }
     })
 
     test('should handle database connection issues', async ({ page }) => {
       // 데이터베이스 연결 오류 시뮬레이션
-      await page.route('**/api/**', route => {
-        if (Math.random() < 0.3) { // 30% 확률로 실패
+      await page.route('**/api/**', (route) => {
+        if (Math.random() < 0.3) {
+          // 30% 확률로 실패
           route.fulfill({
             status: 503,
             contentType: 'application/json',
             body: JSON.stringify({
               error: 'DATABASE_CONNECTION_ERROR',
-              message: 'Database temporarily unavailable'
-            })
+              message: 'Database temporarily unavailable',
+            }),
           })
         } else {
           route.continue()
@@ -554,7 +571,7 @@ ${companyData.name}입니다.
       const companies = Array.from({ length: 5 }, (_, i) => ({
         name: `피크테스트${i + 1} 주식회사`,
         email: `peak${i + 1}@test.com`,
-        phone: `010-555-${String(i + 1).padStart(4, '0')}`
+        phone: `010-555-${String(i + 1).padStart(4, '0')}`,
       }))
 
       // 빠른 업체 등록
@@ -587,7 +604,7 @@ ${companyData.name}입니다.
           from: company.email,
           to: 'order@echomail.com',
           body: `피크 시간대 테스트 이메일 ${i + 1}`,
-          receivedAt: new Date()
+          receivedAt: new Date(),
         })
       })
 
@@ -607,7 +624,9 @@ ${companyData.name}입니다.
       console.log(`Peak load processing time: ${processingTime}s for ${peakLoadEmails} emails`)
 
       // 모든 이메일 처리 성공 확인
-      const successfulProcessing = await page.locator('tbody tr .badge:has-text("처리완료")').count()
+      const successfulProcessing = await page
+        .locator('tbody tr .badge:has-text("처리완료")')
+        .count()
       expect(successfulProcessing).toBe(peakLoadEmails)
 
       // 알림 발송 확인
@@ -621,7 +640,10 @@ ${companyData.name}입니다.
       await page.click('button[role="tab"]:has-text("시스템 관리")')
 
       await page.check('input[name="maintenanceMode"]')
-      await page.fill('textarea[name="maintenanceMessage"]', '시스템 정기 점검 중입니다. 잠시 후 다시 이용해주세요.')
+      await page.fill(
+        'textarea[name="maintenanceMessage"]',
+        '시스템 정기 점검 중입니다. 잠시 후 다시 이용해주세요.'
+      )
       await page.click('button:has-text("저장")')
 
       // 점검 페이지로 리디렉션 확인
@@ -648,7 +670,7 @@ ${companyData.name}입니다.
       const testCompany = {
         name: '감사추적 테스트 주식회사',
         email: 'audit@test.com',
-        phone: '010-1234-1234'
+        phone: '010-1234-1234',
       }
 
       // === 1단계: 업체 생성 감사 ===
@@ -699,7 +721,7 @@ ${companyData.name}입니다.
         from: testCompany.email,
         to: 'order@echomail.com',
         body: '감사 추적 테스트용 이메일입니다.',
-        receivedAt: new Date()
+        receivedAt: new Date(),
       }
 
       await simulateEmailReceive(page, testEmail)

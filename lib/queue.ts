@@ -280,5 +280,3 @@ export const closeQueues = async () => {
 
   console.log('✅ 큐 종료 완료')
 }
-
-export { notificationQueue, emailQueue, scheduleQueue }

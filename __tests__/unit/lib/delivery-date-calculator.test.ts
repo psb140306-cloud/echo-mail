@@ -42,26 +42,145 @@ class DeliveryDateCalculator {
 
   private initializeDefaultRules() {
     const defaultRules: DeliveryRule[] = [
-      { region: '서울', deliveryDays: 1, cutoffTime: '14:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '경기', deliveryDays: 1, cutoffTime: '14:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '인천', deliveryDays: 1, cutoffTime: '14:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '부산', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '대구', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '광주', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '대전', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '울산', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '세종', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '강원', deliveryDays: 3, cutoffTime: '11:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '충북', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '충남', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '전북', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '전남', deliveryDays: 3, cutoffTime: '11:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '경북', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '경남', deliveryDays: 2, cutoffTime: '12:00', isActive: true, weekendDelivery: false, holidayDelivery: false },
-      { region: '제주', deliveryDays: 4, cutoffTime: '10:00', isActive: true, weekendDelivery: false, holidayDelivery: false }
+      {
+        region: '서울',
+        deliveryDays: 1,
+        cutoffTime: '14:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '경기',
+        deliveryDays: 1,
+        cutoffTime: '14:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '인천',
+        deliveryDays: 1,
+        cutoffTime: '14:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '부산',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '대구',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '광주',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '대전',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '울산',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '세종',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '강원',
+        deliveryDays: 3,
+        cutoffTime: '11:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '충북',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '충남',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '전북',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '전남',
+        deliveryDays: 3,
+        cutoffTime: '11:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '경북',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '경남',
+        deliveryDays: 2,
+        cutoffTime: '12:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
+      {
+        region: '제주',
+        deliveryDays: 4,
+        cutoffTime: '10:00',
+        isActive: true,
+        weekendDelivery: false,
+        holidayDelivery: false,
+      },
     ]
 
-    defaultRules.forEach(rule => {
+    defaultRules.forEach((rule) => {
       this.deliveryRules.set(rule.region, rule)
     })
   }
@@ -70,19 +189,24 @@ class DeliveryDateCalculator {
     // 2024년 주요 공휴일
     const holidays2024 = [
       '2024-01-01', // 신정
-      '2024-02-09', '2024-02-10', '2024-02-11', '2024-02-12', // 설날
+      '2024-02-09',
+      '2024-02-10',
+      '2024-02-11',
+      '2024-02-12', // 설날
       '2024-03-01', // 삼일절
       '2024-05-05', // 어린이날
       '2024-05-15', // 부처님오신날
       '2024-06-06', // 현충일
       '2024-08-15', // 광복절
-      '2024-09-16', '2024-09-17', '2024-09-18', // 추석
+      '2024-09-16',
+      '2024-09-17',
+      '2024-09-18', // 추석
       '2024-10-03', // 개천절
       '2024-10-09', // 한글날
       '2024-12-25', // 성탄절
     ]
 
-    holidays2024.forEach(holiday => this.holidays.add(holiday))
+    holidays2024.forEach((holiday) => this.holidays.add(holiday))
   }
 
   calculateDeliveryDate(options: DeliveryCalculationOptions): DeliveryCalculationResult {
@@ -136,7 +260,7 @@ class DeliveryDateCalculator {
       isWeekend: this.isWeekend(deliveryDate),
       isHoliday: this.isHoliday(deliveryDate),
       businessDaysOnly: !rule.weekendDelivery,
-      notes
+      notes,
     }
   }
 
@@ -236,7 +360,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-03-15T10:00:00') // 금요일 오전 10시
       const result = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       expect(result.deliveryDays).toBe(1)
@@ -248,7 +372,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-03-15T15:00:00') // 금요일 오후 3시 (마감: 14시)
       const result = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       expect(result.deliveryDays).toBe(2)
@@ -259,7 +383,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-03-15T10:00:00') // 금요일 오전 10시
       const result = calculator.calculateDeliveryDate({
         region: '부산',
-        orderTime
+        orderTime,
       })
 
       expect(result.deliveryDays).toBe(2)
@@ -270,7 +394,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-03-15T09:00:00') // 금요일 오전 9시
       const result = calculator.calculateDeliveryDate({
         region: '제주',
-        orderTime
+        orderTime,
       })
 
       expect(result.deliveryDays).toBe(4)
@@ -283,13 +407,13 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-03-15T10:00:00')
       const normalResult = calculator.calculateDeliveryDate({
         region: '부산',
-        orderTime
+        orderTime,
       })
 
       const urgentResult = calculator.calculateDeliveryDate({
         region: '부산',
         orderTime,
-        urgentOrder: true
+        urgentOrder: true,
       })
 
       expect(urgentResult.deliveryDays).toBe(normalResult.deliveryDays - 1)
@@ -302,7 +426,7 @@ describe('DeliveryDateCalculator', () => {
       const result = calculator.calculateDeliveryDate({
         region: '서울',
         orderTime,
-        urgentOrder: true
+        urgentOrder: true,
       })
 
       expect(result.deliveryDays).toBe(1) // 최소 1일은 유지
@@ -314,7 +438,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-03-14T10:00:00') // 목요일
       const result = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       // 1일 후면 금요일(15일)이지만, 영업일 기준으로 계산하므로 월요일(18일)
@@ -327,7 +451,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-02-29T10:00:00')
       const result = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       // 3월 1일은 공휴일이므로 다음 영업일로 이연
@@ -340,7 +464,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-02-08T10:00:00')
       const result = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       // 설날 연휴(2/9-2/12) 이후 첫 영업일
@@ -382,13 +506,13 @@ describe('DeliveryDateCalculator', () => {
 
       const defaultResult = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       const customResult = calculator.calculateDeliveryDate({
         region: '서울',
         orderTime,
-        customCutoffTime: '12:00'
+        customCutoffTime: '12:00',
       })
 
       // 기본 마감시간(14:00)로는 당일 처리, 커스텀(12:00)으로는 +1일
@@ -401,7 +525,7 @@ describe('DeliveryDateCalculator', () => {
       expect(() => {
         calculator.calculateDeliveryDate({
           region: '존재하지않는지역',
-          orderTime: new Date()
+          orderTime: new Date(),
         })
       }).toThrow('배송 규칙을 찾을 수 없습니다')
     })
@@ -412,7 +536,7 @@ describe('DeliveryDateCalculator', () => {
       expect(() => {
         calculator.calculateDeliveryDate({
           region: '서울',
-          orderTime: new Date()
+          orderTime: new Date(),
         })
       }).toThrow('배송 서비스가 중단되었습니다')
     })
@@ -422,7 +546,7 @@ describe('DeliveryDateCalculator', () => {
     it('배송 규칙 업데이트', () => {
       calculator.updateDeliveryRule('서울', {
         deliveryDays: 3,
-        cutoffTime: '16:00'
+        cutoffTime: '16:00',
       })
 
       const rule = calculator.getDeliveryRule('서울')
@@ -445,7 +569,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-02-29T10:00:00') // 윤년 2월 29일
       const result = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       expect(result.deliveryDate.getMonth()).toBe(2) // 3월 (0-based)
@@ -455,7 +579,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-12-30T10:00:00')
       const result = calculator.calculateDeliveryDate({
         region: '제주', // 4일 소요
-        orderTime
+        orderTime,
       })
 
       expect(result.deliveryDate.getFullYear()).toBe(2025)
@@ -465,7 +589,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-03-15T00:01:00')
       const result = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       expect(result.notes).not.toContain('마감 시간')
@@ -475,7 +599,7 @@ describe('DeliveryDateCalculator', () => {
       const orderTime = new Date('2024-03-15T23:59:00')
       const result = calculator.calculateDeliveryDate({
         region: '서울',
-        orderTime
+        orderTime,
       })
 
       expect(result.notes).toContain('마감 시간(14:00) 이후 주문으로 배송일 +1일')
@@ -491,7 +615,7 @@ describe('DeliveryDateCalculator', () => {
         calculator.calculateDeliveryDate({
           region: '서울',
           orderTime,
-          urgentOrder: i % 2 === 0
+          urgentOrder: i % 2 === 0,
         })
       }
 
@@ -507,16 +631,14 @@ describe('DeliveryDateCalculator', () => {
       const options = {
         region: '서울',
         orderTime: new Date('2024-03-15T10:00:00'),
-        urgentOrder: false
+        urgentOrder: false,
       }
 
-      const results = Array.from({ length: 100 }, () =>
-        calculator.calculateDeliveryDate(options)
-      )
+      const results = Array.from({ length: 100 }, () => calculator.calculateDeliveryDate(options))
 
       // 모든 결과가 동일해야 함
       const firstResult = results[0]
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.deliveryDate.getTime()).toBe(firstResult.deliveryDate.getTime())
         expect(result.deliveryDays).toBe(firstResult.deliveryDays)
         expect(result.notes).toEqual(firstResult.notes)
@@ -528,14 +650,14 @@ describe('DeliveryDateCalculator', () => {
       const testDates = [
         new Date('2024-03-15T09:00:00'),
         new Date('2024-03-15T13:00:00'),
-        new Date('2024-03-15T15:00:00')
+        new Date('2024-03-15T15:00:00'),
       ]
 
-      regions.forEach(region => {
-        testDates.forEach(orderTime => {
+      regions.forEach((region) => {
+        testDates.forEach((orderTime) => {
           const result = calculator.calculateDeliveryDate({
             region,
-            orderTime
+            orderTime,
           })
 
           // 배송일은 항상 주문일보다 이후여야 함

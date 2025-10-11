@@ -7,7 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -46,9 +53,9 @@ import {
   ArrowLeft,
   Loader2,
   Calendar,
-  Calculator
+  Calculator,
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/use-toast'
 
 interface DeliveryRule {
   id: string
@@ -85,13 +92,13 @@ export default function DeliveryRulesPage() {
     afternoonCutoff: '18:00',
     morningDeliveryDays: 1,
     afternoonDeliveryDays: 1,
-    isActive: true
+    isActive: true,
   })
 
   // 납품일 계산 폼
   const [calculationForm, setCalculationForm] = useState({
     region: '',
-    orderDateTime: new Date().toISOString().slice(0, 16)
+    orderDateTime: new Date().toISOString().slice(0, 16),
   })
 
   // 배송 규칙 목록 조회
@@ -127,9 +134,7 @@ export default function DeliveryRulesPage() {
   // 배송 규칙 생성/수정
   const saveDeliveryRule = async () => {
     try {
-      const url = editingRule
-        ? `/api/delivery-rules/${editingRule.id}`
-        : '/api/delivery-rules'
+      const url = editingRule ? `/api/delivery-rules/${editingRule.id}` : '/api/delivery-rules'
 
       const method = editingRule ? 'PUT' : 'POST'
 
@@ -175,7 +180,7 @@ export default function DeliveryRulesPage() {
       setDeletingRule(ruleId)
 
       const response = await fetch(`/api/delivery-rules/${ruleId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
 
       const data = await response.json()
@@ -242,7 +247,7 @@ export default function DeliveryRulesPage() {
       afternoonCutoff: '18:00',
       morningDeliveryDays: 1,
       afternoonDeliveryDays: 1,
-      isActive: true
+      isActive: true,
     })
   }
 
@@ -254,7 +259,7 @@ export default function DeliveryRulesPage() {
       afternoonCutoff: rule.afternoonCutoff,
       morningDeliveryDays: rule.morningDeliveryDays,
       afternoonDeliveryDays: rule.afternoonDeliveryDays,
-      isActive: rule.isActive
+      isActive: rule.isActive,
     })
     setShowCreateDialog(true)
   }
@@ -287,16 +292,12 @@ export default function DeliveryRulesPage() {
           <div className="flex flex-1 items-center justify-between space-x-2">
             <h1 className="text-lg font-semibold">배송 규칙 관리</h1>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowCalculatorDialog(true)}
-              >
+              <Button variant="outline" onClick={() => setShowCalculatorDialog(true)}>
                 <Calculator className="mr-2 h-4 w-4" />
                 납품일 계산
               </Button>
               <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                새 규칙 추가
+                <Plus className="mr-2 h-4 w-4" />새 규칙 추가
               </Button>
             </div>
           </div>
@@ -323,7 +324,7 @@ export default function DeliveryRulesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {deliveryRules.filter(r => r.isActive).length}
+                {deliveryRules.filter((r) => r.isActive).length}
               </div>
             </CardContent>
           </Card>
@@ -336,11 +337,15 @@ export default function DeliveryRulesPage() {
               <div className="text-2xl font-bold">
                 {deliveryRules.length > 0
                   ? Math.round(
-                      deliveryRules.reduce((sum, r) =>
-                        sum + (r.morningDeliveryDays + r.afternoonDeliveryDays) / 2, 0
-                      ) / deliveryRules.length * 10
+                      (deliveryRules.reduce(
+                        (sum, r) => sum + (r.morningDeliveryDays + r.afternoonDeliveryDays) / 2,
+                        0
+                      ) /
+                        deliveryRules.length) *
+                        10
                     ) / 10
-                  : 0}일
+                  : 0}
+                일
               </div>
             </CardContent>
           </Card>
@@ -364,9 +369,7 @@ export default function DeliveryRulesPage() {
         <Card>
           <CardHeader>
             <CardTitle>배송 규칙 목록</CardTitle>
-            <CardDescription>
-              지역별 배송 규칙을 관리하세요
-            </CardDescription>
+            <CardDescription>지역별 배송 규칙을 관리하세요</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -402,27 +405,19 @@ export default function DeliveryRulesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {rule.morningCutoff}
-                          </Badge>
+                          <Badge variant="outline">{rule.morningCutoff}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {rule.afternoonCutoff}
-                          </Badge>
+                          <Badge variant="outline">{rule.afternoonCutoff}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">
-                            {rule.morningDeliveryDays}일 후
-                          </Badge>
+                          <Badge variant="secondary">{rule.morningDeliveryDays}일 후</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">
-                            {rule.afternoonDeliveryDays}일 후
-                          </Badge>
+                          <Badge variant="secondary">{rule.afternoonDeliveryDays}일 후</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={rule.isActive ? "default" : "secondary"}>
+                          <Badge variant={rule.isActive ? 'default' : 'secondary'}>
                             {rule.isActive ? '활성' : '비활성'}
                           </Badge>
                         </TableCell>
@@ -458,9 +453,8 @@ export default function DeliveryRulesPage() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>배송 규칙 삭제</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      '{rule.region}' 지역의 배송 규칙을 삭제하시겠습니까?
-                                      <br />
-                                      이 작업은 되돌릴 수 없습니다.
+                                      &apos;{rule.region}&apos; 지역의 배송 규칙을 삭제하시겠습니까?
+                                      <br />이 작업은 되돌릴 수 없습니다.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
@@ -497,12 +491,8 @@ export default function DeliveryRulesPage() {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>
-              {editingRule ? '배송 규칙 수정' : '새 배송 규칙 추가'}
-            </DialogTitle>
-            <DialogDescription>
-              지역별 배송 마감시간과 배송일을 설정하세요
-            </DialogDescription>
+            <DialogTitle>{editingRule ? '배송 규칙 수정' : '새 배송 규칙 추가'}</DialogTitle>
+            <DialogDescription>지역별 배송 마감시간과 배송일을 설정하세요</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -512,7 +502,7 @@ export default function DeliveryRulesPage() {
               <Input
                 id="region"
                 value={formData.region}
-                onChange={(e) => setFormData({...formData, region: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, region: e.target.value })}
                 className="col-span-3"
                 placeholder="예: 서울"
               />
@@ -525,7 +515,7 @@ export default function DeliveryRulesPage() {
                 id="morningCutoff"
                 type="time"
                 value={formData.morningCutoff}
-                onChange={(e) => setFormData({...formData, morningCutoff: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, morningCutoff: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -537,7 +527,7 @@ export default function DeliveryRulesPage() {
                 id="afternoonCutoff"
                 type="time"
                 value={formData.afternoonCutoff}
-                onChange={(e) => setFormData({...formData, afternoonCutoff: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, afternoonCutoff: e.target.value })}
                 className="col-span-3"
               />
             </div>
@@ -551,7 +541,9 @@ export default function DeliveryRulesPage() {
                 min="0"
                 max="14"
                 value={formData.morningDeliveryDays}
-                onChange={(e) => setFormData({...formData, morningDeliveryDays: parseInt(e.target.value)})}
+                onChange={(e) =>
+                  setFormData({ ...formData, morningDeliveryDays: parseInt(e.target.value) })
+                }
                 className="col-span-3"
               />
             </div>
@@ -565,22 +557,25 @@ export default function DeliveryRulesPage() {
                 min="0"
                 max="14"
                 value={formData.afternoonDeliveryDays}
-                onChange={(e) => setFormData({...formData, afternoonDeliveryDays: parseInt(e.target.value)})}
+                onChange={(e) =>
+                  setFormData({ ...formData, afternoonDeliveryDays: parseInt(e.target.value) })
+                }
                 className="col-span-3"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowCreateDialog(false)
-              setEditingRule(null)
-              resetForm()
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateDialog(false)
+                setEditingRule(null)
+                resetForm()
+              }}
+            >
               취소
             </Button>
-            <Button onClick={saveDeliveryRule}>
-              {editingRule ? '수정' : '생성'}
-            </Button>
+            <Button onClick={saveDeliveryRule}>{editingRule ? '수정' : '생성'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -590,9 +585,7 @@ export default function DeliveryRulesPage() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>납품일 계산기</DialogTitle>
-            <DialogDescription>
-              주문 정보를 입력하여 정확한 납품일을 계산하세요
-            </DialogDescription>
+            <DialogDescription>주문 정보를 입력하여 정확한 납품일을 계산하세요</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -602,13 +595,17 @@ export default function DeliveryRulesPage() {
               <select
                 id="calcRegion"
                 value={calculationForm.region}
-                onChange={(e) => setCalculationForm({...calculationForm, region: e.target.value})}
+                onChange={(e) => setCalculationForm({ ...calculationForm, region: e.target.value })}
                 className="col-span-3 px-3 py-2 border border-input bg-background rounded-md text-sm"
               >
                 <option value="">지역 선택</option>
-                {deliveryRules.filter(r => r.isActive).map(rule => (
-                  <option key={rule.id} value={rule.region}>{rule.region}</option>
-                ))}
+                {deliveryRules
+                  .filter((r) => r.isActive)
+                  .map((rule) => (
+                    <option key={rule.id} value={rule.region}>
+                      {rule.region}
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -619,15 +616,14 @@ export default function DeliveryRulesPage() {
                 id="orderDateTime"
                 type="datetime-local"
                 value={calculationForm.orderDateTime}
-                onChange={(e) => setCalculationForm({...calculationForm, orderDateTime: e.target.value})}
+                onChange={(e) =>
+                  setCalculationForm({ ...calculationForm, orderDateTime: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
             <div className="flex justify-center pt-2">
-              <Button
-                onClick={calculateDeliveryDate}
-                disabled={!calculationForm.region}
-              >
+              <Button onClick={calculateDeliveryDate} disabled={!calculationForm.region}>
                 <Calculator className="mr-2 h-4 w-4" />
                 계산하기
               </Button>
@@ -637,19 +633,32 @@ export default function DeliveryRulesPage() {
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-semibold mb-2">계산 결과</h4>
                 <div className="space-y-1 text-sm">
-                  <p><span className="font-medium">납품일:</span> {calculationResult.deliveryDateKR}</p>
-                  <p><span className="font-medium">배송시간:</span> {calculationResult.deliveryTimeKR}</p>
-                  <p><span className="font-medium">소요일:</span> {calculationResult.businessDaysUsed}영업일</p>
-                  <p><span className="font-medium">지역:</span> {calculationResult.rule.region}</p>
+                  <p>
+                    <span className="font-medium">납품일:</span> {calculationResult.deliveryDateKR}
+                  </p>
+                  <p>
+                    <span className="font-medium">배송시간:</span>{' '}
+                    {calculationResult.deliveryTimeKR}
+                  </p>
+                  <p>
+                    <span className="font-medium">소요일:</span>{' '}
+                    {calculationResult.businessDaysUsed}영업일
+                  </p>
+                  <p>
+                    <span className="font-medium">지역:</span> {calculationResult.rule.region}
+                  </p>
                 </div>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowCalculatorDialog(false)
-              setCalculationResult(null)
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCalculatorDialog(false)
+                setCalculationResult(null)
+              }}
+            >
               닫기
             </Button>
           </DialogFooter>

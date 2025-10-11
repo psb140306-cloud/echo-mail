@@ -22,7 +22,7 @@ import {
   EmailStatus,
   NotificationType,
   NotificationStatus,
-  UserRole
+  UserRole,
 } from '@/types'
 
 describe('Type Definitions Validation', () => {
@@ -36,7 +36,7 @@ describe('Type Definitions Validation', () => {
         isActive: z.boolean(),
         createdAt: z.date(),
         updatedAt: z.date(),
-        contacts: z.array(z.any()).optional()
+        contacts: z.array(z.any()).optional(),
       })
 
       const validCompany: Company = {
@@ -46,7 +46,7 @@ describe('Type Definitions Validation', () => {
         region: '서울',
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       expect(() => companySchema.parse(validCompany)).not.toThrow()
@@ -65,7 +65,7 @@ describe('Type Definitions Validation', () => {
         companyId: z.string(),
         company: z.any().optional(),
         createdAt: z.date(),
-        updatedAt: z.date()
+        updatedAt: z.date(),
       })
 
       const validContact: Contact = {
@@ -79,7 +79,7 @@ describe('Type Definitions Validation', () => {
         kakaoEnabled: false,
         companyId: 'comp1',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       expect(() => contactSchema.parse(validContact)).not.toThrow()
@@ -90,7 +90,7 @@ describe('Type Definitions Validation', () => {
         name: z.string().min(1).max(100),
         email: z.string().email(),
         region: z.string().min(1).max(50),
-        contacts: z.array(z.any()).optional()
+        contacts: z.array(z.any()).optional(),
       })
 
       const validCreateCompanyDto: CreateCompanyDto = {
@@ -101,9 +101,9 @@ describe('Type Definitions Validation', () => {
           {
             name: '담당자',
             phone: '010-9999-8888',
-            position: '대리'
-          }
-        ]
+            position: '대리',
+          },
+        ],
       }
 
       expect(() => createCompanySchema.parse(validCreateCompanyDto)).not.toThrow()
@@ -116,7 +116,7 @@ describe('Type Definitions Validation', () => {
         email: z.string().email().optional(),
         position: z.string().optional(),
         smsEnabled: z.boolean().optional(),
-        kakaoEnabled: z.boolean().optional()
+        kakaoEnabled: z.boolean().optional(),
       })
 
       const validCreateContactDto: CreateContactDto = {
@@ -125,7 +125,7 @@ describe('Type Definitions Validation', () => {
         email: 'contact@company.com',
         position: '과장',
         smsEnabled: true,
-        kakaoEnabled: true
+        kakaoEnabled: true,
       }
 
       expect(() => createContactSchema.parse(validCreateContactDto)).not.toThrow()
@@ -145,7 +145,7 @@ describe('Type Definitions Validation', () => {
         excludeHolidays: z.boolean(),
         isActive: z.boolean(),
         createdAt: z.date(),
-        updatedAt: z.date()
+        updatedAt: z.date(),
       })
 
       const validDeliveryRule: DeliveryRule = {
@@ -159,7 +159,7 @@ describe('Type Definitions Validation', () => {
         excludeHolidays: true,
         isActive: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       expect(() => deliveryRuleSchema.parse(validDeliveryRule)).not.toThrow()
@@ -172,7 +172,7 @@ describe('Type Definitions Validation', () => {
         name: z.string(),
         isRecurring: z.boolean(),
         createdAt: z.date(),
-        updatedAt: z.date()
+        updatedAt: z.date(),
       })
 
       const validHoliday: Holiday = {
@@ -181,7 +181,7 @@ describe('Type Definitions Validation', () => {
         name: '신정',
         isRecurring: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       expect(() => holidaySchema.parse(validHoliday)).not.toThrow()
@@ -190,17 +190,11 @@ describe('Type Definitions Validation', () => {
 
   describe('Email Types', () => {
     it('should validate EmailStatus enum values', () => {
-      const validStatuses: EmailStatus[] = [
-        'RECEIVED',
-        'PROCESSED',
-        'MATCHED',
-        'FAILED',
-        'IGNORED'
-      ]
+      const validStatuses: EmailStatus[] = ['RECEIVED', 'PROCESSED', 'MATCHED', 'FAILED', 'IGNORED']
 
       const emailStatusSchema = z.enum(['RECEIVED', 'PROCESSED', 'MATCHED', 'FAILED', 'IGNORED'])
 
-      validStatuses.forEach(status => {
+      validStatuses.forEach((status) => {
         expect(() => emailStatusSchema.parse(status)).not.toThrow()
       })
     })
@@ -221,7 +215,7 @@ describe('Type Definitions Validation', () => {
         company: z.any().optional(),
         errorMessage: z.string().optional(),
         createdAt: z.date(),
-        updatedAt: z.date()
+        updatedAt: z.date(),
       })
 
       const validEmailLog: EmailLog = {
@@ -236,7 +230,7 @@ describe('Type Definitions Validation', () => {
         processedAt: new Date(),
         companyId: 'comp1',
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       expect(() => emailLogSchema.parse(validEmailLog)).not.toThrow()
@@ -247,14 +241,14 @@ describe('Type Definitions Validation', () => {
         filename: z.string(),
         contentType: z.string(),
         size: z.number().min(0),
-        url: z.string().optional()
+        url: z.string().optional(),
       })
 
       const validEmailAttachment: EmailAttachment = {
         filename: 'order.pdf',
         contentType: 'application/pdf',
         size: 1024000,
-        url: 'https://storage.example.com/files/order.pdf'
+        url: 'https://storage.example.com/files/order.pdf',
       }
 
       expect(() => emailAttachmentSchema.parse(validEmailAttachment)).not.toThrow()
@@ -263,15 +257,11 @@ describe('Type Definitions Validation', () => {
 
   describe('Notification Types', () => {
     it('should validate NotificationType enum values', () => {
-      const validTypes: NotificationType[] = [
-        'SMS',
-        'KAKAO_ALIMTALK',
-        'KAKAO_FRIENDTALK'
-      ]
+      const validTypes: NotificationType[] = ['SMS', 'KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK']
 
       const notificationTypeSchema = z.enum(['SMS', 'KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK'])
 
-      validTypes.forEach(type => {
+      validTypes.forEach((type) => {
         expect(() => notificationTypeSchema.parse(type)).not.toThrow()
       })
     })
@@ -283,7 +273,7 @@ describe('Type Definitions Validation', () => {
         'SENT',
         'DELIVERED',
         'FAILED',
-        'CANCELLED'
+        'CANCELLED',
       ]
 
       const notificationStatusSchema = z.enum([
@@ -292,10 +282,10 @@ describe('Type Definitions Validation', () => {
         'SENT',
         'DELIVERED',
         'FAILED',
-        'CANCELLED'
+        'CANCELLED',
       ])
 
-      validStatuses.forEach(status => {
+      validStatuses.forEach((status) => {
         expect(() => notificationStatusSchema.parse(status)).not.toThrow()
       })
     })
@@ -319,7 +309,7 @@ describe('Type Definitions Validation', () => {
         errorMessage: z.string().optional(),
         cost: z.number().min(0).optional(),
         createdAt: z.date(),
-        updatedAt: z.date()
+        updatedAt: z.date(),
       })
 
       const validNotificationLog: NotificationLog = {
@@ -336,7 +326,7 @@ describe('Type Definitions Validation', () => {
         emailLogId: 'email1',
         cost: 15,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       expect(() => notificationLogSchema.parse(validNotificationLog)).not.toThrow()
@@ -355,7 +345,7 @@ describe('Type Definitions Validation', () => {
         isActive: z.boolean(),
         isDefault: z.boolean(),
         createdAt: z.date(),
-        updatedAt: z.date()
+        updatedAt: z.date(),
       })
 
       const validMessageTemplate: MessageTemplate = {
@@ -367,7 +357,7 @@ describe('Type Definitions Validation', () => {
         isActive: true,
         isDefault: false,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       expect(() => messageTemplateSchema.parse(validMessageTemplate)).not.toThrow()
@@ -380,7 +370,7 @@ describe('Type Definitions Validation', () => {
 
       const userRoleSchema = z.enum(['ADMIN', 'OPERATOR', 'VIEWER'])
 
-      validRoles.forEach(role => {
+      validRoles.forEach((role) => {
         expect(() => userRoleSchema.parse(role)).not.toThrow()
       })
     })
@@ -396,7 +386,7 @@ describe('Type Definitions Validation', () => {
         emailVerified: z.date().optional(),
         image: z.string().optional(),
         createdAt: z.date(),
-        updatedAt: z.date()
+        updatedAt: z.date(),
       })
 
       const validUser: User = {
@@ -408,7 +398,7 @@ describe('Type Definitions Validation', () => {
         lastLoginAt: new Date(),
         emailVerified: new Date(),
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       expect(() => userSchema.parse(validUser)).not.toThrow()
@@ -424,7 +414,7 @@ describe('Type Definitions Validation', () => {
         totalNotificationsToday: z.number().int().min(0),
         notificationSuccessRate: z.number().min(0).max(100),
         averageProcessingTime: z.number().min(0),
-        recentActivities: z.array(z.any())
+        recentActivities: z.array(z.any()),
       })
 
       const validDashboardStats: DashboardStats = {
@@ -439,9 +429,9 @@ describe('Type Definitions Validation', () => {
             id: 'act1',
             type: 'email_received',
             title: '새 이메일 수신',
-            timestamp: new Date()
-          }
-        ]
+            timestamp: new Date(),
+          },
+        ],
       }
 
       expect(() => dashboardStatsSchema.parse(validDashboardStats)).not.toThrow()
@@ -452,12 +442,12 @@ describe('Type Definitions Validation', () => {
     it('should validate ValidationError type structure', () => {
       const validationErrorSchema = z.object({
         field: z.string(),
-        message: z.string()
+        message: z.string(),
       })
 
       const validValidationError: ValidationError = {
         field: 'email',
-        message: '올바른 이메일 형식이 아닙니다'
+        message: '올바른 이메일 형식이 아닙니다',
       }
 
       expect(() => validationErrorSchema.parse(validValidationError)).not.toThrow()
@@ -466,19 +456,21 @@ describe('Type Definitions Validation', () => {
     it('should validate FormState type structure', () => {
       const formStateSchema = z.object({
         data: z.any(),
-        errors: z.array(z.object({
-          field: z.string(),
-          message: z.string()
-        })),
+        errors: z.array(
+          z.object({
+            field: z.string(),
+            message: z.string(),
+          })
+        ),
         isSubmitting: z.boolean(),
-        isValid: z.boolean()
+        isValid: z.boolean(),
       })
 
       const validFormState: FormState = {
         data: { name: 'Test', email: 'test@example.com' },
         errors: [],
         isSubmitting: false,
-        isValid: true
+        isValid: true,
       }
 
       expect(() => formStateSchema.parse(validFormState)).not.toThrow()
@@ -495,16 +487,20 @@ describe('Schema Composition and Relationships', () => {
         email: z.string().email(),
         region: z.string(),
         isActive: z.boolean(),
-        contacts: z.array(z.object({
-          id: z.string(),
-          name: z.string(),
-          phone: z.string().regex(/^010-\d{4}-\d{4}$/),
-          email: z.string().email().optional(),
-          position: z.string().optional(),
-          isActive: z.boolean(),
-          smsEnabled: z.boolean(),
-          kakaoEnabled: z.boolean()
-        })).optional()
+        contacts: z
+          .array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              phone: z.string().regex(/^010-\d{4}-\d{4}$/),
+              email: z.string().email().optional(),
+              position: z.string().optional(),
+              isActive: z.boolean(),
+              smsEnabled: z.boolean(),
+              kakaoEnabled: z.boolean(),
+            })
+          )
+          .optional(),
       })
 
       const companyWithContacts = {
@@ -522,7 +518,7 @@ describe('Schema Composition and Relationships', () => {
             position: '매니저',
             isActive: true,
             smsEnabled: true,
-            kakaoEnabled: false
+            kakaoEnabled: false,
           },
           {
             id: '2',
@@ -531,9 +527,9 @@ describe('Schema Composition and Relationships', () => {
             position: '대리',
             isActive: true,
             smsEnabled: false,
-            kakaoEnabled: true
-          }
-        ]
+            kakaoEnabled: true,
+          },
+        ],
       }
 
       expect(() => companyWithContactsSchema.parse(companyWithContacts)).not.toThrow()
@@ -548,12 +544,16 @@ describe('Schema Composition and Relationships', () => {
         subject: z.string(),
         sender: z.string().email(),
         status: z.enum(['RECEIVED', 'PROCESSED', 'MATCHED', 'FAILED', 'IGNORED']),
-        notifications: z.array(z.object({
-          id: z.string(),
-          type: z.enum(['SMS', 'KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK']),
-          recipient: z.string(),
-          status: z.enum(['PENDING', 'SENDING', 'SENT', 'DELIVERED', 'FAILED', 'CANCELLED'])
-        })).optional()
+        notifications: z
+          .array(
+            z.object({
+              id: z.string(),
+              type: z.enum(['SMS', 'KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK']),
+              recipient: z.string(),
+              status: z.enum(['PENDING', 'SENDING', 'SENT', 'DELIVERED', 'FAILED', 'CANCELLED']),
+            })
+          )
+          .optional(),
       })
 
       const emailWithNotifications = {
@@ -567,15 +567,15 @@ describe('Schema Composition and Relationships', () => {
             id: 'notif1',
             type: 'SMS' as NotificationType,
             recipient: '010-1234-5678',
-            status: 'SENT' as NotificationStatus
+            status: 'SENT' as NotificationStatus,
           },
           {
             id: 'notif2',
             type: 'KAKAO_ALIMTALK' as NotificationType,
             recipient: '010-9999-8888',
-            status: 'DELIVERED' as NotificationStatus
-          }
-        ]
+            status: 'DELIVERED' as NotificationStatus,
+          },
+        ],
       }
 
       expect(() => emailWithNotificationsSchema.parse(emailWithNotifications)).not.toThrow()
@@ -589,7 +589,7 @@ describe('Edge Cases and Boundary Testing', () => {
       const schemas = [
         { schema: z.string().max(50), validLength: 50, invalidLength: 51 },
         { schema: z.string().max(100), validLength: 100, invalidLength: 101 },
-        { schema: z.string().max(255), validLength: 255, invalidLength: 256 }
+        { schema: z.string().max(255), validLength: 255, invalidLength: 256 },
       ]
 
       schemas.forEach(({ schema, validLength, invalidLength }) => {
@@ -602,7 +602,7 @@ describe('Edge Cases and Boundary Testing', () => {
       const schemas = [
         { schema: z.string().min(1), validLength: 1, invalidLength: 0 },
         { schema: z.string().min(3), validLength: 3, invalidLength: 2 },
-        { schema: z.string().min(10), validLength: 10, invalidLength: 9 }
+        { schema: z.string().min(10), validLength: 10, invalidLength: 9 },
       ]
 
       schemas.forEach(({ schema, validLength, invalidLength }) => {
@@ -619,11 +619,11 @@ describe('Edge Cases and Boundary Testing', () => {
       const validValues = [0, 1, 50, 100]
       const invalidValues = [-1, 101, 1.5, NaN, Infinity]
 
-      validValues.forEach(value => {
+      validValues.forEach((value) => {
         expect(() => integerSchema.parse(value)).not.toThrow()
       })
 
-      invalidValues.forEach(value => {
+      invalidValues.forEach((value) => {
         expect(() => integerSchema.parse(value)).toThrow()
       })
     })
@@ -633,25 +633,15 @@ describe('Edge Cases and Boundary Testing', () => {
     it('should validate date objects and ISO strings', () => {
       const dateSchema = z.date()
 
-      const validDates = [
-        new Date(),
-        new Date('2024-01-01'),
-        new Date('2024-12-31T23:59:59Z')
-      ]
+      const validDates = [new Date(), new Date('2024-01-01'), new Date('2024-12-31T23:59:59Z')]
 
-      const invalidDates = [
-        'invalid-date',
-        null,
-        undefined,
-        123456789,
-        {}
-      ]
+      const invalidDates = ['invalid-date', null, undefined, 123456789, {}]
 
-      validDates.forEach(date => {
+      validDates.forEach((date) => {
         expect(() => dateSchema.parse(date)).not.toThrow()
       })
 
-      invalidDates.forEach(date => {
+      invalidDates.forEach((date) => {
         expect(() => dateSchema.parse(date)).toThrow()
       })
     })
@@ -663,38 +653,38 @@ describe('Edge Cases and Boundary Testing', () => {
         required: z.string(),
         optional: z.string().optional(),
         nullable: z.string().nullable().optional(),
-        optionalNullable: z.string().optional().nullable()
+        optionalNullable: z.string().optional().nullable(),
       })
 
       const testCases = [
         {
           data: { required: 'test' },
-          shouldPass: true
+          shouldPass: true,
         },
         {
           data: { required: 'test', optional: 'value' },
-          shouldPass: true
+          shouldPass: true,
         },
         {
           data: { required: 'test', nullable: null },
-          shouldPass: true
+          shouldPass: true,
         },
         {
           data: { required: 'test', nullable: 'value' },
-          shouldPass: true
+          shouldPass: true,
         },
         {
           data: { required: 'test', optionalNullable: null },
-          shouldPass: true
+          shouldPass: true,
         },
         {
           data: { required: 'test', optionalNullable: 'value' },
-          shouldPass: true
+          shouldPass: true,
         },
         {
           data: {},
-          shouldPass: false // missing required field
-        }
+          shouldPass: false, // missing required field
+        },
       ]
 
       testCases.forEach(({ data, shouldPass }) => {

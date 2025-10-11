@@ -26,7 +26,7 @@ describe('Database Transaction Integration Tests', () => {
       db.emailLog.deleteMany(),
       db.notificationLog.deleteMany(),
       db.deliveryRule.deleteMany(),
-      db.holiday.deleteMany()
+      db.holiday.deleteMany(),
     ])
   })
 
@@ -46,7 +46,7 @@ describe('Database Transaction Integration Tests', () => {
               position: '매니저',
               smsEnabled: true,
               kakaoEnabled: true,
-              isActive: true
+              isActive: true,
             },
             {
               name: '담당자2',
@@ -55,18 +55,18 @@ describe('Database Transaction Integration Tests', () => {
               position: '대리',
               smsEnabled: true,
               kakaoEnabled: false,
-              isActive: true
-            }
-          ]
-        }
+              isActive: true,
+            },
+          ],
+        },
       }
 
       const result = await db.$transaction(async (tx) => {
         const company = await tx.company.create({
           data: companyData,
           include: {
-            contacts: true
-          }
+            contacts: true,
+          },
         })
 
         // 추가 검증 로직
@@ -84,7 +84,7 @@ describe('Database Transaction Integration Tests', () => {
       // 실제 저장 확인
       const savedCompany = await db.company.findUnique({
         where: { id: result.id },
-        include: { contacts: true }
+        include: { contacts: true },
       })
       expect(savedCompany).toBeDefined()
       expect(savedCompany.contacts).toHaveLength(2)
@@ -93,18 +93,18 @@ describe('Database Transaction Integration Tests', () => {
     it('should rollback on validation error during company creation', async () => {
       const invalidCompanyData = {
         name: '롤백 테스트 회사',
-        email: 'invalid-email',  // 잘못된 이메일 형식
+        email: 'invalid-email', // 잘못된 이메일 형식
         region: '서울',
         isActive: true,
         contacts: {
           create: [
             {
               name: '담당자',
-              phone: 'invalid-phone',  // 잘못된 전화번호 형식
-              isActive: true
-            }
-          ]
-        }
+              phone: 'invalid-phone', // 잘못된 전화번호 형식
+              isActive: true,
+            },
+          ],
+        },
       }
 
       await expect(
@@ -117,7 +117,7 @@ describe('Database Transaction Integration Tests', () => {
 
           return tx.company.create({
             data: invalidCompanyData,
-            include: { contacts: true }
+            include: { contacts: true },
           })
         })
       ).rejects.toThrow('Invalid email format')
@@ -139,16 +139,14 @@ describe('Database Transaction Integration Tests', () => {
           region: '서울',
           contacts: [
             { name: '담당자1-1', phone: '010-1111-1111' },
-            { name: '담당자1-2', phone: '010-1111-2222' }
-          ]
+            { name: '담당자1-2', phone: '010-1111-2222' },
+          ],
         },
         {
           name: '회사2',
           email: 'company2@test.com',
           region: '부산',
-          contacts: [
-            { name: '담당자2-1', phone: '010-2222-1111' }
-          ]
+          contacts: [{ name: '담당자2-1', phone: '010-2222-1111' }],
         },
         {
           name: '회사3',
@@ -157,9 +155,9 @@ describe('Database Transaction Integration Tests', () => {
           contacts: [
             { name: '담당자3-1', phone: '010-3333-1111' },
             { name: '담당자3-2', phone: '010-3333-2222' },
-            { name: '담당자3-3', phone: '010-3333-3333' }
-          ]
-        }
+            { name: '담당자3-3', phone: '010-3333-3333' },
+          ],
+        },
       ]
 
       const results = await db.$transaction(async (tx) => {
@@ -173,15 +171,15 @@ describe('Database Transaction Integration Tests', () => {
               region: companyData.region,
               isActive: true,
               contacts: {
-                create: companyData.contacts.map(contact => ({
+                create: companyData.contacts.map((contact) => ({
                   ...contact,
                   isActive: true,
                   smsEnabled: true,
-                  kakaoEnabled: false
-                }))
-              }
+                  kakaoEnabled: false,
+                })),
+              },
             },
-            include: { contacts: true }
+            include: { contacts: true },
           })
 
           importResults.push(company)
@@ -207,7 +205,7 @@ describe('Database Transaction Integration Tests', () => {
 
       // 실제 저장 확인
       const savedCompanies = await db.company.findMany({
-        include: { contacts: true }
+        include: { contacts: true },
       })
       expect(savedCompanies).toHaveLength(3)
 
@@ -232,19 +230,19 @@ describe('Database Transaction Integration Tests', () => {
                 phone: '010-1111-1111',
                 smsEnabled: true,
                 kakaoEnabled: true,
-                isActive: true
+                isActive: true,
               },
               {
                 name: '담당자2',
                 phone: '010-2222-2222',
                 smsEnabled: true,
                 kakaoEnabled: false,
-                isActive: true
-              }
-            ]
-          }
+                isActive: true,
+              },
+            ],
+          },
         },
-        include: { contacts: true }
+        include: { contacts: true },
       })
 
       const emailData = {
@@ -255,13 +253,13 @@ describe('Database Transaction Integration Tests', () => {
         receivedAt: new Date(),
         hasAttachment: true,
         status: 'MATCHED' as const,
-        companyId: company.id
+        companyId: company.id,
       }
 
       const result = await db.$transaction(async (tx) => {
         // 1. 이메일 로그 생성
         const emailLog = await tx.emailLog.create({
-          data: emailData
+          data: emailData,
         })
 
         // 2. 각 담당자에게 알림 생성
@@ -279,8 +277,8 @@ describe('Database Transaction Integration Tests', () => {
                   companyId: company.id,
                   emailLogId: emailLog.id,
                   retryCount: 0,
-                  maxRetries: 3
-                }
+                  maxRetries: 3,
+                },
               })
             )
           }
@@ -297,8 +295,8 @@ describe('Database Transaction Integration Tests', () => {
                   companyId: company.id,
                   emailLogId: emailLog.id,
                   retryCount: 0,
-                  maxRetries: 3
-                }
+                  maxRetries: 3,
+                },
               })
             )
           }
@@ -309,20 +307,20 @@ describe('Database Transaction Integration Tests', () => {
           where: { id: emailLog.id },
           data: {
             processedAt: new Date(),
-            status: 'PROCESSED'
-          }
+            status: 'PROCESSED',
+          },
         })
 
         return { emailLog, notifications }
       })
 
       expect(result.emailLog).toBeDefined()
-      expect(result.notifications).toHaveLength(3)  // 담당자1: SMS+카카오, 담당자2: SMS
+      expect(result.notifications).toHaveLength(3) // 담당자1: SMS+카카오, 담당자2: SMS
 
       // 실제 저장 확인
       const savedEmailLog = await db.emailLog.findUnique({
         where: { id: result.emailLog.id },
-        include: { notifications: true }
+        include: { notifications: true },
       })
       expect(savedEmailLog.status).toBe('PROCESSED')
       expect(savedEmailLog.notifications).toHaveLength(3)
@@ -334,8 +332,8 @@ describe('Database Transaction Integration Tests', () => {
           name: '롤백 테스트',
           email: 'rollback@test.com',
           region: '서울',
-          isActive: true
-        }
+          isActive: true,
+        },
       })
 
       await expect(
@@ -349,22 +347,22 @@ describe('Database Transaction Integration Tests', () => {
               receivedAt: new Date(),
               hasAttachment: false,
               status: 'MATCHED',
-              companyId: company.id
-            }
+              companyId: company.id,
+            },
           })
 
           // 의도적으로 잘못된 알림 데이터로 오류 발생
           await tx.notificationLog.create({
             data: {
-              type: 'INVALID_TYPE' as any,  // 잘못된 타입
-              recipient: '',  // 빈 수신자
-              message: '',  // 빈 메시지
+              type: 'INVALID_TYPE' as any, // 잘못된 타입
+              recipient: '', // 빈 수신자
+              message: '', // 빈 메시지
               status: 'PENDING',
               companyId: company.id,
               emailLogId: emailLog.id,
               retryCount: 0,
-              maxRetries: 3
-            }
+              maxRetries: 3,
+            },
           })
 
           return emailLog
@@ -391,24 +389,24 @@ describe('Database Transaction Integration Tests', () => {
         afternoonDeliveryDays: 2,
         excludeWeekends: true,
         excludeHolidays: true,
-        isActive: true
+        isActive: true,
       }
 
       const holidaysData = [
         { date: new Date('2024-01-01'), name: '신정', isRecurring: true },
         { date: new Date('2024-02-09'), name: '설날', isRecurring: false },
-        { date: new Date('2024-03-01'), name: '삼일절', isRecurring: true }
+        { date: new Date('2024-03-01'), name: '삼일절', isRecurring: true },
       ]
 
       const result = await db.$transaction(async (tx) => {
         // 1. 납품 규칙 생성
         const rule = await tx.deliveryRule.create({
-          data: deliveryRuleData
+          data: deliveryRuleData,
         })
 
         // 2. 공휴일 생성
         const holidays = await tx.holiday.createMany({
-          data: holidaysData
+          data: holidaysData,
         })
 
         // 3. 지역별 공휴일 매핑 (관계 테이블이 있다면)
@@ -423,7 +421,7 @@ describe('Database Transaction Integration Tests', () => {
 
       // 실제 저장 확인
       const savedRule = await db.deliveryRule.findFirst({
-        where: { region: '서울' }
+        where: { region: '서울' },
       })
       expect(savedRule).toBeDefined()
 
@@ -442,28 +440,28 @@ describe('Database Transaction Integration Tests', () => {
           afternoonDeliveryDays: 3,
           excludeWeekends: true,
           excludeHolidays: false,
-          isActive: true
-        }
+          isActive: true,
+        },
       })
 
       // 동시 업데이트 시뮬레이션
       const updates = [
         { morningCutoff: '11:00' },
         { afternoonCutoff: '15:00' },
-        { excludeHolidays: true }
+        { excludeHolidays: true },
       ]
 
-      const updatePromises = updates.map(updateData =>
+      const updatePromises = updates.map((updateData) =>
         db.$transaction(async (tx) => {
           // 현재 값 읽기
           const current = await tx.deliveryRule.findUnique({
-            where: { id: initialRule.id }
+            where: { id: initialRule.id },
           })
 
           // 업데이트
           return tx.deliveryRule.update({
             where: { id: initialRule.id },
-            data: updateData
+            data: updateData,
           })
         })
       )
@@ -473,7 +471,7 @@ describe('Database Transaction Integration Tests', () => {
 
       // 최종 결과 확인
       const finalRule = await db.deliveryRule.findUnique({
-        where: { id: initialRule.id }
+        where: { id: initialRule.id },
       })
 
       // 모든 업데이트가 반영되었는지 확인
@@ -499,16 +497,16 @@ describe('Database Transaction Integration Tests', () => {
                 phone: '010-1111-1111',
                 isActive: true,
                 smsEnabled: true,
-                kakaoEnabled: true
+                kakaoEnabled: true,
               },
               {
                 name: '담당자2',
                 phone: '010-2222-2222',
                 isActive: true,
                 smsEnabled: true,
-                kakaoEnabled: false
-              }
-            ]
+                kakaoEnabled: false,
+              },
+            ],
           },
           emailLogs: {
             create: [
@@ -519,7 +517,7 @@ describe('Database Transaction Integration Tests', () => {
                 recipient: 'order@echomail.com',
                 receivedAt: new Date(),
                 hasAttachment: false,
-                status: 'PROCESSED'
+                status: 'PROCESSED',
               },
               {
                 messageId: 'delete-test-2',
@@ -528,20 +526,20 @@ describe('Database Transaction Integration Tests', () => {
                 recipient: 'order@echomail.com',
                 receivedAt: new Date(),
                 hasAttachment: true,
-                status: 'PROCESSED'
-              }
-            ]
-          }
+                status: 'PROCESSED',
+              },
+            ],
+          },
         },
         include: {
           contacts: true,
-          emailLogs: true
-        }
+          emailLogs: true,
+        },
       })
 
       // 알림 로그 추가
       const emailLogs = await db.emailLog.findMany({
-        where: { companyId: company.id }
+        where: { companyId: company.id },
       })
 
       for (const emailLog of emailLogs) {
@@ -554,8 +552,8 @@ describe('Database Transaction Integration Tests', () => {
             companyId: company.id,
             emailLogId: emailLog.id,
             retryCount: 0,
-            maxRetries: 3
-          }
+            maxRetries: 3,
+          },
         })
       }
 
@@ -563,37 +561,37 @@ describe('Database Transaction Integration Tests', () => {
       await db.$transaction(async (tx) => {
         // 명시적으로 관련 레코드 삭제 (CASCADE가 설정되어 있지 않은 경우)
         await tx.notificationLog.deleteMany({
-          where: { companyId: company.id }
+          where: { companyId: company.id },
         })
         await tx.emailLog.deleteMany({
-          where: { companyId: company.id }
+          where: { companyId: company.id },
         })
         await tx.contact.deleteMany({
-          where: { companyId: company.id }
+          where: { companyId: company.id },
         })
         await tx.company.delete({
-          where: { id: company.id }
+          where: { id: company.id },
         })
       })
 
       // 모든 관련 레코드가 삭제되었는지 확인
       const deletedCompany = await db.company.findUnique({
-        where: { id: company.id }
+        where: { id: company.id },
       })
       expect(deletedCompany).toBeNull()
 
       const remainingContacts = await db.contact.findMany({
-        where: { companyId: company.id }
+        where: { companyId: company.id },
       })
       expect(remainingContacts).toHaveLength(0)
 
       const remainingEmailLogs = await db.emailLog.findMany({
-        where: { companyId: company.id }
+        where: { companyId: company.id },
       })
       expect(remainingEmailLogs).toHaveLength(0)
 
       const remainingNotifications = await db.notificationLog.findMany({
-        where: { companyId: company.id }
+        where: { companyId: company.id },
       })
       expect(remainingNotifications).toHaveLength(0)
     })
@@ -608,29 +606,29 @@ describe('Database Transaction Integration Tests', () => {
           email: 'optimistic@test.com',
           region: '서울',
           isActive: true,
-          version: 1  // 버전 필드가 있다고 가정
-        }
+          version: 1, // 버전 필드가 있다고 가정
+        },
       })
 
       // 두 개의 동시 업데이트 시뮬레이션
       const update1 = async () => {
         return db.$transaction(async (tx) => {
           const current = await tx.company.findUnique({
-            where: { id: company.id }
+            where: { id: company.id },
           })
 
           // 시뮬레이션: 처리 시간
-          await new Promise(resolve => setTimeout(resolve, 100))
+          await new Promise((resolve) => setTimeout(resolve, 100))
 
           return tx.company.update({
             where: {
               id: company.id,
-              version: current.version  // 낙관적 잠금 체크
+              version: current.version, // 낙관적 잠금 체크
             },
             data: {
               name: '업데이트 1',
-              version: current.version + 1
-            }
+              version: current.version + 1,
+            },
           })
         })
       }
@@ -638,21 +636,21 @@ describe('Database Transaction Integration Tests', () => {
       const update2 = async () => {
         return db.$transaction(async (tx) => {
           const current = await tx.company.findUnique({
-            where: { id: company.id }
+            where: { id: company.id },
           })
 
           // 시뮬레이션: 처리 시간
-          await new Promise(resolve => setTimeout(resolve, 50))
+          await new Promise((resolve) => setTimeout(resolve, 50))
 
           return tx.company.update({
             where: {
               id: company.id,
-              version: current.version  // 낙관적 잠금 체크
+              version: current.version, // 낙관적 잠금 체크
             },
             data: {
               name: '업데이트 2',
-              version: current.version + 1
-            }
+              version: current.version + 1,
+            },
           })
         })
       }
@@ -661,8 +659,8 @@ describe('Database Transaction Integration Tests', () => {
       const results = await Promise.allSettled([update1(), update2()])
 
       // 하나는 성공, 하나는 실패 예상
-      const successes = results.filter(r => r.status === 'fulfilled')
-      const failures = results.filter(r => r.status === 'rejected')
+      const successes = results.filter((r) => r.status === 'fulfilled')
+      const failures = results.filter((r) => r.status === 'rejected')
 
       expect(successes.length).toBeGreaterThan(0)
       // Prisma의 경우 version 충돌시 에러 발생
@@ -680,16 +678,12 @@ describe('Database Transaction Integration Tests', () => {
             name: '캐시 일관성 테스트',
             email: 'cache@test.com',
             region: '서울',
-            isActive: true
-          }
+            isActive: true,
+          },
         })
 
         // 캐시에 저장
-        await redis.setex(
-          cacheKey,
-          3600,
-          JSON.stringify(newCompany)
-        )
+        await redis.setex(cacheKey, 3600, JSON.stringify(newCompany))
 
         return newCompany
       })
@@ -703,7 +697,7 @@ describe('Database Transaction Integration Tests', () => {
       await db.$transaction(async (tx) => {
         await tx.company.update({
           where: { id: company.id },
-          data: { name: '업데이트된 이름' }
+          data: { name: '업데이트된 이름' },
         })
 
         // 캐시 무효화
@@ -716,7 +710,7 @@ describe('Database Transaction Integration Tests', () => {
 
       // 데이터베이스에서 최신 데이터 확인
       const updatedCompany = await db.company.findUnique({
-        where: { id: company.id }
+        where: { id: company.id },
       })
       expect(updatedCompany.name).toBe('업데이트된 이름')
     })
@@ -731,16 +725,12 @@ describe('Database Transaction Integration Tests', () => {
               name: '캐시 롤백 테스트',
               email: 'rollback@test.com',
               region: '서울',
-              isActive: true
-            }
+              isActive: true,
+            },
           })
 
           // 캐시에 저장
-          await redis.setex(
-            cacheKey,
-            3600,
-            JSON.stringify(company)
-          )
+          await redis.setex(cacheKey, 3600, JSON.stringify(company))
 
           // 의도적 오류 발생
           throw new Error('Rollback test error')
@@ -749,7 +739,7 @@ describe('Database Transaction Integration Tests', () => {
 
       // 데이터베이스에 회사가 생성되지 않았는지 확인
       const companies = await db.company.findMany({
-        where: { email: 'rollback@test.com' }
+        where: { email: 'rollback@test.com' },
       })
       expect(companies).toHaveLength(0)
 

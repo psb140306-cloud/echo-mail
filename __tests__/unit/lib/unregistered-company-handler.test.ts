@@ -6,7 +6,7 @@
 import {
   UnregisteredCompanyHandler,
   UnregisteredCompanyAction,
-  CompanyExtractionResult
+  CompanyExtractionResult,
 } from '@/lib/unregistered-company-handler'
 
 // Mock dependencies
@@ -31,9 +31,9 @@ describe('UnregisteredCompanyHandler', () => {
         attachments: [
           {
             name: 'order_ABC.pdf',
-            content: Buffer.from('PDF content')
-          }
-        ]
+            content: Buffer.from('PDF content'),
+          },
+        ],
       }
 
       const result = await handler.handleUnregisteredEmail(senderEmail, emailContent)
@@ -49,11 +49,11 @@ describe('UnregisteredCompanyHandler', () => {
       const senderEmail = 'existing@company.com'
       const firstEmail = {
         subject: '첫 번째 이메일',
-        body: '첫 번째 내용'
+        body: '첫 번째 내용',
       }
       const secondEmail = {
         subject: '두 번째 이메일',
-        body: '두 번째 내용'
+        body: '두 번째 내용',
       }
 
       // 첫 번째 이메일 처리
@@ -74,9 +74,9 @@ describe('UnregisteredCompanyHandler', () => {
         attachments: [
           {
             name: '발주서_XYZ주식회사.pdf',
-            content: Buffer.from('%PDF-1.4 content')
-          }
-        ]
+            content: Buffer.from('%PDF-1.4 content'),
+          },
+        ],
       }
 
       // 여러 번 이메일을 보내서 emailCount를 늘림
@@ -86,7 +86,7 @@ describe('UnregisteredCompanyHandler', () => {
       expect(result.companyInfo?.suggestedActions).toContainEqual(
         expect.objectContaining({
           type: 'AUTO_REGISTER',
-          confidence: expect.any(Number)
+          confidence: expect.any(Number),
         })
       )
     })
@@ -95,7 +95,7 @@ describe('UnregisteredCompanyHandler', () => {
       const senderEmail = 'spam@company.com'
       const emailContent = {
         subject: 'Spam email',
-        body: 'Spam content'
+        body: 'Spam content',
       }
 
       // 대량의 이메일을 짧은 시간에 발송
@@ -107,8 +107,8 @@ describe('UnregisteredCompanyHandler', () => {
         suggestedActions: [],
         extractedFromEmail: {
           subject: emailContent.subject,
-          body: emailContent.body
-        }
+          body: emailContent.body,
+        },
       }
 
       // Internal state 직접 설정
@@ -118,7 +118,7 @@ describe('UnregisteredCompanyHandler', () => {
 
       expect(result.companyInfo?.suggestedActions).toContainEqual(
         expect.objectContaining({
-          type: 'BLOCK'
+          type: 'BLOCK',
         })
       )
     })
@@ -187,21 +187,21 @@ describe('UnregisteredCompanyHandler', () => {
 
       const attachment1 = {
         name: 'Samsung_발주서.pdf',
-        content: Buffer.from('content')
+        content: Buffer.from('content'),
       }
       const result1 = await extractFromAttachment(attachment1)
       expect(result1.companyName).toBe('Samsung')
 
       const attachment2 = {
         name: 'Apple_Korea-주문서.xlsx',
-        content: Buffer.from('content')
+        content: Buffer.from('content'),
       }
       const result2 = await extractFromAttachment(attachment2)
       expect(result2.companyName).toBe('Apple_Korea')
 
       const attachment3 = {
         name: 'random_file.txt',
-        content: Buffer.from('content')
+        content: Buffer.from('content'),
       }
       const result3 = await extractFromAttachment(attachment3)
       expect(result3.confidence).toBe(0)
@@ -216,13 +216,13 @@ describe('UnregisteredCompanyHandler', () => {
       const companyInfo = {
         email: 'test@company.com',
         emailCount: 3,
-        companyName: 'Test Company'
+        companyName: 'Test Company',
       }
 
       const extractionResult = {
         companyName: 'Test Company',
         confidence: 0.85,
-        source: 'SUBJECT'
+        source: 'SUBJECT',
       }
 
       expect(canAutoRegister(companyInfo, extractionResult)).toBe(true)
@@ -235,13 +235,13 @@ describe('UnregisteredCompanyHandler', () => {
       const companyInfo = {
         email: 'test@company.com',
         emailCount: 5,
-        companyName: 'Test Company'
+        companyName: 'Test Company',
       }
 
       const extractionResult = {
         companyName: 'Test Company',
         confidence: 0.5, // 낮은 신뢰도
-        source: 'SUBJECT'
+        source: 'SUBJECT',
       }
 
       expect(canAutoRegister(companyInfo, extractionResult)).toBe(false)
@@ -257,7 +257,7 @@ describe('UnregisteredCompanyHandler', () => {
         email: 'spam@company.com',
         emailCount: 20,
         firstSeenAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1일 전
-        lastSeenAt: new Date()
+        lastSeenAt: new Date(),
       }
 
       expect(shouldBlock(companyInfo)).toBe(true)
@@ -271,7 +271,7 @@ describe('UnregisteredCompanyHandler', () => {
         email: 'normal@company.com',
         emailCount: 3,
         firstSeenAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7일 전
-        lastSeenAt: new Date()
+        lastSeenAt: new Date(),
       }
 
       expect(shouldBlock(companyInfo)).toBe(false)
@@ -284,10 +284,10 @@ describe('UnregisteredCompanyHandler', () => {
 
       // Add test data
       for (let i = 0; i < 15; i++) {
-        await handler.handleUnregisteredEmail(
-          `test${i}@company.com`,
-          { subject: `Test ${i}`, body: `Content ${i}` }
-        )
+        await handler.handleUnregisteredEmail(`test${i}@company.com`, {
+          subject: `Test ${i}`,
+          body: `Content ${i}`,
+        })
       }
 
       const result = await handler.getUnregisteredCompanies(5, 0)
@@ -303,13 +303,13 @@ describe('UnregisteredCompanyHandler', () => {
       const companies = ['old@test.com', 'new@test.com', 'middle@test.com']
 
       for (let i = 0; i < companies.length; i++) {
-        await handler.handleUnregisteredEmail(
-          companies[i],
-          { subject: `Test ${i}`, body: `Content ${i}` }
-        )
+        await handler.handleUnregisteredEmail(companies[i], {
+          subject: `Test ${i}`,
+          body: `Content ${i}`,
+        })
 
         // Simulate time passage
-        await new Promise(resolve => setTimeout(resolve, 10))
+        await new Promise((resolve) => setTimeout(resolve, 10))
       }
 
       const result = await handler.getUnregisteredCompanies(10, 0)
@@ -328,7 +328,7 @@ describe('UnregisteredCompanyHandler', () => {
       // Add unregistered company
       await handler.handleUnregisteredEmail(email, {
         subject: 'Test',
-        body: 'Test content'
+        body: 'Test content',
       })
 
       const companyData = {
@@ -339,9 +339,9 @@ describe('UnregisteredCompanyHandler', () => {
             name: '담당자',
             phone: '02-1234-5678',
             email: email,
-            position: '매니저'
-          }
-        ]
+            position: '매니저',
+          },
+        ],
       }
 
       const result = await handler.approveUnregisteredCompany(email, companyData)
@@ -362,7 +362,7 @@ describe('UnregisteredCompanyHandler', () => {
       // Add unregistered company
       await handler.handleUnregisteredEmail(email, {
         subject: 'Test',
-        body: 'Test content'
+        body: 'Test content',
       })
 
       await handler.rejectUnregisteredCompany(email, '스팸으로 판단')
@@ -378,7 +378,7 @@ describe('UnregisteredCompanyHandler', () => {
       const emailContent = {
         subject: null,
         body: undefined,
-        attachments: null
+        attachments: null,
       } as any
 
       const result = await handler.handleUnregisteredEmail('test@test.com', emailContent)
@@ -391,7 +391,7 @@ describe('UnregisteredCompanyHandler', () => {
       const longName = 'A'.repeat(200)
       const emailContent = {
         subject: `[${longName}] 발주`,
-        body: `회사명: ${longName}`
+        body: `회사명: ${longName}`,
       }
 
       const result = await handler.handleUnregisteredEmail('long@test.com', emailContent)
@@ -404,7 +404,7 @@ describe('UnregisteredCompanyHandler', () => {
       const email = 'concurrent@test.com'
       const emailContent = {
         subject: 'Test',
-        body: 'Test content'
+        body: 'Test content',
       }
 
       // Simulate concurrent requests
@@ -416,7 +416,7 @@ describe('UnregisteredCompanyHandler', () => {
 
       // All should complete successfully
       expect(results).toHaveLength(5)
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.companyInfo).toBeDefined()
       })
 
@@ -434,9 +434,9 @@ describe('UnregisteredCompanyHandler', () => {
         attachments: [
           {
             name: 'large_attachment.pdf',
-            content: Buffer.alloc(1024 * 100) // 100KB
-          }
-        ]
+            content: Buffer.alloc(1024 * 100), // 100KB
+          },
+        ],
       }
 
       const startTime = Date.now()
@@ -452,10 +452,10 @@ describe('UnregisteredCompanyHandler', () => {
 
       // Add many companies
       const promises = Array.from({ length: 100 }, (_, i) =>
-        handler.handleUnregisteredEmail(
-          `perf${i}@test.com`,
-          { subject: `Test ${i}`, body: `Content ${i}` }
-        )
+        handler.handleUnregisteredEmail(`perf${i}@test.com`, {
+          subject: `Test ${i}`,
+          body: `Content ${i}`,
+        })
       )
 
       const startTime = Date.now()

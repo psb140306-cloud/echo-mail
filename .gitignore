@@ -46,6 +46,8 @@ build/
 out/
 *.log
 logs/
+.next/
+tsconfig.tsbuildinfo
 
 # Testing
 coverage/

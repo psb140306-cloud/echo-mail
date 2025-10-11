@@ -47,18 +47,17 @@ export class NotificationQueue {
         jobId,
         type: notification.type,
         recipient: notification.recipient,
-        priority: notification.priority
+        priority: notification.priority,
       })
 
       // 메모리 기반 큐 (실제 구현에서는 Redis나 데이터베이스 사용)
       await this.saveToDatabase({
         ...notification,
         id: jobId,
-        currentRetries: 0
+        currentRetries: 0,
       })
 
       return jobId
-
     } catch (error) {
       logger.error('알림 큐 추가 실패:', error)
       throw error
@@ -68,7 +67,9 @@ export class NotificationQueue {
   /**
    * 대량 알림 추가
    */
-  async enqueueBulk(notifications: Omit<NotificationJob, 'id' | 'currentRetries'>[]): Promise<string[]> {
+  async enqueueBulk(
+    notifications: Omit<NotificationJob, 'id' | 'currentRetries'>[]
+  ): Promise<string[]> {
     const jobIds: string[] = []
 
     for (const notification of notifications) {
@@ -154,13 +155,11 @@ export class NotificationQueue {
             // 실패 시 재시도 또는 실패 처리
             await this.handleJobFailure(job)
           }
-
         } catch (error) {
           logger.error(`알림 작업 처리 오류 (${job.id}):`, error)
           await this.handleJobFailure(job)
         }
       }
-
     } catch (error) {
       logger.error('작업 배치 처리 오류:', error)
     }
@@ -192,7 +191,6 @@ export class NotificationQueue {
       // })
       //
       // return notifications.map(this.mapToJob)
-
     } catch (error) {
       logger.error('대기 중인 작업 조회 실패:', error)
       return []
@@ -216,9 +214,10 @@ export class NotificationQueue {
         const retryAt = new Date(Date.now() + retryDelay)
 
         await this.updateJobRetry(job.id, newRetryCount, retryAt)
-        logger.info(`알림 작업 재시도 스케줄: ${job.id} (${newRetryCount}/${job.maxRetries}) at ${retryAt.toISOString()}`)
+        logger.info(
+          `알림 작업 재시도 스케줄: ${job.id} (${newRetryCount}/${job.maxRetries}) at ${retryAt.toISOString()}`
+        )
       }
-
     } catch (error) {
       logger.error(`작업 실패 처리 오류 (${job.id}):`, error)
     }
@@ -247,7 +246,6 @@ export class NotificationQueue {
       //   where: { id: jobId },
       //   data: { status }
       // })
-
     } catch (error) {
       logger.error(`작업 상태 업데이트 실패 (${jobId}):`, error)
     }
@@ -269,7 +267,6 @@ export class NotificationQueue {
       //     status: 'PENDING'
       //   }
       // })
-
     } catch (error) {
       logger.error(`작업 재시도 정보 업데이트 실패 (${jobId}):`, error)
     }
@@ -301,7 +298,6 @@ export class NotificationQueue {
       //     status: 'PENDING'
       //   }
       // })
-
     } catch (error) {
       logger.error(`작업 데이터베이스 저장 실패 (${job.id}):`, error)
       throw error
@@ -319,7 +315,7 @@ export class NotificationQueue {
         processing: 0,
         completed: 0,
         failed: 0,
-        total: 0
+        total: 0,
       }
 
       // const result = await prisma.notificationLog.groupBy({
@@ -350,7 +346,6 @@ export class NotificationQueue {
       // stats.total = stats.pending + stats.processing + stats.completed + stats.failed
 
       return stats
-
     } catch (error) {
       logger.error('큐 통계 조회 실패:', error)
       return {
@@ -358,7 +353,7 @@ export class NotificationQueue {
         processing: 0,
         completed: 0,
         failed: 0,
-        total: 0
+        total: 0,
       }
     }
   }
@@ -371,7 +366,6 @@ export class NotificationQueue {
       await this.updateJobStatus(jobId, 'FAILED')
       logger.info(`알림 작업 취소: ${jobId}`)
       return true
-
     } catch (error) {
       logger.error(`작업 취소 실패 (${jobId}):`, error)
       return false

@@ -43,13 +43,13 @@ export class AligoSMSProvider implements SMSProvider {
         logger.info('SMS 테스트 모드 - 실제 발송되지 않음', {
           provider: 'aligo',
           to: message.to,
-          message: message.message
+          message: message.message,
         })
 
         return {
           success: true,
           messageId: `test_${Date.now()}`,
-          cost: 0
+          cost: 0,
         }
       }
 
@@ -60,15 +60,15 @@ export class AligoSMSProvider implements SMSProvider {
         receiver: message.to,
         msg: message.message,
         msg_type: 'SMS',
-        title: message.subject || ''
+        title: message.subject || '',
       })
 
       const response = await fetch('https://apis.aligo.in/send/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: formData.toString()
+        body: formData.toString(),
       })
 
       const result = await response.json()
@@ -77,32 +77,31 @@ export class AligoSMSProvider implements SMSProvider {
         logger.info('Aligo SMS 발송 성공', {
           to: message.to,
           messageId: result.msg_id,
-          cost: result.success_cnt
+          cost: result.success_cnt,
         })
 
         return {
           success: true,
           messageId: result.msg_id,
-          cost: parseInt(result.success_cnt)
+          cost: parseInt(result.success_cnt),
         }
       } else {
         logger.error('Aligo SMS 발송 실패', {
           code: result.result_code,
           message: result.message,
-          to: message.to
+          to: message.to,
         })
 
         return {
           success: false,
-          error: result.message
+          error: result.message,
         }
       }
-
     } catch (error) {
       logger.error('Aligo SMS 발송 오류:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : '알 수 없는 오류'
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
       }
     }
   }
@@ -116,7 +115,7 @@ export class AligoSMSProvider implements SMSProvider {
 
       // API 호출 간격 (Rate Limiting)
       if (!this.config.testMode) {
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise((resolve) => setTimeout(resolve, 100))
       }
     }
 
@@ -131,15 +130,15 @@ export class AligoSMSProvider implements SMSProvider {
 
       const formData = new URLSearchParams({
         key: this.config.apiKey,
-        userid: this.config.userId!
+        userid: this.config.userId!,
       })
 
       const response = await fetch('https://apis.aligo.in/remain/', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: formData.toString()
+        body: formData.toString(),
       })
 
       const result = await response.json()
@@ -149,7 +148,6 @@ export class AligoSMSProvider implements SMSProvider {
       } else {
         throw new Error(result.message)
       }
-
     } catch (error) {
       logger.error('Aligo SMS 잔액 조회 실패:', error)
       return 0
@@ -165,7 +163,6 @@ export class AligoSMSProvider implements SMSProvider {
       // 잔액 조회를 통한 설정 검증
       const balance = await this.getBalance()
       return balance >= 0
-
     } catch (error) {
       return false
     }
@@ -186,13 +183,13 @@ export class NCPSMSProvider implements SMSProvider {
         logger.info('SMS 테스트 모드 - 실제 발송되지 않음', {
           provider: 'ncp',
           to: message.to,
-          message: message.message
+          message: message.message,
         })
 
         return {
           success: true,
           messageId: `test_ncp_${Date.now()}`,
-          cost: 0
+          cost: 0,
         }
       }
 
@@ -201,14 +198,13 @@ export class NCPSMSProvider implements SMSProvider {
 
       return {
         success: false,
-        error: 'NCP SMS Provider가 구현되지 않았습니다'
+        error: 'NCP SMS Provider가 구현되지 않았습니다',
       }
-
     } catch (error) {
       logger.error('NCP SMS 발송 오류:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : '알 수 없는 오류'
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
       }
     }
   }
@@ -216,7 +212,7 @@ export class NCPSMSProvider implements SMSProvider {
   async sendBulkSMS(messages: SMSMessage[]): Promise<SMSResult[]> {
     return messages.map(() => ({
       success: false,
-      error: 'NCP SMS Provider가 구현되지 않았습니다'
+      error: 'NCP SMS Provider가 구현되지 않았습니다',
     }))
   }
 
@@ -252,7 +248,8 @@ export function createSMSProviderFromEnv(): SMSProvider {
     apiKey: process.env.ALIGO_API_KEY || '',
     userId: process.env.ALIGO_USER_ID || '',
     sender: process.env.ALIGO_SENDER || '',
-    testMode: process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
+    testMode:
+      process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true',
   }
 
   if (!config.apiKey || !config.sender) {

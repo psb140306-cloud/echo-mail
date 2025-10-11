@@ -17,7 +17,9 @@ async function testNotificationSystem() {
 
     if (statusData.success) {
       console.log('✅ 시스템 상태 조회 성공:')
-      console.log(`   - SMS: ${statusData.data.sms.available ? '사용 가능' : '사용 불가'} (잔액: ${statusData.data.sms.balance}개)`)
+      console.log(
+        `   - SMS: ${statusData.data.sms.available ? '사용 가능' : '사용 불가'} (잔액: ${statusData.data.sms.balance}개)`
+      )
       console.log(`   - 카카오: ${statusData.data.kakao.available ? '사용 가능' : '사용 불가'}`)
       console.log(`   - 큐 처리: ${statusData.data.queue.processing ? '실행 중' : '중지'}`)
     } else {
@@ -38,7 +40,9 @@ async function testNotificationSystem() {
       if (templatesData.data.templates.length > 0) {
         console.log('\n   📝 사용 가능한 템플릿:')
         templatesData.data.templates.forEach((template, index) => {
-          console.log(`   ${index + 1}. ${template.name} (${template.type})${template.isDefault ? ' [기본]' : ''}`)
+          console.log(
+            `   ${index + 1}. ${template.name} (${template.type})${template.isDefault ? ' [기본]' : ''}`
+          )
         })
       }
     } else {
@@ -59,17 +63,17 @@ async function testNotificationSystem() {
       variables: {
         companyName: '테스트상사',
         deliveryDate: '2025년 1월 20일',
-        deliveryTime: '오전'
+        deliveryTime: '오전',
       },
-      priority: 'normal'
+      priority: 'normal',
     }
 
     const smsResponse = await fetch(`${API_BASE}/notifications/send`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(smsNotification)
+      body: JSON.stringify(smsNotification),
     })
 
     const smsData = await smsResponse.json()
@@ -87,15 +91,15 @@ async function testNotificationSystem() {
       ...smsNotification,
       recipient: '010-2345-6789',
       useQueue: true,
-      priority: 'high'
+      priority: 'high',
     }
 
     const queuedSmsResponse = await fetch(`${API_BASE}/notifications/send`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(queuedSmsNotification)
+      body: JSON.stringify(queuedSmsNotification),
     })
 
     const queuedSmsData = await queuedSmsResponse.json()
@@ -120,17 +124,17 @@ async function testNotificationSystem() {
       variables: {
         companyName: '부산물산',
         deliveryDate: '2025년 1월 21일',
-        deliveryTime: '오후'
+        deliveryTime: '오후',
       },
-      enableFailover: true
+      enableFailover: true,
     }
 
     const kakaoResponse = await fetch(`${API_BASE}/notifications/send`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(kakaoNotification)
+      body: JSON.stringify(kakaoNotification),
     })
 
     const kakaoData = await kakaoResponse.json()
@@ -155,43 +159,63 @@ async function testNotificationSystem() {
           type: 'SMS',
           recipient: '010-1000-0001',
           templateName: 'ORDER_RECEIVED_SMS',
-          variables: { companyName: '업체1', deliveryDate: '2025년 1월 20일', deliveryTime: '오전' }
+          variables: {
+            companyName: '업체1',
+            deliveryDate: '2025년 1월 20일',
+            deliveryTime: '오전',
+          },
         },
         {
           type: 'SMS',
           recipient: '010-1000-0002',
           templateName: 'ORDER_RECEIVED_SMS',
-          variables: { companyName: '업체2', deliveryDate: '2025년 1월 20일', deliveryTime: '오후' }
+          variables: {
+            companyName: '업체2',
+            deliveryDate: '2025년 1월 20일',
+            deliveryTime: '오후',
+          },
         },
         {
           type: 'KAKAO_ALIMTALK',
           recipient: '010-1000-0003',
           templateName: 'ORDER_RECEIVED_KAKAO',
-          variables: { companyName: '업체3', deliveryDate: '2025년 1월 21일', deliveryTime: '오전' },
-          enableFailover: true
+          variables: {
+            companyName: '업체3',
+            deliveryDate: '2025년 1월 21일',
+            deliveryTime: '오전',
+          },
+          enableFailover: true,
         },
         {
           type: 'SMS',
           recipient: '010-1000-0004',
           templateName: 'ORDER_RECEIVED_SMS',
-          variables: { companyName: '업체4', deliveryDate: '2025년 1월 21일', deliveryTime: '오후' }
+          variables: {
+            companyName: '업체4',
+            deliveryDate: '2025년 1월 21일',
+            deliveryTime: '오후',
+          },
         },
         {
           type: 'SMS',
           recipient: '010-1000-0005',
           templateName: 'ORDER_RECEIVED_SMS',
-          variables: { companyName: '업체5', deliveryDate: '2025년 1월 22일', deliveryTime: '오전' }
-        }
+          variables: {
+            companyName: '업체5',
+            deliveryDate: '2025년 1월 22일',
+            deliveryTime: '오전',
+          },
+        },
       ],
-      batchSize: 3
+      batchSize: 3,
     }
 
     const bulkResponse = await fetch(`${API_BASE}/notifications/send?action=bulk`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(bulkNotifications)
+      body: JSON.stringify(bulkNotifications),
     })
 
     const bulkData = await bulkResponse.json()
@@ -216,20 +240,22 @@ async function testNotificationSystem() {
 
     if (companiesData.success && companiesData.data.length > 0) {
       const testCompany = companiesData.data[0]
-      console.log(`✅ 테스트 업체 확인: ${testCompany.name} (담당자: ${testCompany._count.contacts}명)`)
+      console.log(
+        `✅ 테스트 업체 확인: ${testCompany.name} (담당자: ${testCompany._count.contacts}명)`
+      )
 
       // 5-2. 발주 접수 알림 발송
       console.log('\n5-2. 발주 접수 알림 발송')
       const orderNotification = {
-        companyId: testCompany.id
+        companyId: testCompany.id,
       }
 
       const orderResponse = await fetch(`${API_BASE}/notifications/send?action=order-received`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(orderNotification)
+        body: JSON.stringify(orderNotification),
       })
 
       const orderData = await orderResponse.json()
@@ -272,7 +298,7 @@ async function testNotificationSystem() {
 
     // 큐 시작
     const startQueueResponse = await fetch(`${API_BASE}/notifications/status?action=start-queue`, {
-      method: 'POST'
+      method: 'POST',
     })
     const startQueueData = await startQueueResponse.json()
 
@@ -283,11 +309,11 @@ async function testNotificationSystem() {
     }
 
     // 잠시 대기
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // 큐 중지
     const stopQueueResponse = await fetch(`${API_BASE}/notifications/status?action=stop-queue`, {
-      method: 'POST'
+      method: 'POST',
     })
     const stopQueueData = await stopQueueResponse.json()
 
@@ -308,15 +334,15 @@ async function testNotificationSystem() {
       type: 'SMS',
       recipient: '010-9999-9999',
       templateName: 'NON_EXISTENT_TEMPLATE',
-      variables: {}
+      variables: {},
     }
 
     const invalidTemplateResponse = await fetch(`${API_BASE}/notifications/send`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(invalidTemplateNotification)
+      body: JSON.stringify(invalidTemplateNotification),
     })
 
     const invalidTemplateData = await invalidTemplateResponse.json()
@@ -335,16 +361,16 @@ async function testNotificationSystem() {
       variables: {
         companyName: '테스트상사',
         deliveryDate: '2025년 1월 20일',
-        deliveryTime: '오전'
-      }
+        deliveryTime: '오전',
+      },
     }
 
     const invalidRecipientResponse = await fetch(`${API_BASE}/notifications/send`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(invalidRecipientNotification)
+      body: JSON.stringify(invalidRecipientNotification),
     })
 
     const invalidRecipientData = await invalidRecipientResponse.json()
@@ -355,7 +381,6 @@ async function testNotificationSystem() {
     }
 
     console.log('\n🎉 알림 발송 시스템 테스트 완료!')
-
   } catch (error) {
     console.error('\n❌ 테스트 중 오류 발생:', error.message)
   }

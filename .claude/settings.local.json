@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(npm run lint)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run check:contrast:*)",
+      "Bash(npm run build:*)",
+      "Bash(git mv:*)",
+      "Bash(move:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(find:*)",
+      "Bash(timeout 120 npm run build)",
+      "Bash(npx tsx:*)"
     ],
     "deny": [],
     "ask": []

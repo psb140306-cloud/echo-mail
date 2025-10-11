@@ -43,8 +43,8 @@ export class ImapClient {
   constructor(config: MailConfig) {
     this.config = {
       checkInterval: 60000, // 1분
-      idleTimeout: 300000,  // 5분
-      ...config
+      idleTimeout: 300000, // 5분
+      ...config,
     }
   }
 
@@ -57,7 +57,7 @@ export class ImapClient {
       logger.info('IMAP 서버 연결 시도...', {
         host: this.config.host,
         port: this.config.port,
-        user: this.config.user
+        user: this.config.user,
       })
 
       this.client = new ImapFlow({
@@ -66,14 +66,14 @@ export class ImapClient {
         secure: this.config.secure,
         auth: {
           user: this.config.user,
-          pass: this.config.password
+          pass: this.config.password,
         },
         logger: {
           debug: (msg: string) => logger.debug(`IMAP: ${msg}`),
           info: (msg: string) => logger.info(`IMAP: ${msg}`),
           warn: (msg: string) => logger.warn(`IMAP: ${msg}`),
-          error: (msg: string) => logger.error(`IMAP: ${msg}`)
-        }
+          error: (msg: string) => logger.error(`IMAP: ${msg}`),
+        },
       })
 
       await this.client.connect()
@@ -82,7 +82,6 @@ export class ImapClient {
 
       logger.info('IMAP 연결 성공')
       return true
-
     } catch (error) {
       logger.error('IMAP 연결 실패:', error)
       this.isConnected = false
@@ -114,7 +113,6 @@ export class ImapClient {
       await this.client.selectMailbox(mailbox)
       logger.info(`메일박스 선택: ${mailbox}`)
       return true
-
     } catch (error) {
       logger.error(`메일박스 선택 실패 (${mailbox}):`, error)
       return false
@@ -132,7 +130,7 @@ export class ImapClient {
       for await (const message of this.client.fetch('UNSEEN', {
         envelope: true,
         bodyStructure: true,
-        source: true
+        source: true,
       })) {
         messages.push(message)
       }
@@ -153,7 +151,6 @@ export class ImapClient {
       }
 
       return processedEmails
-
     } catch (error) {
       logger.error('메일 조회 실패:', error)
       return []
@@ -172,7 +169,7 @@ export class ImapClient {
       for await (const message of this.client.fetch(`SINCE ${sinceStr}`, {
         envelope: true,
         bodyStructure: true,
-        source: true
+        source: true,
       })) {
         messages.push(message)
       }
@@ -192,7 +189,6 @@ export class ImapClient {
       }
 
       return processedEmails
-
     } catch (error) {
       logger.error('메일 조회 실패:', error)
       return []
@@ -210,33 +206,30 @@ export class ImapClient {
       const processedEmail: ProcessedEmail = {
         id: `${message.uid}`,
         from: parsed.from?.value?.[0]?.address || '',
-        to: parsed.to?.value?.map(addr => addr.address || '') || [],
+        to: parsed.to?.value?.map((addr) => addr.address || '') || [],
         subject: parsed.subject || '',
         body: {
           text: parsed.text,
-          html: parsed.html as string
+          html: parsed.html as string,
         },
-        attachments: (parsed.attachments || []).map(att => ({
+        attachments: (parsed.attachments || []).map((att) => ({
           filename: att.filename,
           contentType: att.contentType,
           size: att.size,
-          data: att.content
+          data: att.content,
         })),
         receivedAt: parsed.date || new Date(),
-        messageId: parsed.messageId || `${message.uid}`
+        messageId: parsed.messageId || `${message.uid}`,
       }
 
       return processedEmail
-
     } catch (error) {
       logger.error(`메시지 파싱 실패:`, error)
       return null
     }
   }
 
-  async startMonitoring(
-    onNewEmail: (email: ProcessedEmail) => Promise<void>
-  ): Promise<void> {
+  async startMonitoring(onNewEmail: (email: ProcessedEmail) => Promise<void>): Promise<void> {
     if (this.isListening) {
       logger.warn('이미 메일 모니터링이 실행 중입니다')
       return
@@ -248,7 +241,7 @@ export class ImapClient {
     while (this.isListening) {
       try {
         // 연결 확인 및 재연결
-        if (!await this.ensureConnection()) {
+        if (!(await this.ensureConnection())) {
           await this.sleep(this.reconnectDelay)
           continue
         }
@@ -267,7 +260,6 @@ export class ImapClient {
 
         // 다음 체크까지 대기
         await this.sleep(this.config.checkInterval!)
-
       } catch (error) {
         logger.error('메일 모니터링 오류:', error)
         await this.sleep(this.reconnectDelay)
@@ -328,7 +320,7 @@ export class ImapClient {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   // 연결 상태 확인

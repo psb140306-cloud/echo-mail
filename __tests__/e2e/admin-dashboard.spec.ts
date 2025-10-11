@@ -14,7 +14,7 @@ const generateCompanyData = () => ({
   contactName: faker.person.firstName() + faker.person.lastName(),
   contactPhone: `010-${faker.number.int({ min: 1000, max: 9999 })}-${faker.number.int({ min: 1000, max: 9999 })}`,
   contactEmail: faker.internet.email().toLowerCase(),
-  position: faker.helpers.arrayElement(['대표', '매니저', '과장', '대리', '팀장'])
+  position: faker.helpers.arrayElement(['대표', '매니저', '과장', '대리', '팀장']),
 })
 
 // 로그인 헬퍼
@@ -78,7 +78,7 @@ test.describe('Admin Dashboard E2E Tests', () => {
         { label: '업체 관리', url: '/companies' },
         { label: '납품 규칙', url: '/delivery-rules' },
         { label: '로그 조회', url: '/logs' },
-        { label: '설정', url: '/settings' }
+        { label: '설정', url: '/settings' },
       ]
 
       for (const item of menuItems) {
@@ -131,15 +131,21 @@ test.describe('Admin Dashboard E2E Tests', () => {
       await page.press('input[placeholder="업체명 또는 이메일 검색"]', 'Enter')
 
       // 검색 결과 확인
-      await expect(page.locator('tbody tr')).toHaveCount(await page.locator('tbody tr:has-text("테스트")').count())
+      await expect(page.locator('tbody tr')).toHaveCount(
+        await page.locator('tbody tr:has-text("테스트")').count()
+      )
 
       // 필터 테스트 - 지역
       await page.selectOption('select[name="region"]', '서울')
-      await expect(page.locator('tbody tr')).toHaveCount(await page.locator('tbody tr:has-text("서울")').count())
+      await expect(page.locator('tbody tr')).toHaveCount(
+        await page.locator('tbody tr:has-text("서울")').count()
+      )
 
       // 필터 테스트 - 활성 상태
       await page.selectOption('select[name="isActive"]', 'true')
-      const activeCompanies = page.locator('tbody tr').filter({ has: page.locator('.badge-success') })
+      const activeCompanies = page
+        .locator('tbody tr')
+        .filter({ has: page.locator('.badge-success') })
       await expect(activeCompanies).toHaveCount(await activeCompanies.count())
 
       // 필터 초기화
@@ -238,7 +244,7 @@ test.describe('Admin Dashboard E2E Tests', () => {
       await page.setInputFiles('input[type="file"]', {
         name: 'companies.csv',
         mimeType: 'text/csv',
-        buffer: Buffer.from(csvContent)
+        buffer: Buffer.from(csvContent),
       })
 
       // 미리보기 확인
@@ -253,7 +259,9 @@ test.describe('Admin Dashboard E2E Tests', () => {
       await expect(page.locator('.progress-bar')).not.toBeVisible({ timeout: 10000 })
 
       // 성공 메시지 확인
-      await expect(page.locator('.toast-success')).toContainText('3개 업체가 성공적으로 등록되었습니다')
+      await expect(page.locator('.toast-success')).toContainText(
+        '3개 업체가 성공적으로 등록되었습니다'
+      )
     })
   })
 
@@ -328,7 +336,9 @@ test.describe('Admin Dashboard E2E Tests', () => {
 
       // 공휴일 API 동기화
       await page.click('button:has-text("공휴일 API 동기화")')
-      await expect(page.locator('.toast-success')).toContainText(/공휴일 정보가 업데이트되었습니다|이미 최신 상태입니다/)
+      await expect(page.locator('.toast-success')).toContainText(
+        /공휴일 정보가 업데이트되었습니다|이미 최신 상태입니다/
+      )
     })
   })
 
@@ -349,7 +359,9 @@ test.describe('Admin Dashboard E2E Tests', () => {
 
       // 필터링 테스트 - 상태
       await page.selectOption('select[name="status"]', 'SENT')
-      const sentLogs = page.locator('tbody tr').filter({ has: page.locator('.badge:has-text("전송완료")') })
+      const sentLogs = page
+        .locator('tbody tr')
+        .filter({ has: page.locator('.badge:has-text("전송완료")') })
       await expect(sentLogs).toHaveCount(await sentLogs.count())
 
       // 상세 정보 보기
@@ -455,7 +467,10 @@ test.describe('Admin Dashboard E2E Tests', () => {
       await page.click('button:has-text("새 템플릿")')
       await page.fill('input[name="templateName"]', '긴급 발주 알림')
       await page.selectOption('select[name="templateType"]', 'SMS')
-      await page.fill('textarea[name="templateContent"]', '[{{company_name}}] 긴급 발주가 도착했습니다. 즉시 확인 부탁드립니다.')
+      await page.fill(
+        'textarea[name="templateContent"]',
+        '[{{company_name}}] 긴급 발주가 도착했습니다. 즉시 확인 부탁드립니다.'
+      )
 
       // 변수 추가
       await page.click('button:has-text("변수 추가")')
@@ -468,7 +483,9 @@ test.describe('Admin Dashboard E2E Tests', () => {
       // 템플릿 미리보기
       await page.click('button:has-text("미리보기")')
       await page.fill('input[name="company_name"]', '테스트회사')
-      await expect(page.locator('.template-preview')).toContainText('[테스트회사] 긴급 발주가 도착했습니다')
+      await expect(page.locator('.template-preview')).toContainText(
+        '[테스트회사] 긴급 발주가 도착했습니다'
+      )
     })
   })
 
@@ -494,7 +511,9 @@ test.describe('Admin Dashboard E2E Tests', () => {
       await expect(page.locator('.desktop-table')).not.toBeVisible()
 
       // 카드 레이아웃 확인
-      await expect(page.locator('.company-card')).toHaveCount(await page.locator('.company-card').count())
+      await expect(page.locator('.company-card')).toHaveCount(
+        await page.locator('.company-card').count()
+      )
     })
 
     test('should handle touch gestures', async ({ page }) => {
@@ -515,7 +534,7 @@ test.describe('Admin Dashboard E2E Tests', () => {
   test.describe('Performance and Loading States', () => {
     test('should handle slow network gracefully', async ({ page }) => {
       // 느린 네트워크 시뮬레이션
-      await page.route('**/api/**', route => {
+      await page.route('**/api/**', (route) => {
         setTimeout(() => route.continue(), 3000)
       })
 
@@ -531,11 +550,11 @@ test.describe('Admin Dashboard E2E Tests', () => {
 
     test('should handle API errors', async ({ page }) => {
       // API 오류 시뮬레이션
-      await page.route('**/api/companies', route => {
+      await page.route('**/api/companies', (route) => {
         route.fulfill({
           status: 500,
           contentType: 'application/json',
-          body: JSON.stringify({ error: 'Internal Server Error' })
+          body: JSON.stringify({ error: 'Internal Server Error' }),
         })
       })
 
@@ -619,9 +638,9 @@ test.describe('Admin Dashboard E2E Tests', () => {
       expect(bodyClasses).toContain('high-contrast')
 
       // 색상 대비 확인
-      const backgroundColor = await page.locator('body').evaluate(el =>
-        window.getComputedStyle(el).backgroundColor
-      )
+      const backgroundColor = await page
+        .locator('body')
+        .evaluate((el) => window.getComputedStyle(el).backgroundColor)
       expect(backgroundColor).toMatch(/rgb\(0, 0, 0\)|rgb\(255, 255, 255\)/)
     })
   })

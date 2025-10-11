@@ -27,7 +27,7 @@ class Logger {
       timestamp,
       level,
       message,
-      ...(data && { data })
+      ...(data && { data }),
     }
 
     if (process.env.NODE_ENV === 'development') {
@@ -60,13 +60,14 @@ class Logger {
 
   error(message: string, error?: any): void {
     if (this.shouldLog('error')) {
-      const errorData = error instanceof Error
-        ? {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-          }
-        : error
+      const errorData =
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          : error
 
       console.error(this.formatMessage('error', message, errorData))
     }

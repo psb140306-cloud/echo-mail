@@ -89,7 +89,7 @@ export enum ErrorSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 export enum ErrorCategory {
@@ -101,7 +101,7 @@ export enum ErrorCategory {
   CONFIG = 'config',
   AUTH = 'auth',
   VALIDATION = 'validation',
-  EXTERNAL = 'external'
+  EXTERNAL = 'external',
 }
 
 export interface ErrorInfo {
@@ -123,7 +123,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.HIGH,
     recoverable: false,
     requiresAdminNotification: true,
-    retryable: false
+    retryable: false,
   },
   [ErrorCode.SYSTEM_STARTUP_FAILED]: {
     code: ErrorCode.SYSTEM_STARTUP_FAILED,
@@ -132,7 +132,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.CRITICAL,
     recoverable: false,
     requiresAdminNotification: true,
-    retryable: false
+    retryable: false,
   },
   [ErrorCode.DATABASE_CONNECTION_FAILED]: {
     code: ErrorCode.DATABASE_CONNECTION_FAILED,
@@ -141,7 +141,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.CRITICAL,
     recoverable: true,
     requiresAdminNotification: true,
-    retryable: true
+    retryable: true,
   },
 
   // 메일 관련 에러
@@ -152,7 +152,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.HIGH,
     recoverable: true,
     requiresAdminNotification: true,
-    retryable: true
+    retryable: true,
   },
   [ErrorCode.EMAIL_PARSE_FAILED]: {
     code: ErrorCode.EMAIL_PARSE_FAILED,
@@ -161,7 +161,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.MEDIUM,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: false
+    retryable: false,
   },
   [ErrorCode.EMAIL_SENDER_NOT_FOUND]: {
     code: ErrorCode.EMAIL_SENDER_NOT_FOUND,
@@ -170,7 +170,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.LOW,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: false
+    retryable: false,
   },
 
   // 업체 관련 에러
@@ -181,7 +181,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.MEDIUM,
     recoverable: true,
     requiresAdminNotification: true,
-    retryable: false
+    retryable: false,
   },
   [ErrorCode.COMPANY_INACTIVE]: {
     code: ErrorCode.COMPANY_INACTIVE,
@@ -190,7 +190,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.LOW,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: false
+    retryable: false,
   },
   [ErrorCode.CONTACT_NOT_FOUND]: {
     code: ErrorCode.CONTACT_NOT_FOUND,
@@ -199,7 +199,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.MEDIUM,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: false
+    retryable: false,
   },
 
   // 배송 규칙 에러
@@ -210,7 +210,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.MEDIUM,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: true
+    retryable: true,
   },
   [ErrorCode.HOLIDAY_DATA_UNAVAILABLE]: {
     code: ErrorCode.HOLIDAY_DATA_UNAVAILABLE,
@@ -219,7 +219,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.LOW,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: true
+    retryable: true,
   },
 
   // 알림 발송 에러
@@ -230,7 +230,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.MEDIUM,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: true
+    retryable: true,
   },
   [ErrorCode.KAKAO_SEND_FAILED]: {
     code: ErrorCode.KAKAO_SEND_FAILED,
@@ -239,7 +239,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.MEDIUM,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: true
+    retryable: true,
   },
   [ErrorCode.NOTIFICATION_QUEUE_FULL]: {
     code: ErrorCode.NOTIFICATION_QUEUE_FULL,
@@ -248,7 +248,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.HIGH,
     recoverable: true,
     requiresAdminNotification: true,
-    retryable: true
+    retryable: true,
   },
 
   // 설정 관련 에러
@@ -259,7 +259,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.HIGH,
     recoverable: true,
     requiresAdminNotification: true,
-    retryable: false
+    retryable: false,
   },
 
   // 데이터 검증 에러
@@ -270,7 +270,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.LOW,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: false
+    retryable: false,
   },
   [ErrorCode.INVALID_EMAIL_FORMAT]: {
     code: ErrorCode.INVALID_EMAIL_FORMAT,
@@ -279,7 +279,7 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.LOW,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: false
+    retryable: false,
   },
 
   // 외부 API 에러
@@ -290,8 +290,8 @@ export const ERROR_DEFINITIONS: Record<ErrorCode, ErrorInfo> = {
     severity: ErrorSeverity.MEDIUM,
     recoverable: true,
     requiresAdminNotification: false,
-    retryable: true
-  }
+    retryable: true,
+  },
 } as Record<ErrorCode, ErrorInfo>
 
 /**
@@ -307,11 +307,7 @@ export class EchoMailError extends Error {
   public readonly context?: Record<string, any>
   public readonly timestamp: Date
 
-  constructor(
-    code: ErrorCode,
-    context?: Record<string, any>,
-    cause?: Error
-  ) {
+  constructor(code: ErrorCode, context?: Record<string, any>, cause?: Error) {
     const errorInfo = ERROR_DEFINITIONS[code]
     super(errorInfo.message)
 
@@ -348,7 +344,7 @@ export class EchoMailError extends Error {
       context: this.context,
       timestamp: this.timestamp.toISOString(),
       stack: this.stack,
-      cause: this.cause?.message
+      cause: this.cause?.message,
     }
   }
 
@@ -421,7 +417,7 @@ export const createEchoMailError = {
     new EchoMailError(ErrorCode.VALIDATION_FAILED, context),
 
   invalidEmailFormat: (context?: Record<string, any>) =>
-    new EchoMailError(ErrorCode.INVALID_EMAIL_FORMAT, context)
+    new EchoMailError(ErrorCode.INVALID_EMAIL_FORMAT, context),
 }
 
 /**
@@ -466,5 +462,5 @@ export const errorUtils = {
       return error.category
     }
     return ErrorCategory.SYSTEM
-  }
+  },
 }

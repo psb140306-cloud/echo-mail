@@ -11,7 +11,9 @@ async function testConnection() {
 
   if (!process.env.DATABASE_URL) {
     console.error('❌ DATABASE_URL이 설정되지 않았습니다.')
-    console.error('   .env.local 파일에서 DATABASE_URL의 password 부분을 실제 비밀번호로 변경하세요.')
+    console.error(
+      '   .env.local 파일에서 DATABASE_URL의 password 부분을 실제 비밀번호로 변경하세요.'
+    )
     return
   }
 
@@ -28,8 +30,7 @@ async function testConnection() {
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
     `
 
-    console.log('📋 현재 테이블:', tables.map(t => t.table_name).join(', '))
-
+    console.log('📋 현재 테이블:', tables.map((t) => t.table_name).join(', '))
   } catch (error) {
     console.error('❌ 데이터베이스 연결 실패:', error.message)
 

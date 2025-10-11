@@ -1,0 +1,112 @@
+# Prometheus Configuration for Echo Mail
+# 메트릭 수집 및 알림 설정
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'production'
+    project: 'echomail'
+
+rule_files:
+  - 'alerts/*.yml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  # Echo Mail Application
+  - job_name: 'echomail-app'
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+          - 'app:3000'
+          - 'app-blue:3000'
+          - 'app-green:3001'
+    metrics_path: '/api/metrics'
+    scrape_timeout: 5s
+
+  # Health Check Endpoint
+  - job_name: 'echomail-health'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+          - 'app:3000'
+    metrics_path: '/api/health'
+    scrape_timeout: 10s
+
+  # Node Exporter (System Metrics)
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - 'node-exporter:9100'
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - 'postgres-exporter:9187'
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - 'redis-exporter:9121'
+
+  # Nginx Exporter
+  - job_name: 'nginx-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - 'nginx-exporter:9113'
+
+  # Cadvisor (Container Metrics)
+  - job_name: 'cadvisor'
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - 'cadvisor:8080'
+
+  # Blackbox Exporter (External Monitoring)
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://echomail.app
+          - https://api.echomail.app/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Custom Business Metrics
+  - job_name: 'echomail-business-metrics'
+    scrape_interval: 60s
+    static_configs:
+      - targets:
+          - 'app:3000'
+    metrics_path: '/api/metrics/business'
+    scrape_timeout: 30s
+
+# Storage Configuration
+storage:
+  tsdb:
+    path: /prometheus/data
+    retention.time: 30d
+    retention.size: 10GB
+# Remote Write (Optional - for long-term storage)
+# remote_write:
+#   - url: "https://prometheus-remote-write.example.com/api/v1/receive"
+#     headers:
+#       Authorization: "Bearer YOUR_TOKEN"

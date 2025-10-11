@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
 
-const prisma = new PrismaClient()
-
 // 담당자 수정 스키마
 const updateContactSchema = z.object({
-  name: z.string().min(1, '담당자명은 필수입니다').max(50, '담당자명은 50자 이하여야 합니다').optional(),
-  phone: z.string().regex(/^010-\d{4}-\d{4}$/, '올바른 전화번호 형식이 아닙니다 (010-0000-0000)').optional(),
+  name: z
+    .string()
+    .min(1, '담당자명은 필수입니다')
+    .max(50, '담당자명은 50자 이하여야 합니다')
+    .optional(),
+  phone: z
+    .string()
+    .regex(/^010-\d{4}-\d{4}$/, '올바른 전화번호 형식이 아닙니다 (010-0000-0000)')
+    .optional(),
   email: z.string().email('올바른 이메일 형식이 아닙니다').optional(),
   position: z.string().max(50, '직책은 50자 이하여야 합니다').optional(),
   isActive: z.boolean().optional(),
   smsEnabled: z.boolean().optional(),
-  kakaoEnabled: z.boolean().optional()
+  kakaoEnabled: z.boolean().optional(),
 })
 
 interface RouteParams {
@@ -23,10 +28,7 @@ interface RouteParams {
 }
 
 // 담당자 상세 조회
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -47,10 +49,10 @@ export async function GET(
             name: true,
             email: true,
             region: true,
-            isActive: true
-          }
-        }
-      }
+            isActive: true,
+          },
+        },
+      },
     })
 
     if (!contact) {
@@ -62,14 +64,13 @@ export async function GET(
 
     logger.info(`담당자 상세 조회: ${contact.name}`, {
       id,
-      company: contact.company.name
+      company: contact.company.name,
     })
 
     return NextResponse.json({
       success: true,
-      data: contact
+      data: contact,
     })
-
   } catch (error) {
     logger.error('담당자 상세 조회 실패:', error)
 
@@ -77,7 +78,7 @@ export async function GET(
       {
         success: false,
         error: '담당자 조회에 실패했습니다.',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -85,10 +86,7 @@ export async function GET(
 }
 
 // 담당자 수정
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
     const body = await request.json()
@@ -107,8 +105,8 @@ export async function PUT(
     const existingContact = await prisma.contact.findUnique({
       where: { id },
       include: {
-        company: true
-      }
+        company: true,
+      },
     })
 
     if (!existingContact) {
@@ -125,9 +123,9 @@ export async function PUT(
           AND: [
             { id: { not: id } }, // 현재 담당자 제외
             { companyId: existingContact.companyId }, // 같은 업체 내에서
-            { phone: validatedData.phone }
-          ]
-        }
+            { phone: validatedData.phone },
+          ],
+        },
       })
 
       if (duplicateContact) {
@@ -135,7 +133,7 @@ export async function PUT(
           {
             success: false,
             error: '해당 업체에 이미 등록된 전화번호입니다.',
-            field: 'phone'
+            field: 'phone',
           },
           { status: 400 }
         )
@@ -153,24 +151,23 @@ export async function PUT(
             name: true,
             email: true,
             region: true,
-            isActive: true
-          }
-        }
-      }
+            isActive: true,
+          },
+        },
+      },
     })
 
     logger.info(`담당자 수정 완료: ${updatedContact.name}`, {
       id,
       company: updatedContact.company.name,
-      changes: validatedData
+      changes: validatedData,
     })
 
     return NextResponse.json({
       success: true,
       data: updatedContact,
-      message: '담당자 정보가 성공적으로 수정되었습니다.'
+      message: '담당자 정보가 성공적으로 수정되었습니다.',
     })
-
   } catch (error) {
     logger.error('담당자 수정 실패:', error)
 
@@ -179,10 +176,10 @@ export async function PUT(
         {
           success: false,
           error: '입력값이 올바르지 않습니다.',
-          details: error.errors.map(err => ({
+          details: error.errors.map((err) => ({
             field: err.path.join('.'),
-            message: err.message
-          }))
+            message: err.message,
+          })),
         },
         { status: 400 }
       )
@@ -192,7 +189,7 @@ export async function PUT(
       {
         success: false,
         error: '담당자 수정에 실패했습니다.',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -200,10 +197,7 @@ export async function PUT(
 }
 
 // 담당자 삭제
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -220,10 +214,10 @@ export async function DELETE(
       include: {
         company: {
           select: {
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     })
 
     if (!existingContact) {
@@ -235,12 +229,12 @@ export async function DELETE(
 
     // 담당자 삭제
     await prisma.contact.delete({
-      where: { id }
+      where: { id },
     })
 
     logger.info(`담당자 삭제 완료: ${existingContact.name}`, {
       id,
-      company: existingContact.company.name
+      company: existingContact.company.name,
     })
 
     return NextResponse.json({
@@ -248,10 +242,9 @@ export async function DELETE(
       message: `담당자 '${existingContact.name}'이(가) 성공적으로 삭제되었습니다.`,
       data: {
         deletedContact: existingContact.name,
-        company: existingContact.company.name
-      }
+        company: existingContact.company.name,
+      },
     })
-
   } catch (error) {
     logger.error('담당자 삭제 실패:', error)
 
@@ -259,7 +252,7 @@ export async function DELETE(
       {
         success: false,
         error: '담당자 삭제에 실패했습니다.',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

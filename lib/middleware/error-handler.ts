@@ -11,11 +11,13 @@ export interface ApiError extends Error {
 // 에러 타입별 처리
 export function handleApiError(error: unknown, request?: NextRequest): NextResponse {
   // 요청 정보 로깅
-  const requestInfo = request ? {
-    method: request.method,
-    url: request.url,
-    userAgent: request.headers.get('user-agent')
-  } : {}
+  const requestInfo = request
+    ? {
+        method: request.method,
+        url: request.url,
+        userAgent: request.headers.get('user-agent'),
+      }
+    : {}
 
   // Zod 검증 에러
   if (error instanceof z.ZodError) {
@@ -25,11 +27,11 @@ export function handleApiError(error: unknown, request?: NextRequest): NextRespo
       {
         success: false,
         error: '입력값이 올바르지 않습니다.',
-        details: error.errors.map(err => ({
+        details: error.errors.map((err) => ({
           field: err.path.join('.'),
           message: err.message,
-          code: err.code
-        }))
+          code: err.code,
+        })),
       },
       { status: 400 }
     )
@@ -49,14 +51,14 @@ export function handleApiError(error: unknown, request?: NextRequest): NextRespo
       statusCode: apiError.statusCode,
       field: apiError.field,
       stack: apiError.stack,
-      ...requestInfo
+      ...requestInfo,
     })
 
     return NextResponse.json(
       {
         success: false,
         error: apiError.message,
-        ...(apiError.field && { field: apiError.field })
+        ...(apiError.field && { field: apiError.field }),
       },
       { status: apiError.statusCode || 500 }
     )
@@ -67,18 +69,17 @@ export function handleApiError(error: unknown, request?: NextRequest): NextRespo
     logger.error('Unexpected error:', {
       message: error.message,
       stack: error.stack,
-      ...requestInfo
+      ...requestInfo,
     })
 
     // 프로덕션에서는 자세한 에러 정보 숨기기
-    const message = process.env.NODE_ENV === 'production'
-      ? '서버 내부 오류가 발생했습니다.'
-      : error.message
+    const message =
+      process.env.NODE_ENV === 'production' ? '서버 내부 오류가 발생했습니다.' : error.message
 
     return NextResponse.json(
       {
         success: false,
-        error: message
+        error: message,
       },
       { status: 500 }
     )
@@ -90,7 +91,7 @@ export function handleApiError(error: unknown, request?: NextRequest): NextRespo
   return NextResponse.json(
     {
       success: false,
-      error: '알 수 없는 오류가 발생했습니다.'
+      error: '알 수 없는 오류가 발생했습니다.',
     },
     { status: 500 }
   )
@@ -102,20 +103,20 @@ function handlePrismaError(error: PrismaClientKnownRequestError, requestInfo: an
     code: error.code,
     message: error.message,
     meta: error.meta,
-    ...requestInfo
+    ...requestInfo,
   })
 
   switch (error.code) {
     // 고유 제약조건 위반
     case 'P2002':
-      const target = error.meta?.target as string[] || []
+      const target = (error.meta?.target as string[]) || []
       const field = target[0] || 'field'
 
       const duplicateMessages: Record<string, string> = {
         name: '이미 존재하는 업체명입니다.',
         email: '이미 존재하는 이메일입니다.',
         phone: '이미 등록된 전화번호입니다.',
-        default: '이미 존재하는 데이터입니다.'
+        default: '이미 존재하는 데이터입니다.',
       }
 
       return NextResponse.json(
@@ -123,7 +124,7 @@ function handlePrismaError(error: PrismaClientKnownRequestError, requestInfo: an
           success: false,
           error: duplicateMessages[field] || duplicateMessages.default,
           field,
-          code: 'DUPLICATE_ENTRY'
+          code: 'DUPLICATE_ENTRY',
         },
         { status: 400 }
       )
@@ -134,7 +135,7 @@ function handlePrismaError(error: PrismaClientKnownRequestError, requestInfo: an
         {
           success: false,
           error: '요청한 데이터를 찾을 수 없습니다.',
-          code: 'RECORD_NOT_FOUND'
+          code: 'RECORD_NOT_FOUND',
         },
         { status: 404 }
       )
@@ -145,7 +146,7 @@ function handlePrismaError(error: PrismaClientKnownRequestError, requestInfo: an
         {
           success: false,
           error: '연결된 데이터로 인해 작업을 수행할 수 없습니다.',
-          code: 'FOREIGN_KEY_CONSTRAINT'
+          code: 'FOREIGN_KEY_CONSTRAINT',
         },
         { status: 400 }
       )
@@ -156,7 +157,7 @@ function handlePrismaError(error: PrismaClientKnownRequestError, requestInfo: an
         {
           success: false,
           error: '데이터베이스에 연결할 수 없습니다.',
-          code: 'DATABASE_CONNECTION_ERROR'
+          code: 'DATABASE_CONNECTION_ERROR',
         },
         { status: 503 }
       )
@@ -167,7 +168,7 @@ function handlePrismaError(error: PrismaClientKnownRequestError, requestInfo: an
         {
           success: false,
           error: '데이터베이스 작업 중 오류가 발생했습니다.',
-          code: 'DATABASE_ERROR'
+          code: 'DATABASE_ERROR',
         },
         { status: 500 }
       )

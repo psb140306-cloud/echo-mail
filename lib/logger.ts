@@ -15,7 +15,7 @@ export enum LogLevel {
   HTTP = 'http',
   VERBOSE = 'verbose',
   DEBUG = 'debug',
-  SILLY = 'silly'
+  SILLY = 'silly',
 }
 
 // 로그 카테고리
@@ -26,7 +26,7 @@ export enum LogCategory {
   API = 'api',
   AUTH = 'auth',
   DATABASE = 'database',
-  EXTERNAL = 'external'
+  EXTERNAL = 'external',
 }
 
 // 로그 메타데이터 인터페이스
@@ -48,7 +48,7 @@ export interface LogMetadata {
  */
 const customFormat = winston.format.combine(
   winston.format.timestamp({
-    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+    format: 'YYYY-MM-DD HH:mm:ss.SSS',
   }),
   winston.format.errors({ stack: true }),
   winston.format.json(),
@@ -61,7 +61,7 @@ const customFormat = winston.format.combine(
       category: category || LogCategory.SYSTEM,
       message,
       ...(requestId && { requestId }),
-      ...meta
+      ...meta,
     }
 
     return JSON.stringify(logObject)
@@ -74,7 +74,7 @@ const customFormat = winston.format.combine(
 const consoleFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.timestamp({
-    format: 'HH:mm:ss'
+    format: 'HH:mm:ss',
   }),
   winston.format.printf((info) => {
     const { timestamp, level, message, category, requestId, ...meta } = info
@@ -116,7 +116,7 @@ function createLogger(): winston.Logger {
     transports.push(
       new winston.transports.Console({
         level: logLevel,
-        format: consoleFormat
+        format: consoleFormat,
       })
     )
   }
@@ -132,7 +132,7 @@ function createLogger(): winston.Logger {
         format: customFormat,
         maxSize: '100m',
         maxFiles: '30d',
-        zippedArchive: true
+        zippedArchive: true,
       })
     )
 
@@ -145,7 +145,7 @@ function createLogger(): winston.Logger {
         format: customFormat,
         maxSize: '100m',
         maxFiles: '30d',
-        zippedArchive: true
+        zippedArchive: true,
       })
     )
 
@@ -159,7 +159,7 @@ function createLogger(): winston.Logger {
           format: customFormat,
           maxSize: '50m',
           maxFiles: '7d',
-          zippedArchive: true
+          zippedArchive: true,
         })
       )
     }
@@ -170,26 +170,30 @@ function createLogger(): winston.Logger {
     format: customFormat,
     defaultMeta: {
       service: 'echo-mail',
-      version: process.env.npm_package_version || '1.0.0'
+      version: process.env.npm_package_version || '1.0.0',
     },
     transports,
     // Unhandled exception/rejection 처리
-    exceptionHandlers: isDevelopment ? [] : [
-      new DailyRotateFile({
-        filename: path.join(logsDir, 'echo-mail-exceptions-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        maxSize: '50m',
-        maxFiles: '30d'
-      })
-    ],
-    rejectionHandlers: isDevelopment ? [] : [
-      new DailyRotateFile({
-        filename: path.join(logsDir, 'echo-mail-rejections-%DATE%.log'),
-        datePattern: 'YYYY-MM-DD',
-        maxSize: '50m',
-        maxFiles: '30d'
-      })
-    ]
+    exceptionHandlers: isDevelopment
+      ? []
+      : [
+          new DailyRotateFile({
+            filename: path.join(logsDir, 'echo-mail-exceptions-%DATE%.log'),
+            datePattern: 'YYYY-MM-DD',
+            maxSize: '50m',
+            maxFiles: '30d',
+          }),
+        ],
+    rejectionHandlers: isDevelopment
+      ? []
+      : [
+          new DailyRotateFile({
+            filename: path.join(logsDir, 'echo-mail-rejections-%DATE%.log'),
+            datePattern: 'YYYY-MM-DD',
+            maxSize: '50m',
+            maxFiles: '30d',
+          }),
+        ],
   })
 }
 
@@ -266,7 +270,7 @@ class EchoMailLogger {
     info: (message: string, meta?: LogMetadata) =>
       this.log(LogLevel.INFO, message, { ...meta, category: LogCategory.SYSTEM }),
     debug: (message: string, meta?: LogMetadata) =>
-      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.SYSTEM })
+      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.SYSTEM }),
   }
 
   email = {
@@ -277,7 +281,7 @@ class EchoMailLogger {
     info: (message: string, meta?: LogMetadata) =>
       this.log(LogLevel.INFO, message, { ...meta, category: LogCategory.EMAIL }),
     debug: (message: string, meta?: LogMetadata) =>
-      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.EMAIL })
+      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.EMAIL }),
   }
 
   notification = {
@@ -288,7 +292,7 @@ class EchoMailLogger {
     info: (message: string, meta?: LogMetadata) =>
       this.log(LogLevel.INFO, message, { ...meta, category: LogCategory.NOTIFICATION }),
     debug: (message: string, meta?: LogMetadata) =>
-      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.NOTIFICATION })
+      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.NOTIFICATION }),
   }
 
   api = {
@@ -299,7 +303,7 @@ class EchoMailLogger {
     info: (message: string, meta?: LogMetadata) =>
       this.log(LogLevel.INFO, message, { ...meta, category: LogCategory.API }),
     debug: (message: string, meta?: LogMetadata) =>
-      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.API })
+      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.API }),
   }
 
   database = {
@@ -310,7 +314,7 @@ class EchoMailLogger {
     info: (message: string, meta?: LogMetadata) =>
       this.log(LogLevel.INFO, message, { ...meta, category: LogCategory.DATABASE }),
     debug: (message: string, meta?: LogMetadata) =>
-      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.DATABASE })
+      this.log(LogLevel.DEBUG, message, { ...meta, category: LogCategory.DATABASE }),
   }
 
   /**
@@ -327,9 +331,9 @@ class EchoMailLogger {
         ...meta,
         category: LogCategory.SYSTEM,
         duration,
-        operation
+        operation,
       })
-    }
+    },
   }
 
   /**
@@ -349,7 +353,7 @@ class EchoMailLogger {
       method,
       endpoint: url,
       statusCode,
-      duration
+      duration,
     })
   }
 
@@ -362,8 +366,8 @@ class EchoMailLogger {
       error: {
         name: error.name,
         message: error.message,
-        stack: error.stack
-      }
+        stack: error.stack,
+      },
     })
   }
 
@@ -373,7 +377,7 @@ class EchoMailLogger {
   private log(level: LogLevel, message: string, meta?: LogMetadata): void {
     const logMeta = {
       ...meta,
-      ...(this.requestId && { requestId: this.requestId })
+      ...(this.requestId && { requestId: this.requestId }),
     }
 
     this.logger.log(level, message, logMeta)
@@ -386,7 +390,7 @@ class EchoMailLogger {
     return {
       write: (message: string) => {
         this.info(message.trim())
-      }
+      },
     }
   }
 }
@@ -418,7 +422,7 @@ class PerformanceTimer {
       ...additionalMeta,
       category: LogCategory.SYSTEM,
       duration,
-      operation: this.operation
+      operation: this.operation,
     })
 
     return duration
@@ -436,7 +440,7 @@ class PerformanceTimer {
       category: LogCategory.SYSTEM,
       duration,
       operation: this.operation,
-      checkpoint: checkpointName
+      checkpoint: checkpointName,
     })
 
     return duration
@@ -461,23 +465,17 @@ export function createLoggerMiddleware() {
         requestId,
         userAgent: req.headers['user-agent'],
         ip: req.ip || req.connection.remoteAddress,
-        userId: req.user?.id
+        userId: req.user?.id,
       }
     )
 
     // 응답 완료 시 로깅
     res.on('finish', () => {
       const duration = Date.now() - startTime
-      logger.httpRequest(
-        req.method,
-        req.originalUrl || req.url,
-        res.statusCode,
-        duration,
-        {
-          requestId,
-          contentLength: res.get('content-length')
-        }
-      )
+      logger.httpRequest(req.method, req.originalUrl || req.url, res.statusCode, duration, {
+        requestId,
+        contentLength: res.get('content-length'),
+      })
     })
 
     // req 객체에 로거 추가
@@ -491,8 +489,7 @@ export function createLoggerMiddleware() {
  * 요청 ID 생성
  */
 function generateRequestId(): string {
-  return Math.random().toString(36).substr(2, 9) +
-         Date.now().toString(36)
+  return Math.random().toString(36).substr(2, 9) + Date.now().toString(36)
 }
 
 /**
@@ -536,7 +533,7 @@ export const logUtils = {
       errorCount: 0,
       warningCount: 0,
       categoryStats: {} as Record<LogCategory, number>,
-      hourlyStats: []
+      hourlyStats: [],
     }
   },
 
@@ -550,9 +547,9 @@ export const logUtils = {
     // TODO: 오래된 로그 파일 아카이브 구현
     return {
       archivedFiles: [],
-      totalSize: 0
+      totalSize: 0,
     }
-  }
+  },
 }
 
 // 싱글톤 로거 인스턴스

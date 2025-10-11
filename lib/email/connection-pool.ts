@@ -24,7 +24,7 @@ export class ImapConnectionPool extends EventEmitter {
     minConnections: 1,
     maxConnections: 5,
     idleTimeout: 300000, // 5 minutes
-    connectionTimeout: 30000 // 30 seconds
+    connectionTimeout: 30000, // 30 seconds
   }
 
   constructor(
@@ -105,11 +105,13 @@ export class ImapConnectionPool extends EventEmitter {
       id: connectionId,
       inUse: false,
       lastUsed: new Date(),
-      created: new Date()
+      created: new Date(),
     }
 
     this.connections.set(connectionId, pooledConnection)
-    console.log(`📧 Added connection ${connectionId} to pool (${this.connections.size}/${maxConns})`)
+    console.log(
+      `📧 Added connection ${connectionId} to pool (${this.connections.size}/${maxConns})`
+    )
 
     return pooledConnection
   }
@@ -120,12 +122,14 @@ export class ImapConnectionPool extends EventEmitter {
 
     connection.client.disconnect()
     this.connections.delete(connectionId)
-    console.log(`🗑️ Removed connection ${connectionId} from pool (${this.connections.size} remaining)`)
+    console.log(
+      `🗑️ Removed connection ${connectionId} from pool (${this.connections.size} remaining)`
+    )
 
     // Create a new connection if we're below minimum
     const minConns = this.poolConfig.minConnections || this.defaultPoolConfig.minConnections
     if (this.connections.size < minConns) {
-      this.createConnection().catch(err => {
+      this.createConnection().catch((err) => {
         console.error('❌ Failed to create replacement connection:', err)
       })
     }
@@ -210,7 +214,7 @@ export class ImapConnectionPool extends EventEmitter {
     this.waitingQueue = []
 
     // Disconnect all connections
-    const disconnectPromises = Array.from(this.connections.values()).map(conn => {
+    const disconnectPromises = Array.from(this.connections.values()).map((conn) => {
       return new Promise<void>((resolve) => {
         conn.client.disconnect()
         resolve()
@@ -244,7 +248,7 @@ export class ImapConnectionPool extends EventEmitter {
       totalConnections: this.connections.size,
       activeConnections: activeCount,
       idleConnections: idleCount,
-      waitingQueue: this.waitingQueue.length
+      waitingQueue: this.waitingQueue.length,
     }
   }
 }

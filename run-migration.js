@@ -19,17 +19,16 @@ try {
   // 환경변수를 명시적으로 전달
   const env = {
     ...process.env,
-    DATABASE_URL: process.env.DATABASE_URL
+    DATABASE_URL: process.env.DATABASE_URL,
   }
 
   const result = execSync('npx prisma db push --skip-generate', {
     stdio: 'inherit',
     env: env,
-    timeout: 60000 // 1분 타임아웃
+    timeout: 60000, // 1분 타임아웃
   })
 
   console.log('✅ 마이그레이션 성공!')
-
 } catch (error) {
   console.error('❌ 마이그레이션 실패:', error.message)
 

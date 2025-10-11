@@ -7,9 +7,9 @@
  * =============================================================================
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { execSync } = require('child_process')
+const fs = require('fs')
+const path = require('path')
 
 // 색상 코드
 const colors = {
@@ -20,8 +20,8 @@ const colors = {
   yellow: '\x1b[33m',
   blue: '\x1b[34m',
   magenta: '\x1b[35m',
-  cyan: '\x1b[36m'
-};
+  cyan: '\x1b[36m',
+}
 
 // 로그 함수들
 const log = {
@@ -29,49 +29,49 @@ const log = {
   success: (msg) => console.log(`${colors.green}✓${colors.reset} ${msg}`),
   warning: (msg) => console.log(`${colors.yellow}⚠${colors.reset} ${msg}`),
   error: (msg) => console.log(`${colors.red}✗${colors.reset} ${msg}`),
-  title: (msg) => console.log(`${colors.cyan}${colors.bright}${msg}${colors.reset}`)
-};
+  title: (msg) => console.log(`${colors.cyan}${colors.bright}${msg}${colors.reset}`),
+}
 
 class VercelSetup {
   constructor() {
-    this.projectRoot = process.cwd();
-    this.vercelConfigPath = path.join(this.projectRoot, 'vercel.json');
-    this.envExamplePath = path.join(this.projectRoot, '.env.example');
+    this.projectRoot = process.cwd()
+    this.vercelConfigPath = path.join(this.projectRoot, 'vercel.json')
+    this.envExamplePath = path.join(this.projectRoot, '.env.example')
   }
 
   // Vercel CLI 설치 확인
   checkVercelCLI() {
     try {
-      execSync('vercel --version', { stdio: 'pipe' });
-      log.success('Vercel CLI가 설치되어 있습니다.');
-      return true;
+      execSync('vercel --version', { stdio: 'pipe' })
+      log.success('Vercel CLI가 설치되어 있습니다.')
+      return true
     } catch (error) {
-      log.error('Vercel CLI가 설치되지 않았습니다.');
-      return false;
+      log.error('Vercel CLI가 설치되지 않았습니다.')
+      return false
     }
   }
 
   // 로그인 상태 확인
   checkLoginStatus() {
     try {
-      const result = execSync('vercel whoami', { stdio: 'pipe', encoding: 'utf8' });
-      log.success(`Vercel에 로그인되어 있습니다: ${result.trim()}`);
-      return true;
+      const result = execSync('vercel whoami', { stdio: 'pipe', encoding: 'utf8' })
+      log.success(`Vercel에 로그인되어 있습니다: ${result.trim()}`)
+      return true
     } catch (error) {
-      log.warning('Vercel에 로그인되어 있지 않습니다.');
-      return false;
+      log.warning('Vercel에 로그인되어 있지 않습니다.')
+      return false
     }
   }
 
   // 프로젝트 링크 확인
   checkProjectLink() {
-    const vercelDir = path.join(this.projectRoot, '.vercel');
+    const vercelDir = path.join(this.projectRoot, '.vercel')
     if (fs.existsSync(vercelDir)) {
-      log.success('프로젝트가 Vercel에 연결되어 있습니다.');
-      return true;
+      log.success('프로젝트가 Vercel에 연결되어 있습니다.')
+      return true
     } else {
-      log.warning('프로젝트가 Vercel에 연결되어 있지 않습니다.');
-      return false;
+      log.warning('프로젝트가 Vercel에 연결되어 있지 않습니다.')
+      return false
     }
   }
 
@@ -110,12 +110,12 @@ KAKAO_ADMIN_KEY="your-kakao-admin-key"
 # Application
 APP_NAME="Echo Mail"
 APP_URL="https://your-domain.vercel.app"
-`;
+`
 
-      fs.writeFileSync(this.envExamplePath, envTemplate);
-      log.success('.env.example 파일이 생성되었습니다.');
+      fs.writeFileSync(this.envExamplePath, envTemplate)
+      log.success('.env.example 파일이 생성되었습니다.')
     } else {
-      log.info('.env.example 파일이 이미 존재합니다.');
+      log.info('.env.example 파일이 이미 존재합니다.')
     }
   }
 
@@ -123,26 +123,26 @@ APP_URL="https://your-domain.vercel.app"
   validateVercelConfig() {
     if (fs.existsSync(this.vercelConfigPath)) {
       try {
-        const config = JSON.parse(fs.readFileSync(this.vercelConfigPath, 'utf8'));
-        log.success('vercel.json 설정이 유효합니다.');
+        const config = JSON.parse(fs.readFileSync(this.vercelConfigPath, 'utf8'))
+        log.success('vercel.json 설정이 유효합니다.')
 
         // 주요 설정 확인
         if (config.framework === 'nextjs') {
-          log.info('Next.js 프레임워크로 설정되어 있습니다.');
+          log.info('Next.js 프레임워크로 설정되어 있습니다.')
         }
 
         if (config.regions && config.regions.includes('icn1')) {
-          log.info('한국 리전(ICN1)으로 설정되어 있습니다.');
+          log.info('한국 리전(ICN1)으로 설정되어 있습니다.')
         }
 
-        return true;
+        return true
       } catch (error) {
-        log.error('vercel.json 파일이 잘못된 형식입니다.');
-        return false;
+        log.error('vercel.json 파일이 잘못된 형식입니다.')
+        return false
       }
     } else {
-      log.error('vercel.json 파일이 없습니다.');
-      return false;
+      log.error('vercel.json 파일이 없습니다.')
+      return false
     }
   }
 
@@ -185,31 +185,31 @@ else
     vercel
     echo "✅ 프리뷰 배포가 완료되었습니다!"
 fi
-`;
+`
 
-    const deployScriptPath = path.join(this.projectRoot, 'scripts', 'deploy-vercel.sh');
+    const deployScriptPath = path.join(this.projectRoot, 'scripts', 'deploy-vercel.sh')
 
     // scripts 디렉토리가 없으면 생성
-    const scriptsDir = path.dirname(deployScriptPath);
+    const scriptsDir = path.dirname(deployScriptPath)
     if (!fs.existsSync(scriptsDir)) {
-      fs.mkdirSync(scriptsDir, { recursive: true });
+      fs.mkdirSync(scriptsDir, { recursive: true })
     }
 
-    fs.writeFileSync(deployScriptPath, deployScript);
+    fs.writeFileSync(deployScriptPath, deployScript)
 
     // 실행 권한 설정 (Unix 계열에서)
     try {
-      execSync(`chmod +x "${deployScriptPath}"`);
+      execSync(`chmod +x "${deployScriptPath}"`)
     } catch (error) {
       // Windows에서는 무시
     }
 
-    log.success('배포 스크립트가 생성되었습니다: scripts/deploy-vercel.sh');
+    log.success('배포 스크립트가 생성되었습니다: scripts/deploy-vercel.sh')
   }
 
   // 환경 변수 설정 가이드 출력
   showEnvSetupGuide() {
-    log.title('\n📋 Vercel 환경 변수 설정 가이드');
+    log.title('\n📋 Vercel 환경 변수 설정 가이드')
     console.log(`
 다음 명령어들을 사용하여 Vercel에 환경 변수를 설정하세요:
 
@@ -240,12 +240,12 @@ ${colors.cyan}환경 변수 관리:${colors.reset}
 - vercel env ls           # 환경 변수 목록 확인
 - vercel env rm VAR_NAME  # 환경 변수 삭제
 - vercel env pull         # 환경 변수 다운로드
-`);
+`)
   }
 
   // 배포 가이드 출력
   showDeploymentGuide() {
-    log.title('\n🚀 배포 가이드');
+    log.title('\n🚀 배포 가이드')
     console.log(`
 ${colors.cyan}배포 명령어:${colors.reset}
 - npm run vercel:preview   # 프리뷰 배포
@@ -263,48 +263,48 @@ ${colors.cyan}유용한 명령어:${colors.reset}
 - vercel domains           # 도메인 관리
 - vercel alias             # 도메인 별칭 설정
 - vercel inspect [URL]     # 배포 상세 정보
-`);
+`)
   }
 
   // 메인 실행 함수
   async run() {
-    log.title('🔧 Echo Mail Vercel 설정을 시작합니다...\n');
+    log.title('🔧 Echo Mail Vercel 설정을 시작합니다...\n')
 
     // 1. Vercel CLI 확인
     if (!this.checkVercelCLI()) {
-      log.error('npm install -g vercel 명령어로 Vercel CLI를 설치해주세요.');
-      return;
+      log.error('npm install -g vercel 명령어로 Vercel CLI를 설치해주세요.')
+      return
     }
 
     // 2. 로그인 상태 확인
     if (!this.checkLoginStatus()) {
-      log.info('vercel login 명령어로 로그인해주세요.');
+      log.info('vercel login 명령어로 로그인해주세요.')
     }
 
     // 3. 프로젝트 링크 확인
-    this.checkProjectLink();
+    this.checkProjectLink()
 
     // 4. 설정 파일들 생성/검증
-    this.createEnvTemplate();
-    this.validateVercelConfig();
-    this.createDeploymentScripts();
+    this.createEnvTemplate()
+    this.validateVercelConfig()
+    this.createDeploymentScripts()
 
     // 5. 가이드 출력
-    this.showEnvSetupGuide();
-    this.showDeploymentGuide();
+    this.showEnvSetupGuide()
+    this.showDeploymentGuide()
 
-    log.success('\n✨ Vercel 설정이 완료되었습니다!');
-    log.info('가이드를 참고하여 환경 변수를 설정하고 배포를 진행해주세요.');
+    log.success('\n✨ Vercel 설정이 완료되었습니다!')
+    log.info('가이드를 참고하여 환경 변수를 설정하고 배포를 진행해주세요.')
   }
 }
 
 // 스크립트 실행
 if (require.main === module) {
-  const setup = new VercelSetup();
+  const setup = new VercelSetup()
   setup.run().catch((error) => {
-    log.error(`설정 중 오류가 발생했습니다: ${error.message}`);
-    process.exit(1);
-  });
+    log.error(`설정 중 오류가 발생했습니다: ${error.message}`)
+    process.exit(1)
+  })
 }
 
-module.exports = VercelSetup;
+module.exports = VercelSetup

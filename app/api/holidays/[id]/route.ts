@@ -1,15 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
-import { createErrorResponse, createSuccessResponse, parseAndValidate } from '@/lib/utils/validation'
-
-const prisma = new PrismaClient()
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  parseAndValidate,
+} from '@/lib/utils/validation'
 
 // 공휴일 수정 스키마
 const updateHolidaySchema = z.object({
-  name: z.string().min(1, '공휴일명은 필수입니다').max(50, '공휴일명은 50자 이하여야 합니다').optional(),
-  isRecurring: z.boolean().optional()
+  name: z
+    .string()
+    .min(1, '공휴일명은 필수입니다')
+    .max(50, '공휴일명은 50자 이하여야 합니다')
+    .optional(),
+  isRecurring: z.boolean().optional(),
 })
 
 interface RouteParams {
@@ -19,10 +25,7 @@ interface RouteParams {
 }
 
 // 공휴일 상세 조회
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -31,7 +34,7 @@ export async function GET(
     }
 
     const holiday = await prisma.holiday.findUnique({
-      where: { id }
+      where: { id },
     })
 
     if (!holiday) {
@@ -41,7 +44,6 @@ export async function GET(
     logger.info(`공휴일 상세 조회: ${holiday.name}`, { id })
 
     return createSuccessResponse(holiday)
-
   } catch (error) {
     logger.error('공휴일 상세 조회 실패:', error)
     return createErrorResponse('공휴일 조회에 실패했습니다.')
@@ -49,10 +51,7 @@ export async function GET(
 }
 
 // 공휴일 수정 (날짜는 수정할 수 없음, 이름과 반복 여부만 수정 가능)
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -65,7 +64,7 @@ export async function PUT(
 
     // 공휴일 존재 확인
     const existingHoliday = await prisma.holiday.findUnique({
-      where: { id }
+      where: { id },
     })
 
     if (!existingHoliday) {
@@ -75,19 +74,15 @@ export async function PUT(
     // 공휴일 수정
     const updatedHoliday = await prisma.holiday.update({
       where: { id },
-      data
+      data,
     })
 
     logger.info(`공휴일 수정 완료: ${updatedHoliday.name}`, {
       id,
-      changes: data
+      changes: data,
     })
 
-    return createSuccessResponse(
-      updatedHoliday,
-      '공휴일 정보가 성공적으로 수정되었습니다.'
-    )
-
+    return createSuccessResponse(updatedHoliday, '공휴일 정보가 성공적으로 수정되었습니다.')
   } catch (error) {
     logger.error('공휴일 수정 실패:', error)
     return createErrorResponse('공휴일 수정에 실패했습니다.')
@@ -95,10 +90,7 @@ export async function PUT(
 }
 
 // 공휴일 삭제
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -108,7 +100,7 @@ export async function DELETE(
 
     // 공휴일 존재 확인
     const existingHoliday = await prisma.holiday.findUnique({
-      where: { id }
+      where: { id },
     })
 
     if (!existingHoliday) {
@@ -117,7 +109,7 @@ export async function DELETE(
 
     // 공휴일 삭제
     await prisma.holiday.delete({
-      where: { id }
+      where: { id },
     })
 
     logger.info(`공휴일 삭제 완료: ${existingHoliday.name}`, { id })
@@ -125,11 +117,10 @@ export async function DELETE(
     return createSuccessResponse(
       {
         deletedHoliday: existingHoliday.name,
-        deletedDate: existingHoliday.date.toISOString().split('T')[0]
+        deletedDate: existingHoliday.date.toISOString().split('T')[0],
       },
       `공휴일 '${existingHoliday.name}'이(가) 성공적으로 삭제되었습니다.`
     )
-
   } catch (error) {
     logger.error('공휴일 삭제 실패:', error)
     return createErrorResponse('공휴일 삭제에 실패했습니다.')

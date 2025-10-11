@@ -80,7 +80,7 @@ export class UnregisteredCompanyHandler {
     try {
       logger.info('Processing unregistered company email', {
         senderEmail,
-        subject: emailContent.subject
+        subject: emailContent.subject,
       })
 
       // 1. 기존 미등록 업체 정보 조회 또는 생성
@@ -113,19 +113,18 @@ export class UnregisteredCompanyHandler {
       await this.notifyAdminIfNeeded(companyInfo, result)
 
       return result
-
     } catch (error) {
       await globalErrorHandler.handleError(
         createEchoMailError.companyNotRegistered({
           senderEmail,
-          subject: emailContent.subject
+          subject: emailContent.subject,
         }),
         { companyId: senderEmail }
       )
 
       return {
         action: 'BLOCKED',
-        companyInfo: undefined
+        companyInfo: undefined,
       }
     }
   }
@@ -149,12 +148,12 @@ export class UnregisteredCompanyHandler {
       extractedFromEmail: {
         subject: emailContent.subject,
         body: emailContent.body?.substring(0, 1000), // 처음 1000자만 저장
-        attachments: emailContent.attachments?.map(att => att.name) || []
+        attachments: emailContent.attachments?.map((att) => att.name) || [],
       },
       firstSeenAt: now,
       lastSeenAt: now,
       emailCount: 1,
-      suggestedActions: []
+      suggestedActions: [],
     }
   }
 
@@ -176,7 +175,7 @@ export class UnregisteredCompanyHandler {
     companyInfo.extractedFromEmail = {
       subject: emailContent.subject,
       body: emailContent.body?.substring(0, 1000),
-      attachments: emailContent.attachments?.map(att => att.name) || []
+      attachments: emailContent.attachments?.map((att) => att.name) || [],
     }
 
     return companyInfo
@@ -216,7 +215,7 @@ export class UnregisteredCompanyHandler {
 
     // 가장 신뢰도가 높은 결과 반환
     return results.reduce(
-      (best, current) => current.confidence > best.confidence ? current : best,
+      (best, current) => (current.confidence > best.confidence ? current : best),
       { confidence: 0, source: 'SUBJECT' as const }
     )
   }
@@ -233,7 +232,7 @@ export class UnregisteredCompanyHandler {
       // 주식회사 패턴
       /주식회사\s*([가-힣A-Za-z0-9\s]+)/g,
       // 일반적인 회사 패턴
-      /([가-힣A-Za-z0-9\s]+)(?:회사|상사|기업|코퍼레이션|Corp|Inc|Ltd)/g
+      /([가-힣A-Za-z0-9\s]+)(?:회사|상사|기업|코퍼레이션|Corp|Inc|Ltd)/g,
     ]
 
     for (const pattern of patterns) {
@@ -244,7 +243,7 @@ export class UnregisteredCompanyHandler {
           return {
             companyName,
             confidence: 0.7,
-            source: 'SUBJECT'
+            source: 'SUBJECT',
           }
         }
       }
@@ -266,7 +265,7 @@ export class UnregisteredCompanyHandler {
       // 이메일 서명의 회사명
       /^([가-힣A-Za-z0-9\s()]+)(?:\s*회사|\s*상사|\s*기업)$/gm,
       // 발신자 정보의 회사명
-      /보내는\s*(?:곳|회사)[\s:]*([가-힣A-Za-z0-9\s()]+)/g
+      /보내는\s*(?:곳|회사)[\s:]*([가-힣A-Za-z0-9\s()]+)/g,
     ]
 
     for (const pattern of patterns) {
@@ -277,7 +276,7 @@ export class UnregisteredCompanyHandler {
           return {
             companyName,
             confidence: 0.6,
-            source: 'BODY'
+            source: 'BODY',
           }
         }
       }
@@ -300,7 +299,7 @@ export class UnregisteredCompanyHandler {
       // 파일명에 포함된 업체명
       /([가-힣A-Za-z0-9]+)(?:_|-|\s)*(?:발주|주문|견적|invoice)/i,
       // 파일명 자체가 업체명인 경우
-      /^([가-힣A-Za-z0-9\s()]{2,20})(?:\.(pdf|xlsx?|docx?|hwp))?$/i
+      /^([가-힣A-Za-z0-9\s()]{2,20})(?:\.(pdf|xlsx?|docx?|hwp))?$/i,
     ]
 
     for (const pattern of patterns) {
@@ -311,7 +310,7 @@ export class UnregisteredCompanyHandler {
           return {
             companyName,
             confidence: 0.5,
-            source: 'ATTACHMENT'
+            source: 'ATTACHMENT',
           }
         }
       }
@@ -340,8 +339,8 @@ export class UnregisteredCompanyHandler {
         confidence: extractionResult.confidence,
         metadata: {
           companyName: extractionResult.companyName,
-          source: extractionResult.source
-        }
+          source: extractionResult.source,
+        },
       })
     }
 
@@ -353,8 +352,8 @@ export class UnregisteredCompanyHandler {
         confidence: extractionResult.confidence,
         metadata: {
           reason: this.getManualReviewReason(companyInfo, extractionResult),
-          emailCount: companyInfo.emailCount
-        }
+          emailCount: companyInfo.emailCount,
+        },
       })
     }
 
@@ -365,8 +364,8 @@ export class UnregisteredCompanyHandler {
         description: '스팸 또는 악성 이메일로 의심',
         confidence: 0.9,
         metadata: {
-          reason: '과도한 이메일 발송 또는 의심스러운 패턴'
-        }
+          reason: '과도한 이메일 발송 또는 의심스러운 패턴',
+        },
       })
     }
 
@@ -378,8 +377,8 @@ export class UnregisteredCompanyHandler {
         confidence: 0.8,
         metadata: {
           priority: this.getNotificationPriority(companyInfo),
-          emailCount: companyInfo.emailCount
-        }
+          emailCount: companyInfo.emailCount,
+        },
       })
     }
 
@@ -389,7 +388,7 @@ export class UnregisteredCompanyHandler {
         type: 'MANUAL_REVIEW',
         description: '기본 수동 검토',
         confidence: 0.3,
-        metadata: {}
+        metadata: {},
       })
     }
 
@@ -419,9 +418,10 @@ export class UnregisteredCompanyHandler {
     extractionResult: CompanyExtractionResult
   ): boolean {
     return (
-      extractionResult.confidence >= this.reviewThreshold &&
-      extractionResult.confidence < this.autoRegisterThreshold
-    ) || companyInfo.emailCount >= 3
+      (extractionResult.confidence >= this.reviewThreshold &&
+        extractionResult.confidence < this.autoRegisterThreshold) ||
+      companyInfo.emailCount >= 3
+    )
   }
 
   /**
@@ -432,7 +432,8 @@ export class UnregisteredCompanyHandler {
     const daysSinceFirst = Math.floor(
       (Date.now() - companyInfo.firstSeenAt.getTime()) / (1000 * 60 * 60 * 24)
     )
-    const emailsPerDay = daysSinceFirst > 0 ? companyInfo.emailCount / daysSinceFirst : companyInfo.emailCount
+    const emailsPerDay =
+      daysSinceFirst > 0 ? companyInfo.emailCount / daysSinceFirst : companyInfo.emailCount
 
     return emailsPerDay > 10
   }
@@ -488,8 +489,8 @@ export class UnregisteredCompanyHandler {
     registrationResult?: any
   }> {
     // 가장 높은 신뢰도의 액션 실행
-    const primaryAction = actions.reduce(
-      (best, current) => current.confidence > best.confidence ? current : best
+    const primaryAction = actions.reduce((best, current) =>
+      current.confidence > best.confidence ? current : best
     )
 
     switch (primaryAction.type) {
@@ -498,14 +499,14 @@ export class UnregisteredCompanyHandler {
         return {
           action: 'AUTO_REGISTERED',
           companyInfo,
-          registrationResult
+          registrationResult,
         }
 
       case 'BLOCK':
         await this.blockCompany(companyInfo)
         return {
           action: 'BLOCKED',
-          companyInfo
+          companyInfo,
         }
 
       case 'MANUAL_REVIEW':
@@ -513,7 +514,7 @@ export class UnregisteredCompanyHandler {
         await this.queueForReview(companyInfo)
         return {
           action: 'QUEUED_FOR_REVIEW',
-          companyInfo
+          companyInfo,
         }
     }
   }
@@ -526,7 +527,7 @@ export class UnregisteredCompanyHandler {
       // TODO: 실제 업체 등록 로직 구현
       logger.info('Auto-registering company', {
         email: companyInfo.email,
-        companyName: companyInfo.companyName
+        companyName: companyInfo.companyName,
       })
 
       // 기본 정보로 업체 등록
@@ -536,7 +537,7 @@ export class UnregisteredCompanyHandler {
         region: '기타', // 기본값
         isActive: true,
         autoRegistered: true,
-        registeredAt: new Date()
+        registeredAt: new Date(),
       }
 
       // 기본 담당자 정보 생성
@@ -546,19 +547,18 @@ export class UnregisteredCompanyHandler {
         phone: '',
         isActive: true,
         smsEnabled: false,
-        kakaoEnabled: false
+        kakaoEnabled: false,
       }
 
       return {
         company: newCompany,
         contact: defaultContact,
-        success: true
+        success: true,
       }
-
     } catch (error) {
       logger.error('Auto-registration failed', {
         email: companyInfo.email,
-        error: error
+        error: error,
       })
 
       throw error
@@ -573,16 +573,15 @@ export class UnregisteredCompanyHandler {
       // TODO: 차단 목록에 추가
       logger.warn('Blocking company', {
         email: companyInfo.email,
-        emailCount: companyInfo.emailCount
+        emailCount: companyInfo.emailCount,
       })
 
       // 메모리에서 제거
       this.unregisteredCompanies.delete(companyInfo.email)
-
     } catch (error) {
       logger.error('Failed to block company', {
         email: companyInfo.email,
-        error: error
+        error: error,
       })
     }
   }
@@ -596,13 +595,12 @@ export class UnregisteredCompanyHandler {
       logger.info('Queued company for manual review', {
         email: companyInfo.email,
         companyName: companyInfo.companyName,
-        emailCount: companyInfo.emailCount
+        emailCount: companyInfo.emailCount,
       })
-
     } catch (error) {
       logger.error('Failed to queue company for review', {
         email: companyInfo.email,
-        error: error
+        error: error,
       })
     }
   }
@@ -615,7 +613,7 @@ export class UnregisteredCompanyHandler {
     result: any
   ): Promise<void> {
     const needsNotification = companyInfo.suggestedActions.some(
-      action => action.type === 'NOTIFY_ADMIN'
+      (action) => action.type === 'NOTIFY_ADMIN'
     )
 
     if (needsNotification) {
@@ -627,7 +625,7 @@ export class UnregisteredCompanyHandler {
           companyName: companyInfo.companyName,
           emailCount: companyInfo.emailCount,
           action: result.action,
-          priority
+          priority,
         }),
         { companyId: companyInfo.email }
       )
@@ -650,7 +648,7 @@ export class UnregisteredCompanyHandler {
 
     return {
       companies,
-      total: this.unregisteredCompanies.size
+      total: this.unregisteredCompanies.size,
     }
   }
 
@@ -681,18 +679,17 @@ export class UnregisteredCompanyHandler {
       // TODO: 실제 업체 등록 로직
       logger.info('Manually approving unregistered company', {
         email,
-        companyData
+        companyData,
       })
 
       // 미등록 업체 목록에서 제거
       this.unregisteredCompanies.delete(email)
 
       return { success: true }
-
     } catch (error) {
       logger.error('Failed to approve unregistered company', {
         email,
-        error
+        error,
       })
       throw error
     }
@@ -707,11 +704,10 @@ export class UnregisteredCompanyHandler {
 
       // 차단 목록에 추가하고 미등록 목록에서 제거
       await this.blockCompany({ email } as UnregisteredCompanyInfo)
-
     } catch (error) {
       logger.error('Failed to reject unregistered company', {
         email,
-        error
+        error,
       })
       throw error
     }

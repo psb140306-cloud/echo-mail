@@ -50,13 +50,13 @@ export class ImapClient extends EventEmitter {
       port: config.port,
       tls: config.secure || config.tls,
       tlsOptions: config.tlsOptions || {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
       },
       keepalive: {
         interval: 10000,
         idleInterval: 30000,
-        forceNoop: true
-      }
+        forceNoop: true,
+      },
     })
 
     this.setupEventHandlers()
@@ -107,7 +107,9 @@ export class ImapClient extends EventEmitter {
 
     this.reconnectAttempts++
     const delay = this.reconnectDelay * this.reconnectAttempts
-    console.log(`⏳ Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
+    console.log(
+      `⏳ Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+    )
 
     this.reconnectTimer = setTimeout(() => {
       this.connect()
@@ -176,7 +178,7 @@ export class ImapClient extends EventEmitter {
 
       const fetch = this.imap.fetch(results, {
         bodies: '',
-        markSeen: true
+        markSeen: true,
       })
 
       fetch.on('message', (msg, seqno) => {
@@ -221,7 +223,7 @@ export class ImapClient extends EventEmitter {
         date: parsed.date || new Date(),
         text: parsed.text || undefined,
         html: parsed.html || undefined,
-        attachments: this.processAttachments(parsed.attachments)
+        attachments: this.processAttachments(parsed.attachments),
       }
 
       console.log(`📧 Parsed email: ${email.subject} from ${email.from}`)
@@ -265,7 +267,7 @@ export class ImapClient extends EventEmitter {
       filename: att.filename || 'unnamed',
       contentType: att.contentType || 'application/octet-stream',
       size: att.size || 0,
-      content: att.content
+      content: att.content,
     }))
   }
 
@@ -281,7 +283,7 @@ export class ImapClient extends EventEmitter {
     return {
       connected: this.connected,
       reconnectAttempts: this.reconnectAttempts,
-      maxReconnectAttempts: this.maxReconnectAttempts
+      maxReconnectAttempts: this.maxReconnectAttempts,
     }
   }
 }
