@@ -38,7 +38,7 @@ export function MobileTable({
   items,
   loading,
   emptyMessage = '데이터가 없습니다.',
-  className
+  className,
 }: MobileTableProps) {
   if (loading) {
     return (
@@ -62,9 +62,7 @@ export function MobileTable({
     return (
       <Card>
         <CardContent className="p-8">
-          <div className="text-center text-muted-foreground">
-            {emptyMessage}
-          </div>
+          <div className="text-center text-muted-foreground">{emptyMessage}</div>
         </CardContent>
       </Card>
     )
@@ -85,13 +83,9 @@ export function MobileTable({
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm leading-none mb-1 truncate">
-                  {item.title}
-                </h3>
+                <h3 className="font-medium text-sm leading-none mb-1 truncate">{item.title}</h3>
                 {item.subtitle && (
-                  <p className="text-sm text-muted-foreground truncate">
-                    {item.subtitle}
-                  </p>
+                  <p className="text-sm text-muted-foreground truncate">{item.subtitle}</p>
                 )}
               </div>
               {item.status && (
@@ -118,17 +112,11 @@ export function MobileTable({
                 {item.metadata.map((meta, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     {meta.icon && (
-                      <span className="text-muted-foreground shrink-0">
-                        {meta.icon}
-                      </span>
+                      <span className="text-muted-foreground shrink-0">{meta.icon}</span>
                     )}
                     <div className="min-w-0 flex-1">
-                      <span className="text-muted-foreground block">
-                        {meta.label}
-                      </span>
-                      <span className="font-medium block truncate">
-                        {meta.value}
-                      </span>
+                      <span className="text-muted-foreground block">{meta.label}</span>
+                      <span className="font-medium block truncate">{meta.value}</span>
                     </div>
                   </div>
                 ))}
@@ -136,9 +124,7 @@ export function MobileTable({
             )}
 
             {item.actions && (
-              <div className="flex items-center justify-end space-x-2 pt-2">
-                {item.actions}
-              </div>
+              <div className="flex items-center justify-end space-x-2 pt-2">{item.actions}</div>
             )}
           </CardContent>
         </Card>
@@ -153,11 +139,7 @@ interface MobileCardListProps {
 }
 
 export function MobileCardList({ children, className }: MobileCardListProps) {
-  return (
-    <div className={cn('space-y-3 md:hidden', className)}>
-      {children}
-    </div>
-  )
+  return <div className={cn('space-y-3 md:hidden', className)}>{children}</div>
 }
 
 interface MobileCardProps {
@@ -168,33 +150,19 @@ interface MobileCardProps {
   className?: string
 }
 
-export function MobileCard({
-  title,
-  subtitle,
-  children,
-  actions,
-  className
-}: MobileCardProps) {
+export function MobileCard({ title, subtitle, children, actions, className }: MobileCardProps) {
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="text-base leading-none">{title}</CardTitle>
-            {subtitle && (
-              <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
-            )}
+            {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
           </div>
-          {actions && (
-            <div className="flex items-center space-x-2">
-              {actions}
-            </div>
-          )}
+          {actions && <div className="flex items-center space-x-2">{actions}</div>}
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        {children}
-      </CardContent>
+      <CardContent className="pt-0">{children}</CardContent>
     </Card>
   )
 }

@@ -7,7 +7,7 @@ import {
   EmailFormatValidator,
   EmailErrorType,
   EmailWarningType,
-  ErrorSeverity
+  ErrorSeverity,
 } from '@/lib/email-format-validator'
 
 describe('EmailFormatValidator', () => {
@@ -27,11 +27,11 @@ describe('EmailFormatValidator', () => {
           {
             name: '발주서_ABC회사.pdf',
             content: Buffer.from('%PDF-1.4 test content'),
-            contentType: 'application/pdf'
-          }
+            contentType: 'application/pdf',
+          },
         ],
         size: 1024 * 500, // 500KB
-        receivedAt: new Date()
+        receivedAt: new Date(),
       }
 
       const result = await validator.validateEmail(emailData)
@@ -47,7 +47,7 @@ describe('EmailFormatValidator', () => {
       const emailData = {
         from: 'invalid-email',
         subject: '테스트',
-        body: '테스트 내용'
+        body: '테스트 내용',
       }
 
       const result = await validator.validateEmail(emailData)
@@ -56,7 +56,7 @@ describe('EmailFormatValidator', () => {
       expect(result.errors).toContainEqual(
         expect.objectContaining({
           type: EmailErrorType.INVALID_SENDER,
-          severity: 'CRITICAL'
+          severity: 'CRITICAL',
         })
       )
     })
@@ -66,7 +66,7 @@ describe('EmailFormatValidator', () => {
         from: 'test@company.com',
         subject: '',
         body: '',
-        html: ''
+        html: '',
       }
 
       const result = await validator.validateEmail(emailData)
@@ -74,7 +74,7 @@ describe('EmailFormatValidator', () => {
       expect(result.errors).toContainEqual(
         expect.objectContaining({
           type: EmailErrorType.EMPTY_CONTENT,
-          severity: 'HIGH'
+          severity: 'HIGH',
         })
       )
     })
@@ -84,7 +84,7 @@ describe('EmailFormatValidator', () => {
         from: 'test@company.com',
         subject: '테스트',
         body: '테스트',
-        size: 30 * 1024 * 1024 // 30MB (제한: 25MB)
+        size: 30 * 1024 * 1024, // 30MB (제한: 25MB)
       }
 
       const result = await validator.validateEmail(emailData)
@@ -92,7 +92,7 @@ describe('EmailFormatValidator', () => {
       expect(result.errors).toContainEqual(
         expect.objectContaining({
           type: EmailErrorType.OVERSIZED_EMAIL,
-          severity: 'HIGH'
+          severity: 'HIGH',
         })
       )
     })
@@ -106,14 +106,14 @@ describe('EmailFormatValidator', () => {
           {
             name: 'order.pdf',
             content: Buffer.from('%PDF-1.4'),
-            contentType: 'application/pdf'
+            contentType: 'application/pdf',
           },
           {
             name: 'suspicious.exe',
             content: Buffer.from('MZ'), // PE 헤더
-            contentType: 'application/octet-stream'
-          }
-        ]
+            contentType: 'application/octet-stream',
+          },
+        ],
       }
 
       const result = await validator.validateEmail(emailData)
@@ -121,7 +121,7 @@ describe('EmailFormatValidator', () => {
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
           type: EmailWarningType.UNUSUAL_FORMATTING,
-          field: 'attachment'
+          field: 'attachment',
         })
       )
     })
@@ -130,7 +130,7 @@ describe('EmailFormatValidator', () => {
       const emailData = {
         from: 'test@company.com',
         subject: '[긴급] 주문 요청서 - ABC 회사',
-        body: '주문 내용입니다.'
+        body: '주문 내용입니다.',
       }
 
       const result = await validator.validateEmail(emailData)
@@ -142,14 +142,14 @@ describe('EmailFormatValidator', () => {
       const emailData = {
         from: 'test@suspicious.com',
         subject: '!!!무료 당첨!!! 클릭하세요!!!',
-        body: '무료로 돈을 받으세요. 여기를 클릭하세요!'
+        body: '무료로 돈을 받으세요. 여기를 클릭하세요!',
       }
 
       const result = await validator.validateEmail(emailData)
 
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
-          type: EmailWarningType.POTENTIAL_SPAM
+          type: EmailWarningType.POTENTIAL_SPAM,
         })
       )
     })
@@ -158,7 +158,7 @@ describe('EmailFormatValidator', () => {
       const emailData = {
         from: 'test@10minutemail.com',
         subject: '테스트',
-        body: '테스트 내용'
+        body: '테스트 내용',
       }
 
       const result = await validator.validateEmail(emailData)
@@ -166,7 +166,7 @@ describe('EmailFormatValidator', () => {
       expect(result.errors).toContainEqual(
         expect.objectContaining({
           type: EmailErrorType.INVALID_SENDER,
-          field: 'from'
+          field: 'from',
         })
       )
     })
@@ -183,21 +183,21 @@ describe('EmailFormatValidator', () => {
       expect(result1).toEqual({
         email: 'hong@company.com',
         name: '홍길동',
-        domain: 'company.com'
+        domain: 'company.com',
       })
 
       const result2 = extractSenderInfo('ABC 회사 <info@abc.co.kr>')
       expect(result2).toEqual({
         email: 'info@abc.co.kr',
         name: 'ABC 회사',
-        domain: 'abc.co.kr'
+        domain: 'abc.co.kr',
       })
 
       const result3 = extractSenderInfo('simple@test.com')
       expect(result3).toEqual({
         email: 'simple@test.com',
         name: undefined,
-        domain: 'test.com'
+        domain: 'test.com',
       })
     })
   })
@@ -289,23 +289,21 @@ describe('EmailFormatValidator', () => {
         businessData: {
           orderInfo: { confidence: 0.8 },
           companyInfo: { confidence: 0.9 },
-          deliveryInfo: { confidence: 0.7 }
-        }
+          deliveryInfo: { confidence: 0.7 },
+        },
       })
       expect(confidence1).toBeGreaterThan(0.7)
 
       // Critical errors
-      const confidence2 = calculateConfidence([
-        { severity: 'CRITICAL' }
-      ], [], undefined)
+      const confidence2 = calculateConfidence([{ severity: 'CRITICAL' }], [], undefined)
       expect(confidence2).toBeLessThan(0.2)
 
       // Multiple warnings
-      const confidence3 = calculateConfidence([], [
-        { type: 'UNCLEAR_SUBJECT' },
-        { type: 'UNUSUAL_FORMATTING' },
-        { type: 'POTENTIAL_SPAM' }
-      ], undefined)
+      const confidence3 = calculateConfidence(
+        [],
+        [{ type: 'UNCLEAR_SUBJECT' }, { type: 'UNUSUAL_FORMATTING' }, { type: 'POTENTIAL_SPAM' }],
+        undefined
+      )
       expect(confidence3).toBeLessThan(0.8)
     })
   })
@@ -316,7 +314,7 @@ describe('EmailFormatValidator', () => {
         from: 'test@company.com',
         subject: null,
         body: undefined,
-        attachments: null
+        attachments: null,
       } as any
 
       const result = await validator.validateEmail(emailData)
@@ -335,7 +333,7 @@ describe('EmailFormatValidator', () => {
       const emailData = {
         from: 'test@company.com',
         subject: longSubject,
-        body: longContent
+        body: longContent,
       }
 
       const result = await validator.validateEmail(emailData)
@@ -343,14 +341,14 @@ describe('EmailFormatValidator', () => {
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
           type: EmailWarningType.UNUSUAL_FORMATTING,
-          field: 'subject'
+          field: 'subject',
         })
       )
 
       expect(result.warnings).toContainEqual(
         expect.objectContaining({
           type: EmailWarningType.UNUSUAL_FORMATTING,
-          field: 'content'
+          field: 'content',
         })
       )
     })
@@ -364,16 +362,16 @@ describe('EmailFormatValidator', () => {
           {
             name: 'order.pdf',
             content: Buffer.from('Not a real PDF content'),
-            contentType: 'application/pdf'
-          }
-        ]
+            contentType: 'application/pdf',
+          },
+        ],
       }
 
       const result = await validator.validateEmail(emailData)
 
       expect(result.errors).toContainEqual(
         expect.objectContaining({
-          type: EmailErrorType.CORRUPTED_ATTACHMENT
+          type: EmailErrorType.CORRUPTED_ATTACHMENT,
         })
       )
     })
@@ -389,9 +387,9 @@ describe('EmailFormatValidator', () => {
           {
             name: 'large_order.pdf',
             content: Buffer.alloc(1024 * 1024), // 1MB
-            contentType: 'application/pdf'
-          }
-        ]
+            contentType: 'application/pdf',
+          },
+        ],
       }
 
       const startTime = Date.now()

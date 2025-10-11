@@ -14,17 +14,17 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Echo Mail Blue Primary */
-    --primary: 217.2 91.2% 59.8%;
+    /* Echo Mail Blue Primary - WCAG AA 대비율 개선 */
+    --primary: 217.2 91.2% 53%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 215.4 16.3% 44%; /* WCAG AA 대비율 개선 */
 
-    --accent: 217.2 91.2% 59.8%;
+    --accent: 217.2 91.2% 53%; /* WCAG AA 대비율 개선 */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
@@ -96,6 +96,35 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* 접근성: 포커스 링 스타일 개선 */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* 접근성: 스크린 리더 전용 클래스 */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
   }
 }
 

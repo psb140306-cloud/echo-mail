@@ -32,7 +32,7 @@ export class MailProcessor {
       logger.info('메일 처리 시작', {
         from: email.from,
         subject: email.subject,
-        messageId: email.messageId
+        messageId: email.messageId,
       })
 
       // 1. 업체 매칭
@@ -47,7 +47,7 @@ export class MailProcessor {
         return {
           success: true,
           action: 'ignored',
-          reason: '등록되지 않은 업체'
+          reason: '등록되지 않은 업체',
         }
       }
 
@@ -57,13 +57,13 @@ export class MailProcessor {
       if (!isValidOrder) {
         logger.info('발주서 검증 실패', {
           from: email.from,
-          company: matchResult.companyName
+          company: matchResult.companyName,
         })
 
         return {
           success: true,
           action: 'ignored',
-          reason: '발주서 검증 실패'
+          reason: '발주서 검증 실패',
         }
       }
 
@@ -75,7 +75,7 @@ export class MailProcessor {
 
       logger.info('메일 처리 완료', {
         company: matchResult.companyName,
-        action: 'processed'
+        action: 'processed',
       })
 
       return {
@@ -84,17 +84,16 @@ export class MailProcessor {
         company: {
           id: matchResult.companyId!,
           name: matchResult.companyName!,
-          email: matchResult.companyEmail!
-        }
+          email: matchResult.companyEmail!,
+        },
       }
-
     } catch (error) {
       logger.error('메일 처리 중 오류 발생:', error)
 
       return {
         success: false,
         action: 'error',
-        reason: error instanceof Error ? error.message : '알 수 없는 오류'
+        reason: error instanceof Error ? error.message : '알 수 없는 오류',
       }
     }
   }
@@ -105,8 +104,8 @@ export class MailProcessor {
       const exactMatch = await prisma.company.findFirst({
         where: {
           email: email.from,
-          isActive: true
-        }
+          isActive: true,
+        },
       })
 
       if (exactMatch) {
@@ -116,7 +115,7 @@ export class MailProcessor {
           companyName: exactMatch.name,
           companyEmail: exactMatch.email,
           matchType: 'exact',
-          confidence: 1.0
+          confidence: 1.0,
         }
       }
 
@@ -126,10 +125,10 @@ export class MailProcessor {
         const domainMatch = await prisma.company.findFirst({
           where: {
             email: {
-              endsWith: `@${fromDomain}`
+              endsWith: `@${fromDomain}`,
             },
-            isActive: true
-          }
+            isActive: true,
+          },
         })
 
         if (domainMatch) {
@@ -139,7 +138,7 @@ export class MailProcessor {
             companyName: domainMatch.name,
             companyEmail: domainMatch.email,
             matchType: 'domain',
-            confidence: 0.8
+            confidence: 0.8,
           }
         }
       }
@@ -147,7 +146,7 @@ export class MailProcessor {
       // 3. 키워드 매칭 (제목이나 본문에서 업체명 찾기)
       const companies = await prisma.company.findMany({
         where: { isActive: true },
-        select: { id: true, name: true, email: true }
+        select: { id: true, name: true, email: true },
       })
 
       const searchText = `${email.subject} ${email.body.text || ''}`.toLowerCase()
@@ -156,7 +155,7 @@ export class MailProcessor {
         const companyKeywords = [
           company.name,
           company.name.replace(/주식회사|㈜|\(주\)|유한회사|㈜/g, ''),
-          company.email.split('@')[0]
+          company.email.split('@')[0],
         ]
 
         for (const keyword of companyKeywords) {
@@ -167,7 +166,7 @@ export class MailProcessor {
               companyName: company.name,
               companyEmail: company.email,
               matchType: 'keyword',
-              confidence: 0.6
+              confidence: 0.6,
             }
           }
         }
@@ -177,15 +176,14 @@ export class MailProcessor {
       return {
         isMatch: false,
         matchType: 'none',
-        confidence: 0
+        confidence: 0,
       }
-
     } catch (error) {
       logger.error('업체 매칭 중 오류:', error)
       return {
         isMatch: false,
         matchType: 'none',
-        confidence: 0
+        confidence: 0,
       }
     }
   }
@@ -197,7 +195,7 @@ export class MailProcessor {
     try {
       // 시스템 설정에서 메일 확인 옵션 가져오기
       const mailCheckOption = await prisma.systemConfig.findUnique({
-        where: { key: 'MAIL_CHECK_OPTION' }
+        where: { key: 'MAIL_CHECK_OPTION' },
       })
 
       const checkOption = mailCheckOption?.value || 'simple'
@@ -222,7 +220,6 @@ export class MailProcessor {
         default:
           return true
       }
-
     } catch (error) {
       logger.error('발주서 검증 중 오류:', error)
       return false
@@ -231,16 +228,22 @@ export class MailProcessor {
 
   private checkKeywords(email: ProcessedEmail): boolean {
     const orderKeywords = [
-      '발주', '주문', '구매', '납품', '요청',
-      'order', 'purchase', 'buy', '구매요청서',
-      '발주서', '주문서'
+      '발주',
+      '주문',
+      '구매',
+      '납품',
+      '요청',
+      'order',
+      'purchase',
+      'buy',
+      '구매요청서',
+      '발주서',
+      '주문서',
     ]
 
     const searchText = `${email.subject} ${email.body.text || ''}`.toLowerCase()
 
-    return orderKeywords.some(keyword =>
-      searchText.includes(keyword.toLowerCase())
-    )
+    return orderKeywords.some((keyword) => searchText.includes(keyword.toLowerCase()))
   }
 
   private checkAttachments(email: ProcessedEmail): boolean {
@@ -250,11 +253,10 @@ export class MailProcessor {
 
     const validExtensions = ['.pdf', '.xls', '.xlsx', '.doc', '.docx', '.hwp']
 
-    return email.attachments.some(attachment =>
-      attachment.filename &&
-      validExtensions.some(ext =>
-        attachment.filename!.toLowerCase().endsWith(ext)
-      )
+    return email.attachments.some(
+      (attachment) =>
+        attachment.filename &&
+        validExtensions.some((ext) => attachment.filename!.toLowerCase().endsWith(ext))
     )
   }
 
@@ -263,12 +265,12 @@ export class MailProcessor {
       /품목|수량|단가|금액/,
       /납품일|납기일|배송일/,
       /\d{1,3}(,\d{3})*원|\d+개|\d+EA/i,
-      /견적|단가|총액/
+      /견적|단가|총액/,
     ]
 
     const searchText = `${email.subject} ${email.body.text || ''}`
 
-    return contentPatterns.some(pattern => pattern.test(searchText))
+    return contentPatterns.some((pattern) => pattern.test(searchText))
   }
 
   private async logReceivedEmail(
@@ -298,9 +300,8 @@ export class MailProcessor {
       logger.info('메일 로그 기록', {
         messageId: email.messageId,
         company: matchResult.companyName,
-        matchType: matchResult.matchType
+        matchType: matchResult.matchType,
       })
-
     } catch (error) {
       logger.error('메일 로그 기록 실패:', error)
     }
@@ -312,9 +313,8 @@ export class MailProcessor {
       logger.warn('미매칭 메일 기록', {
         from: email.from,
         subject: email.subject,
-        messageId: email.messageId
+        messageId: email.messageId,
       })
-
     } catch (error) {
       logger.error('미매칭 메일 로그 실패:', error)
     }

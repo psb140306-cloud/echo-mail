@@ -10,7 +10,7 @@ import {
   ErrorCategory,
   ERROR_DEFINITIONS,
   createEchoMailError,
-  errorUtils
+  errorUtils,
 } from '@/lib/errors'
 
 describe('EchoMailError', () => {
@@ -64,7 +64,7 @@ describe('EchoMailError', () => {
         recoverable: true,
         requiresAdminNotification: true,
         retryable: false,
-        context: context
+        context: context,
       })
       expect(logObject.timestamp).toBeDefined()
       expect(logObject.stack).toBeDefined()
@@ -100,15 +100,15 @@ describe('EchoMailError', () => {
 
 describe('ERROR_DEFINITIONS', () => {
   it('should have definitions for all error codes', () => {
-    const errorCodes = Object.values(ErrorCode).filter(value => typeof value === 'number')
+    const errorCodes = Object.values(ErrorCode).filter((value) => typeof value === 'number')
 
-    errorCodes.forEach(code => {
+    errorCodes.forEach((code) => {
       expect(ERROR_DEFINITIONS[code as ErrorCode]).toBeDefined()
     })
   })
 
   it('should have consistent data structure for all definitions', () => {
-    Object.values(ERROR_DEFINITIONS).forEach(definition => {
+    Object.values(ERROR_DEFINITIONS).forEach((definition) => {
       expect(definition).toHaveProperty('code')
       expect(definition).toHaveProperty('message')
       expect(definition).toHaveProperty('category')
@@ -132,12 +132,12 @@ describe('ERROR_DEFINITIONS', () => {
       ErrorCategory.COMPANY,
       ErrorCategory.DELIVERY,
       ErrorCategory.NOTIFICATION,
-      ErrorCategory.VALIDATION
+      ErrorCategory.VALIDATION,
     ]
 
     Object.values(ERROR_DEFINITIONS)
-      .filter(def => userFacingCategories.includes(def.category))
-      .forEach(definition => {
+      .filter((def) => userFacingCategories.includes(def.category))
+      .forEach((definition) => {
         // Check if message contains Korean characters
         expect(definition.message).toMatch(/[가-힣]/)
       })
@@ -270,38 +270,38 @@ describe('errorUtils', () => {
 
 describe('Error categorization and relationships', () => {
   it('should have consistent severity levels across categories', () => {
-    const criticalErrors = Object.values(ERROR_DEFINITIONS)
-      .filter(def => def.severity === ErrorSeverity.CRITICAL)
+    const criticalErrors = Object.values(ERROR_DEFINITIONS).filter(
+      (def) => def.severity === ErrorSeverity.CRITICAL
+    )
 
-    const highErrors = Object.values(ERROR_DEFINITIONS)
-      .filter(def => def.severity === ErrorSeverity.HIGH)
+    const highErrors = Object.values(ERROR_DEFINITIONS).filter(
+      (def) => def.severity === ErrorSeverity.HIGH
+    )
 
     // Critical errors should be system-related
-    criticalErrors.forEach(error => {
+    criticalErrors.forEach((error) => {
       expect(error.category).toBe(ErrorCategory.SYSTEM)
       expect(error.requiresAdminNotification).toBe(true)
     })
 
     // High severity errors should require admin notification
-    highErrors.forEach(error => {
+    highErrors.forEach((error) => {
       expect(error.requiresAdminNotification).toBe(true)
     })
   })
 
   it('should have logical retry policies', () => {
-    const retryableErrors = Object.values(ERROR_DEFINITIONS)
-      .filter(def => def.retryable)
+    const retryableErrors = Object.values(ERROR_DEFINITIONS).filter((def) => def.retryable)
 
-    const nonRetryableErrors = Object.values(ERROR_DEFINITIONS)
-      .filter(def => !def.retryable)
+    const nonRetryableErrors = Object.values(ERROR_DEFINITIONS).filter((def) => !def.retryable)
 
     // Connection and API errors should be retryable
-    retryableErrors.forEach(error => {
+    retryableErrors.forEach((error) => {
       const retryableCategories = [
         ErrorCategory.EMAIL,
         ErrorCategory.NOTIFICATION,
         ErrorCategory.EXTERNAL,
-        ErrorCategory.SYSTEM
+        ErrorCategory.SYSTEM,
       ]
       if (retryableCategories.includes(error.category)) {
         expect([
@@ -312,26 +312,25 @@ describe('Error categorization and relationships', () => {
           ErrorCode.EXTERNAL_API_TIMEOUT,
           ErrorCode.DELIVERY_DATE_CALCULATION_FAILED,
           ErrorCode.NOTIFICATION_QUEUE_FULL,
-          ErrorCode.HOLIDAY_DATA_UNAVAILABLE
+          ErrorCode.HOLIDAY_DATA_UNAVAILABLE,
         ]).toContain(error.code)
       }
     })
 
     // Validation and authentication errors should not be retryable
-    const validationErrors = Object.values(ERROR_DEFINITIONS)
-      .filter(def => def.category === ErrorCategory.VALIDATION)
+    const validationErrors = Object.values(ERROR_DEFINITIONS).filter(
+      (def) => def.category === ErrorCategory.VALIDATION
+    )
 
-    validationErrors.forEach(error => {
+    validationErrors.forEach((error) => {
       expect(error.retryable).toBe(false)
     })
   })
 
   it('should have appropriate recovery policies', () => {
-    const recoverableErrors = Object.values(ERROR_DEFINITIONS)
-      .filter(def => def.recoverable)
+    const recoverableErrors = Object.values(ERROR_DEFINITIONS).filter((def) => def.recoverable)
 
-    const nonRecoverableErrors = Object.values(ERROR_DEFINITIONS)
-      .filter(def => !def.recoverable)
+    const nonRecoverableErrors = Object.values(ERROR_DEFINITIONS).filter((def) => !def.recoverable)
 
     // System startup failures should not be recoverable
     expect(ERROR_DEFINITIONS[ErrorCode.SYSTEM_STARTUP_FAILED].recoverable).toBe(false)
@@ -383,10 +382,10 @@ describe('Performance and memory considerations', () => {
       nested: {
         deep: {
           structure: {
-            with: 'lots of data'
-          }
-        }
-      }
+            with: 'lots of data',
+          },
+        },
+      },
     }
 
     const error = new EchoMailError(ErrorCode.SYSTEM_ERROR, largeContext)

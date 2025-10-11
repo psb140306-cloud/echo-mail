@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
 
-const prisma = new PrismaClient()
-
 // 업체 수정 스키마
 const updateCompanySchema = z.object({
-  name: z.string().min(1, '업체명은 필수입니다').max(100, '업체명은 100자 이하여야 합니다').optional(),
+  name: z
+    .string()
+    .min(1, '업체명은 필수입니다')
+    .max(100, '업체명은 100자 이하여야 합니다')
+    .optional(),
   email: z.string().email('올바른 이메일 형식이 아닙니다').optional(),
   region: z.string().min(1, '지역은 필수입니다').max(50, '지역은 50자 이하여야 합니다').optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
 })
 
 interface RouteParams {
@@ -20,18 +23,12 @@ interface RouteParams {
 }
 
 // 업체 상세 조회
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: '업체 ID가 필요합니다.' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: '업체 ID가 필요합니다.' }, { status: 400 })
     }
 
     // 업체 조회 (담당자 정보 포함)
@@ -40,14 +37,14 @@ export async function GET(
       include: {
         contacts: {
           where: { isActive: true },
-          orderBy: { createdAt: 'desc' }
+          orderBy: { createdAt: 'desc' },
         },
         _count: {
           select: {
-            contacts: { where: { isActive: true } }
-          }
-        }
-      }
+            contacts: { where: { isActive: true } },
+          },
+        },
+      },
     })
 
     if (!company) {
@@ -61,9 +58,8 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      data: company
+      data: company,
     })
-
   } catch (error) {
     logger.error('업체 상세 조회 실패:', error)
 
@@ -71,7 +67,7 @@ export async function GET(
       {
         success: false,
         error: '업체 조회에 실패했습니다.',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -79,19 +75,13 @@ export async function GET(
 }
 
 // 업체 수정
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
     const body = await request.json()
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: '업체 ID가 필요합니다.' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: '업체 ID가 필요합니다.' }, { status: 400 })
     }
 
     // 입력값 검증
@@ -99,7 +89,7 @@ export async function PUT(
 
     // 업체 존재 확인
     const existingCompany = await prisma.company.findUnique({
-      where: { id }
+      where: { id },
     })
 
     if (!existingCompany) {
@@ -111,26 +101,25 @@ export async function PUT(
 
     // 중복 확인 (이름 또는 이메일이 변경된 경우)
     if (validatedData.name || validatedData.email) {
-      const duplicateWhere: any = {
-        AND: [
-          { id: { not: id } }, // 현재 업체 제외
-          {
-            OR: []
-          }
-        ]
-      }
+      const orConditions: Prisma.CompanyWhereInput[] = []
 
       if (validatedData.name && validatedData.name !== existingCompany.name) {
-        duplicateWhere.AND[1].OR.push({ name: validatedData.name })
+        orConditions.push({ name: validatedData.name })
       }
 
       if (validatedData.email && validatedData.email !== existingCompany.email) {
-        duplicateWhere.AND[1].OR.push({ email: validatedData.email })
+        orConditions.push({ email: validatedData.email })
       }
 
-      if (duplicateWhere.AND[1].OR.length > 0) {
+      if (orConditions.length > 0) {
+        const duplicateWhere: Prisma.CompanyWhereInput = {
+          AND: [
+            { id: { not: id } }, // 현재 업체 제외
+            { OR: orConditions },
+          ],
+        }
         const duplicateCompany = await prisma.company.findFirst({
-          where: duplicateWhere
+          where: duplicateWhere,
         })
 
         if (duplicateCompany) {
@@ -140,7 +129,7 @@ export async function PUT(
             {
               success: false,
               error: `이미 존재하는 ${duplicateField}입니다.`,
-              field: duplicateCompany.name === validatedData.name ? 'name' : 'email'
+              field: duplicateCompany.name === validatedData.name ? 'name' : 'email',
             },
             { status: 400 }
           )
@@ -155,27 +144,26 @@ export async function PUT(
       include: {
         contacts: {
           where: { isActive: true },
-          orderBy: { createdAt: 'desc' }
+          orderBy: { createdAt: 'desc' },
         },
         _count: {
           select: {
-            contacts: { where: { isActive: true } }
-          }
-        }
-      }
+            contacts: { where: { isActive: true } },
+          },
+        },
+      },
     })
 
     logger.info(`업체 수정 완료: ${updatedCompany.name}`, {
       id,
-      changes: validatedData
+      changes: validatedData,
     })
 
     return NextResponse.json({
       success: true,
       data: updatedCompany,
-      message: '업체 정보가 성공적으로 수정되었습니다.'
+      message: '업체 정보가 성공적으로 수정되었습니다.',
     })
-
   } catch (error) {
     logger.error('업체 수정 실패:', error)
 
@@ -184,10 +172,10 @@ export async function PUT(
         {
           success: false,
           error: '입력값이 올바르지 않습니다.',
-          details: error.errors.map(err => ({
+          details: error.errors.map((err) => ({
             field: err.path.join('.'),
-            message: err.message
-          }))
+            message: err.message,
+          })),
         },
         { status: 400 }
       )
@@ -197,7 +185,7 @@ export async function PUT(
       {
         success: false,
         error: '업체 수정에 실패했습니다.',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -205,18 +193,12 @@ export async function PUT(
 }
 
 // 업체 삭제
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: '업체 ID가 필요합니다.' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: '업체 ID가 필요합니다.' }, { status: 400 })
     }
 
     // 업체 존재 확인
@@ -225,10 +207,10 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            contacts: true
-          }
-        }
-      }
+            contacts: true,
+          },
+        },
+      },
     })
 
     if (!existingCompany) {
@@ -240,12 +222,12 @@ export async function DELETE(
 
     // 관련 담당자들도 함께 삭제 (CASCADE 설정으로 자동 삭제됨)
     await prisma.company.delete({
-      where: { id }
+      where: { id },
     })
 
     logger.info(`업체 삭제 완료: ${existingCompany.name}`, {
       id,
-      contactsCount: existingCompany._count.contacts
+      contactsCount: existingCompany._count.contacts,
     })
 
     return NextResponse.json({
@@ -253,10 +235,9 @@ export async function DELETE(
       message: `업체 '${existingCompany.name}'이(가) 성공적으로 삭제되었습니다.`,
       data: {
         deletedCompany: existingCompany.name,
-        deletedContactsCount: existingCompany._count.contacts
-      }
+        deletedContactsCount: existingCompany._count.contacts,
+      },
     })
-
   } catch (error) {
     logger.error('업체 삭제 실패:', error)
 
@@ -264,7 +245,7 @@ export async function DELETE(
       {
         success: false,
         error: '업체 삭제에 실패했습니다.',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

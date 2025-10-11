@@ -1,21 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useRBAC } from '@/lib/auth/hooks/use-rbac'
+import { Permission } from '@/lib/auth/rbac'
+import { PermissionGuard } from '@/components/rbac/permission-guard'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,9 +46,9 @@ import {
   Mail,
   MapPin,
   ArrowLeft,
-  Loader2
+  Loader2,
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/use-toast'
 
 interface Company {
   id: string
@@ -81,6 +82,7 @@ export default function CompaniesPage() {
   const [selectedRegion, setSelectedRegion] = useState('')
   const [deletingCompany, setDeletingCompany] = useState<string | null>(null)
   const { toast } = useToast()
+  const { can } = useRBAC()
 
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1)
@@ -89,7 +91,7 @@ export default function CompaniesPage() {
   const itemsPerPage = 10
 
   // 업체 목록 조회
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -124,7 +126,7 @@ export default function CompaniesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage, searchTerm, selectedRegion, itemsPerPage, toast])
 
   // 업체 삭제
   const deleteCompany = async (companyId: string) => {
@@ -132,7 +134,7 @@ export default function CompaniesPage() {
       setDeletingCompany(companyId)
 
       const response = await fetch(`/api/companies/${companyId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       })
 
       const data = await response.json()
@@ -171,20 +173,38 @@ export default function CompaniesPage() {
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [searchTerm, selectedRegion])
+  }, [searchTerm, selectedRegion, fetchCompanies])
 
   // 페이지 변경
   useEffect(() => {
     fetchCompanies()
-  }, [currentPage])
+  }, [currentPage, fetchCompanies])
 
   // 초기 데이터 로드
   useEffect(() => {
     fetchCompanies()
-  }, [])
+  }, [fetchCompanies])
 
   // 지역 목록 (하드코딩, 실제로는 API에서 가져와야 함)
-  const regions = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주']
+  const regions = [
+    '서울',
+    '부산',
+    '대구',
+    '인천',
+    '광주',
+    '대전',
+    '울산',
+    '세종',
+    '경기',
+    '강원',
+    '충북',
+    '충남',
+    '전북',
+    '전남',
+    '경북',
+    '경남',
+    '제주',
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50/40">
@@ -199,12 +219,13 @@ export default function CompaniesPage() {
           </div>
           <div className="flex flex-1 items-center justify-between space-x-2">
             <h1 className="text-lg font-semibold">업체 관리</h1>
-            <Button asChild>
-              <Link href="/companies/new">
-                <Plus className="mr-2 h-4 w-4" />
-                새 업체 추가
-              </Link>
-            </Button>
+            <PermissionGuard permission={Permission.COMPANIES_CREATE}>
+              <Button asChild>
+                <Link href="/companies/new">
+                  <Plus className="mr-2 h-4 w-4" />새 업체 추가
+                </Link>
+              </Button>
+            </PermissionGuard>
           </div>
         </div>
       </header>
@@ -228,9 +249,7 @@ export default function CompaniesPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {companies.filter(c => c.isActive).length}
-              </div>
+              <div className="text-2xl font-bold">{companies.filter((c) => c.isActive).length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -270,8 +289,10 @@ export default function CompaniesPage() {
                 className="px-3 py-2 border border-input bg-background rounded-md text-sm"
               >
                 <option value="">모든 지역</option>
-                {regions.map(region => (
-                  <option key={region} value={region}>{region}</option>
+                {regions.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
                 ))}
               </select>
             </div>
@@ -282,9 +303,7 @@ export default function CompaniesPage() {
         <Card>
           <CardHeader>
             <CardTitle>업체 목록</CardTitle>
-            <CardDescription>
-              등록된 업체와 담당자 정보를 관리하세요
-            </CardDescription>
+            <CardDescription>등록된 업체와 담당자 정보를 관리하세요</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -292,9 +311,7 @@ export default function CompaniesPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : companies.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                등록된 업체가 없습니다.
-              </div>
+              <div className="text-center py-8 text-muted-foreground">등록된 업체가 없습니다.</div>
             ) : (
               <div className="rounded-md border">
                 <Table>
@@ -333,12 +350,10 @@ export default function CompaniesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {company._count.contacts}명
-                          </Badge>
+                          <Badge variant="outline">{company._count.contacts}명</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={company.isActive ? "default" : "secondary"}>
+                          <Badge variant={company.isActive ? 'default' : 'secondary'}>
                             {company.isActive ? '활성' : '비활성'}
                           </Badge>
                         </TableCell>
@@ -355,49 +370,55 @@ export default function CompaniesPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>작업</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                <Link href={`/companies/${company.id}`}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  수정
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <DropdownMenuItem
-                                    className="text-red-600"
-                                    onSelect={(e) => e.preventDefault()}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    삭제
-                                  </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>업체 삭제</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      '{company.name}' 업체를 삭제하시겠습니까?
-                                      <br />
-                                      이 작업은 되돌릴 수 없으며, 관련된 모든 담당자 정보도 함께 삭제됩니다.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>취소</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteCompany(company.id)}
-                                      disabled={deletingCompany === company.id}
-                                      className="bg-red-600 hover:bg-red-700"
-                                    >
-                                      {deletingCompany === company.id ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      ) : (
+                              {can(Permission.COMPANIES_UPDATE) && (
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/companies/${company.id}`}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    수정
+                                  </Link>
+                                </DropdownMenuItem>
+                              )}
+                              {can(Permission.COMPANIES_DELETE) && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem
+                                        className="text-red-600"
+                                        onSelect={(e) => e.preventDefault()}
+                                      >
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                      )}
-                                      삭제
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                                        삭제
+                                      </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>업체 삭제</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          &apos;{company.name}&apos; 업체를 삭제하시겠습니까?
+                                          <br />이 작업은 되돌릴 수 없으며, 관련된 모든 담당자
+                                          정보도 함께 삭제됩니다.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>취소</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deleteCompany(company.id)}
+                                          disabled={deletingCompany === company.id}
+                                          className="bg-red-600 hover:bg-red-700"
+                                        >
+                                          {deletingCompany === company.id ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                          )}
+                                          삭제
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -412,7 +433,8 @@ export default function CompaniesPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-2 py-4">
                 <div className="text-sm text-muted-foreground">
-                  {totalCount}개 중 {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalCount)}개 표시
+                  {totalCount}개 중 {(currentPage - 1) * itemsPerPage + 1}-
+                  {Math.min(currentPage * itemsPerPage, totalCount)}개 표시
                 </div>
                 <div className="flex items-center space-x-2">
                   <Button

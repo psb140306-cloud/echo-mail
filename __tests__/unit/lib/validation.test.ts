@@ -20,7 +20,7 @@ import {
   parseAndValidate,
   parseQueryParams,
   validators,
-  sanitizers
+  sanitizers,
 } from '@/lib/utils/validation'
 
 // Mock Next.js NextResponse
@@ -29,16 +29,16 @@ jest.mock('next/server', () => ({
     json: jest.fn((data, options) => ({
       data,
       status: options?.status || 200,
-      json: () => Promise.resolve(data)
-    }))
-  }
+      json: () => Promise.resolve(data),
+    })),
+  },
 }))
 
 // Mock logger
 jest.mock('@/lib/utils/logger', () => ({
   logger: {
-    error: jest.fn()
-  }
+    error: jest.fn(),
+  },
 }))
 
 describe('Validation Schemas', () => {
@@ -46,25 +46,25 @@ describe('Validation Schemas', () => {
     it('should validate correct phone number format', () => {
       const validPhones = ['010-1234-5678', '010-0000-0000', '010-9999-9999']
 
-      validPhones.forEach(phone => {
+      validPhones.forEach((phone) => {
         expect(() => phoneSchema.parse(phone)).not.toThrow()
       })
     })
 
     it('should reject invalid phone number formats', () => {
       const invalidPhones = [
-        '01012345678',      // No hyphens
-        '010-123-5678',     // Wrong format
-        '02-1234-5678',     // Not 010
-        '010-12345-5678',   // Too many digits
-        '010-123-5678',     // Too few digits
-        '010-abcd-5678',    // Letters
-        '',                 // Empty
-        null,               // Null
-        undefined           // Undefined
+        '01012345678', // No hyphens
+        '010-123-5678', // Wrong format
+        '02-1234-5678', // Not 010
+        '010-12345-5678', // Too many digits
+        '010-123-5678', // Too few digits
+        '010-abcd-5678', // Letters
+        '', // Empty
+        null, // Null
+        undefined, // Undefined
       ]
 
-      invalidPhones.forEach(phone => {
+      invalidPhones.forEach((phone) => {
         expect(() => phoneSchema.parse(phone)).toThrow()
       })
     })
@@ -76,10 +76,10 @@ describe('Validation Schemas', () => {
         'test@example.com',
         'user.name@domain.co.kr',
         'admin+tag@company.com',
-        'a@b.co'
+        'a@b.co',
       ]
 
-      validEmails.forEach(email => {
+      validEmails.forEach((email) => {
         expect(() => emailSchema.parse(email)).not.toThrow()
       })
     })
@@ -93,10 +93,10 @@ describe('Validation Schemas', () => {
         'user..double.dot@domain.com',
         '',
         null,
-        undefined
+        undefined,
       ]
 
-      invalidEmails.forEach(email => {
+      invalidEmails.forEach((email) => {
         expect(() => emailSchema.parse(email)).toThrow()
       })
     })
@@ -106,20 +106,20 @@ describe('Validation Schemas', () => {
     it('should validate correct names', () => {
       const validNames = ['김철수', 'John Doe', 'a', 'A'.repeat(50)]
 
-      validNames.forEach(name => {
+      validNames.forEach((name) => {
         expect(() => nameSchema.parse(name)).not.toThrow()
       })
     })
 
     it('should reject invalid names', () => {
       const invalidNames = [
-        '',                    // Empty
-        'A'.repeat(51),        // Too long
-        null,                  // Null
-        undefined              // Undefined
+        '', // Empty
+        'A'.repeat(51), // Too long
+        null, // Null
+        undefined, // Undefined
       ]
 
-      invalidNames.forEach(name => {
+      invalidNames.forEach((name) => {
         expect(() => nameSchema.parse(name)).toThrow()
       })
     })
@@ -127,28 +127,22 @@ describe('Validation Schemas', () => {
 
   describe('companyNameSchema', () => {
     it('should validate correct company names', () => {
-      const validNames = [
-        '주식회사 테스트',
-        '(주)테스트',
-        'Test Company',
-        'a',
-        'A'.repeat(100)
-      ]
+      const validNames = ['주식회사 테스트', '(주)테스트', 'Test Company', 'a', 'A'.repeat(100)]
 
-      validNames.forEach(name => {
+      validNames.forEach((name) => {
         expect(() => companyNameSchema.parse(name)).not.toThrow()
       })
     })
 
     it('should reject invalid company names', () => {
       const invalidNames = [
-        '',                    // Empty
-        'A'.repeat(101),       // Too long
-        null,                  // Null
-        undefined              // Undefined
+        '', // Empty
+        'A'.repeat(101), // Too long
+        null, // Null
+        undefined, // Undefined
       ]
 
-      invalidNames.forEach(name => {
+      invalidNames.forEach((name) => {
         expect(() => companyNameSchema.parse(name)).toThrow()
       })
     })
@@ -158,20 +152,20 @@ describe('Validation Schemas', () => {
     it('should validate correct regions', () => {
       const validRegions = ['서울', '부산', '경기도', 'A'.repeat(50)]
 
-      validRegions.forEach(region => {
+      validRegions.forEach((region) => {
         expect(() => regionSchema.parse(region)).not.toThrow()
       })
     })
 
     it('should reject invalid regions', () => {
       const invalidRegions = [
-        '',                    // Empty
-        'A'.repeat(51),        // Too long
-        null,                  // Null
-        undefined              // Undefined
+        '', // Empty
+        'A'.repeat(51), // Too long
+        null, // Null
+        undefined, // Undefined
       ]
 
-      invalidRegions.forEach(region => {
+      invalidRegions.forEach((region) => {
         expect(() => regionSchema.parse(region)).toThrow()
       })
     })
@@ -182,10 +176,10 @@ describe('Validation Schemas', () => {
       const validParams = [
         { page: 1, limit: 10 },
         { page: 100, limit: 100 },
-        { page: 1, limit: 1 }
+        { page: 1, limit: 1 },
       ]
 
-      validParams.forEach(params => {
+      validParams.forEach((params) => {
         expect(() => paginationSchema.parse(params)).not.toThrow()
       })
     })
@@ -198,15 +192,15 @@ describe('Validation Schemas', () => {
 
     it('should reject invalid pagination parameters', () => {
       const invalidParams = [
-        { page: 0, limit: 10 },     // Page too small
-        { page: 1, limit: 0 },      // Limit too small
-        { page: 1, limit: 101 },    // Limit too large
-        { page: -1, limit: 10 },    // Negative page
-        { page: 1.5, limit: 10 },   // Non-integer page
-        { page: 1, limit: 10.5 }    // Non-integer limit
+        { page: 0, limit: 10 }, // Page too small
+        { page: 1, limit: 0 }, // Limit too small
+        { page: 1, limit: 101 }, // Limit too large
+        { page: -1, limit: 10 }, // Negative page
+        { page: 1.5, limit: 10 }, // Non-integer page
+        { page: 1, limit: 10.5 }, // Non-integer limit
       ]
 
-      invalidParams.forEach(params => {
+      invalidParams.forEach((params) => {
         expect(() => paginationSchema.parse(params)).toThrow()
       })
     })
@@ -218,22 +212,22 @@ describe('Validation Schemas', () => {
         { search: 'test', isActive: 'true' },
         { search: '', isActive: 'false' },
         { search: undefined, isActive: undefined },
-        {}
+        {},
       ]
 
-      validParams.forEach(params => {
+      validParams.forEach((params) => {
         expect(() => searchSchema.parse(params)).not.toThrow()
       })
     })
 
     it('should reject invalid search parameters', () => {
       const invalidParams = [
-        { isActive: 'invalid' },    // Invalid enum value
-        { isActive: true },         // Boolean instead of string
-        { isActive: 1 }             // Number instead of string
+        { isActive: 'invalid' }, // Invalid enum value
+        { isActive: true }, // Boolean instead of string
+        { isActive: 1 }, // Number instead of string
       ]
 
-      invalidParams.forEach(params => {
+      invalidParams.forEach((params) => {
         expect(() => searchSchema.parse(params)).toThrow()
       })
     })
@@ -245,7 +239,7 @@ describe('Response Generators', () => {
     it('should create proper validation error response', () => {
       const schema = z.object({
         name: z.string().min(1),
-        age: z.number().min(0)
+        age: z.number().min(0),
       })
 
       let error: z.ZodError
@@ -265,9 +259,9 @@ describe('Response Generators', () => {
             expect.objectContaining({
               field: expect.any(String),
               message: expect.any(String),
-              code: expect.any(String)
-            })
-          ])
+              code: expect.any(String),
+            }),
+          ]),
         },
         { status: 400 }
       )
@@ -283,7 +277,7 @@ describe('Response Generators', () => {
       expect(NextResponse.json).toHaveBeenCalledWith(
         {
           success: false,
-          error: message
+          error: message,
         },
         { status: 500 }
       )
@@ -300,7 +294,7 @@ describe('Response Generators', () => {
         {
           success: false,
           error: message,
-          details
+          details,
         },
         { status: statusCode }
       )
@@ -313,7 +307,7 @@ describe('Response Generators', () => {
 
       expect(NextResponse.json).toHaveBeenCalledWith(
         {
-          success: true
+          success: true,
         },
         { status: 200 }
       )
@@ -330,7 +324,7 @@ describe('Response Generators', () => {
         {
           success: true,
           data,
-          message
+          message,
         },
         { status: statusCode }
       )
@@ -351,8 +345,8 @@ describe('Response Generators', () => {
           page: 1,
           limit: 10,
           total: 25,
-          pages: 3
-        }
+          pages: 3,
+        },
       })
     })
   })
@@ -362,12 +356,12 @@ describe('Parsing and Validation Helpers', () => {
   describe('parseAndValidate', () => {
     const testSchema = z.object({
       name: z.string().min(1),
-      age: z.number().min(0)
+      age: z.number().min(0),
     })
 
     it('should parse and validate valid data', async () => {
       const mockRequest = {
-        json: jest.fn().mockResolvedValue({ name: 'Test', age: 25 })
+        json: jest.fn().mockResolvedValue({ name: 'Test', age: 25 }),
       } as any
 
       const result = await parseAndValidate(mockRequest, testSchema)
@@ -380,7 +374,7 @@ describe('Parsing and Validation Helpers', () => {
 
     it('should handle validation errors', async () => {
       const mockRequest = {
-        json: jest.fn().mockResolvedValue({ name: '', age: -1 })
+        json: jest.fn().mockResolvedValue({ name: '', age: -1 }),
       } as any
 
       const result = await parseAndValidate(mockRequest, testSchema)
@@ -391,7 +385,7 @@ describe('Parsing and Validation Helpers', () => {
 
     it('should handle JSON parsing errors', async () => {
       const mockRequest = {
-        json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+        json: jest.fn().mockRejectedValue(new Error('Invalid JSON')),
       } as any
 
       const result = await parseAndValidate(mockRequest, testSchema)
@@ -408,7 +402,7 @@ describe('Parsing and Validation Helpers', () => {
         page: z.number(),
         limit: z.number(),
         search: z.string().optional(),
-        isActive: z.boolean().optional()
+        isActive: z.boolean().optional(),
       })
 
       const result = parseQueryParams(searchParams, schema)
@@ -419,7 +413,7 @@ describe('Parsing and Validation Helpers', () => {
           page: 2,
           limit: 20,
           search: 'test',
-          isActive: true
+          isActive: true,
         })
       }
     })
@@ -429,7 +423,7 @@ describe('Parsing and Validation Helpers', () => {
       const schema = z.object({
         count: z.number(),
         active: z.boolean(),
-        name: z.string()
+        name: z.string(),
       })
 
       const result = parseQueryParams(searchParams, schema)
@@ -439,7 +433,7 @@ describe('Parsing and Validation Helpers', () => {
         expect(result.data).toEqual({
           count: 10,
           active: false,
-          name: 'test'
+          name: 'test',
         })
       }
     })
@@ -447,7 +441,7 @@ describe('Parsing and Validation Helpers', () => {
     it('should handle validation errors', () => {
       const searchParams = new URLSearchParams('page=invalid')
       const schema = z.object({
-        page: z.number()
+        page: z.number(),
       })
 
       const result = parseQueryParams(searchParams, schema)
@@ -463,22 +457,22 @@ describe('Field Validators', () => {
     it('should validate correct phone numbers', () => {
       const validPhones = ['010-1234-5678', '010-0000-0000', '010-9999-9999']
 
-      validPhones.forEach(phone => {
+      validPhones.forEach((phone) => {
         expect(validators.isValidPhoneNumber(phone)).toBe(true)
       })
     })
 
     it('should reject invalid phone numbers', () => {
       const invalidPhones = [
-        '01012345678',      // No hyphens
-        '010-123-5678',     // Wrong format
-        '02-1234-5678',     // Not 010
-        '010-12345-5678',   // Too many digits
-        '',                 // Empty
-        'abc-defg-hijk'     // Letters
+        '01012345678', // No hyphens
+        '010-123-5678', // Wrong format
+        '02-1234-5678', // Not 010
+        '010-12345-5678', // Too many digits
+        '', // Empty
+        'abc-defg-hijk', // Letters
       ]
 
-      invalidPhones.forEach(phone => {
+      invalidPhones.forEach((phone) => {
         expect(validators.isValidPhoneNumber(phone)).toBe(false)
       })
     })
@@ -486,27 +480,17 @@ describe('Field Validators', () => {
 
   describe('isValidEmail', () => {
     it('should validate correct emails', () => {
-      const validEmails = [
-        'test@example.com',
-        'user.name@domain.co.kr',
-        'admin+tag@company.com'
-      ]
+      const validEmails = ['test@example.com', 'user.name@domain.co.kr', 'admin+tag@company.com']
 
-      validEmails.forEach(email => {
+      validEmails.forEach((email) => {
         expect(validators.isValidEmail(email)).toBe(true)
       })
     })
 
     it('should reject invalid emails', () => {
-      const invalidEmails = [
-        'invalid-email',
-        '@domain.com',
-        'user@',
-        'user@domain',
-        ''
-      ]
+      const invalidEmails = ['invalid-email', '@domain.com', 'user@', 'user@domain', '']
 
-      invalidEmails.forEach(email => {
+      invalidEmails.forEach((email) => {
         expect(validators.isValidEmail(email)).toBe(false)
       })
     })
@@ -519,23 +503,23 @@ describe('Field Validators', () => {
         '(주)테스트컴퍼니',
         'Test Company Ltd.',
         'ABC-123_Company',
-        '테스트[주식회사]'
+        '테스트[주식회사]',
       ]
 
-      validNames.forEach(name => {
+      validNames.forEach((name) => {
         expect(validators.isValidCompanyName(name)).toBe(true)
       })
     })
 
     it('should reject invalid company names', () => {
       const invalidNames = [
-        '',                          // Empty
-        'A'.repeat(101),            // Too long
-        'Company@#$%',              // Invalid characters
-        'Test<>Company'             // Invalid characters
+        '', // Empty
+        'A'.repeat(101), // Too long
+        'Company@#$%', // Invalid characters
+        'Test<>Company', // Invalid characters
       ]
 
-      invalidNames.forEach(name => {
+      invalidNames.forEach((name) => {
         expect(validators.isValidCompanyName(name)).toBe(false)
       })
     })
@@ -543,28 +527,23 @@ describe('Field Validators', () => {
 
   describe('isValidName', () => {
     it('should validate correct names', () => {
-      const validNames = [
-        '김철수',
-        'John Doe',
-        '이 영희',
-        'Mary Jane Smith'
-      ]
+      const validNames = ['김철수', 'John Doe', '이 영희', 'Mary Jane Smith']
 
-      validNames.forEach(name => {
+      validNames.forEach((name) => {
         expect(validators.isValidName(name)).toBe(true)
       })
     })
 
     it('should reject invalid names', () => {
       const invalidNames = [
-        '',                          // Empty
-        'A'.repeat(51),             // Too long
-        'John123',                  // Numbers
-        'John@Doe',                 // Special characters
-        'John_Doe'                  // Underscore
+        '', // Empty
+        'A'.repeat(51), // Too long
+        'John123', // Numbers
+        'John@Doe', // Special characters
+        'John_Doe', // Underscore
       ]
 
-      invalidNames.forEach(name => {
+      invalidNames.forEach((name) => {
         expect(validators.isValidName(name)).toBe(false)
       })
     })
@@ -578,7 +557,7 @@ describe('Data Sanitizers', () => {
         { input: '01012345678', expected: '010-1234-5678' },
         { input: '010 1234 5678', expected: '010-1234-5678' },
         { input: '010.1234.5678', expected: '010-1234-5678' },
-        { input: '010-1234-5678', expected: '010-1234-5678' }
+        { input: '010-1234-5678', expected: '010-1234-5678' },
       ]
 
       testCases.forEach(({ input, expected }) => {
@@ -588,14 +567,14 @@ describe('Data Sanitizers', () => {
 
     it('should return original string for invalid formats', () => {
       const invalidInputs = [
-        '0212345678',      // Not 010
-        '01012345',        // Too short
-        '010123456789',    // Too long
-        'abc-defg-hijk',   // Letters
-        ''                 // Empty
+        '0212345678', // Not 010
+        '01012345', // Too short
+        '010123456789', // Too long
+        'abc-defg-hijk', // Letters
+        '', // Empty
       ]
 
-      invalidInputs.forEach(input => {
+      invalidInputs.forEach((input) => {
         expect(sanitizers.formatPhoneNumber(input)).toBe(input)
       })
     })
@@ -609,7 +588,7 @@ describe('Data Sanitizers', () => {
         { input: '   ', expected: null },
         { input: '', expected: null },
         { input: null, expected: null },
-        { input: undefined, expected: null }
+        { input: undefined, expected: null },
       ]
 
       testCases.forEach(({ input, expected }) => {
@@ -623,7 +602,7 @@ describe('Data Sanitizers', () => {
       const testCases = [
         { input: '  주식회사   테스트  ', expected: '주식회사 테스트' },
         { input: 'Test    Company   Ltd', expected: 'Test Company Ltd' },
-        { input: '   (주)테스트   ', expected: '(주)테스트' }
+        { input: '   (주)테스트   ', expected: '(주)테스트' },
       ]
 
       testCases.forEach(({ input, expected }) => {
@@ -639,16 +618,22 @@ describe('Edge Cases and Error Handling', () => {
       const nestedSchema = z.object({
         company: z.object({
           name: companyNameSchema,
-          contacts: z.array(z.object({
-            name: nameSchema,
-            phone: phoneSchema,
-            email: emailSchema.optional()
-          })).min(1)
+          contacts: z
+            .array(
+              z.object({
+                name: nameSchema,
+                phone: phoneSchema,
+                email: emailSchema.optional(),
+              })
+            )
+            .min(1),
         }),
-        metadata: z.object({
-          region: regionSchema,
-          active: z.boolean()
-        }).optional()
+        metadata: z
+          .object({
+            region: regionSchema,
+            active: z.boolean(),
+          })
+          .optional(),
       })
 
       const validData = {
@@ -658,14 +643,14 @@ describe('Edge Cases and Error Handling', () => {
             {
               name: '김철수',
               phone: '010-1234-5678',
-              email: 'kim@test.com'
-            }
-          ]
+              email: 'kim@test.com',
+            },
+          ],
         },
         metadata: {
           region: '서울',
-          active: true
-        }
+          active: true,
+        },
       }
 
       expect(() => nestedSchema.parse(validData)).not.toThrow()
@@ -682,14 +667,16 @@ describe('Edge Cases and Error Handling', () => {
 
   describe('Performance considerations', () => {
     it('should handle large data validation efficiently', () => {
-      const largeDataSchema = z.array(z.object({
-        name: nameSchema,
-        email: emailSchema
-      }))
+      const largeDataSchema = z.array(
+        z.object({
+          name: nameSchema,
+          email: emailSchema,
+        })
+      )
 
       const largeData = Array.from({ length: 1000 }, (_, i) => ({
         name: `User ${i}`,
-        email: `user${i}@test.com`
+        email: `user${i}@test.com`,
       }))
 
       const startTime = Date.now()
@@ -702,15 +689,9 @@ describe('Edge Cases and Error Handling', () => {
 
   describe('Unicode and special character handling', () => {
     it('should handle Korean characters in validation', () => {
-      const koreanNames = [
-        '김철수',
-        '이영희',
-        '박민수',
-        '정다은',
-        '최준호'
-      ]
+      const koreanNames = ['김철수', '이영희', '박민수', '정다은', '최준호']
 
-      koreanNames.forEach(name => {
+      koreanNames.forEach((name) => {
         expect(() => nameSchema.parse(name)).not.toThrow()
         expect(validators.isValidName(name)).toBe(true)
       })
@@ -722,10 +703,10 @@ describe('Edge Cases and Error Handling', () => {
         '(주)LG전자',
         '현대자동차 주식회사',
         '네이버 (주)',
-        'SK텔레콤'
+        'SK텔레콤',
       ]
 
-      koreanCompanyNames.forEach(name => {
+      koreanCompanyNames.forEach((name) => {
         expect(() => companyNameSchema.parse(name)).not.toThrow()
         expect(validators.isValidCompanyName(name)).toBe(true)
       })

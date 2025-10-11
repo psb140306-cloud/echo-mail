@@ -84,8 +84,8 @@ export class DeliveryCalculator {
           morningCutoff: rule.morningCutoff,
           afternoonCutoff: rule.afternoonCutoff,
           morningDeliveryDays: rule.morningDeliveryDays,
-          afternoonDeliveryDays: rule.afternoonDeliveryDays
-        }
+          afternoonDeliveryDays: rule.afternoonDeliveryDays,
+        },
       }
 
       logger.info('납품일 계산 완료', {
@@ -93,11 +93,10 @@ export class DeliveryCalculator {
         orderTime: options.orderDateTime.toISOString(),
         deliveryDate: result.deliveryDate.toISOString(),
         deliveryTime: result.deliveryTime,
-        businessDaysUsed: result.businessDaysUsed
+        businessDaysUsed: result.businessDaysUsed,
       })
 
       return result
-
     } catch (error) {
       logger.error('납품일 계산 실패:', error)
       throw error
@@ -148,8 +147,8 @@ export class DeliveryCalculator {
     const rule = await prisma.deliveryRule.findUnique({
       where: {
         region,
-        isActive: true
-      }
+        isActive: true,
+      },
     })
 
     if (rule) {
@@ -166,9 +165,7 @@ export class DeliveryCalculator {
     // 커스텀 공휴일 확인
     if (customHolidays) {
       const dateString = date.toISOString().split('T')[0]
-      return customHolidays.some(holiday =>
-        holiday.toISOString().split('T')[0] === dateString
-      )
+      return customHolidays.some((holiday) => holiday.toISOString().split('T')[0] === dateString)
     }
 
     // 데이터베이스 공휴일 확인 (캐싱)
@@ -183,19 +180,17 @@ export class DeliveryCalculator {
         where: {
           date: {
             gte: new Date(year, 0, 1),
-            lt: new Date(year + 1, 0, 1)
-          }
-        }
+            lt: new Date(year + 1, 0, 1),
+          },
+        },
       })
 
-      holidays = holidayRecords.map(h => h.date)
+      holidays = holidayRecords.map((h) => h.date)
       this.holidayCache.set(cacheKey, holidays)
     }
 
     const dateString = date.toISOString().split('T')[0]
-    return holidays.some(holiday =>
-      holiday.toISOString().split('T')[0] === dateString
-    )
+    return holidays.some((holiday) => holiday.toISOString().split('T')[0] === dateString)
   }
 
   /**
@@ -292,12 +287,12 @@ export class DeliveryCalculator {
       where: {
         date: {
           gte: new Date(year, 0, 1),
-          lt: new Date(year + 1, 0, 1)
-        }
-      }
+          lt: new Date(year + 1, 0, 1),
+        },
+      },
     })
 
-    const holidays = holidayRecords.map(h => h.date)
+    const holidays = holidayRecords.map((h) => h.date)
     this.holidayCache.set(cacheKey, holidays)
 
     logger.info(`${year}년 공휴일 캐시 로드 완료: ${holidays.length}개`)
@@ -308,7 +303,9 @@ export class DeliveryCalculator {
 export const deliveryCalculator = new DeliveryCalculator()
 
 // 편의 함수들
-export async function calculateDeliveryDate(options: DeliveryCalculationOptions): Promise<DeliveryResult> {
+export async function calculateDeliveryDate(
+  options: DeliveryCalculationOptions
+): Promise<DeliveryResult> {
   return deliveryCalculator.calculateDeliveryDate(options)
 }
 

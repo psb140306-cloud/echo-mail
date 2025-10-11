@@ -8,7 +8,14 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
@@ -43,9 +50,9 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
-  Zap
+  Zap,
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/use-toast'
 
 interface NotificationStatus {
   sms: {
@@ -84,8 +91,8 @@ export default function NotificationsPage() {
     variables: {
       companyName: '테스트상사',
       deliveryDate: '2025년 1월 20일',
-      deliveryTime: '오전'
-    }
+      deliveryTime: '오전',
+    },
   })
 
   // 시스템 상태 조회
@@ -119,7 +126,7 @@ export default function NotificationsPage() {
   const controlQueue = async (action: 'start' | 'stop') => {
     try {
       const response = await fetch(`/api/notifications/status?action=${action}-queue`, {
-        method: 'POST'
+        method: 'POST',
       })
 
       const data = await response.json()
@@ -213,10 +220,7 @@ export default function NotificationsPage() {
           <div className="flex flex-1 items-center justify-between space-x-2">
             <h1 className="text-lg font-semibold">알림 관리</h1>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowTestDialog(true)}
-              >
+              <Button variant="outline" onClick={() => setShowTestDialog(true)}>
                 <Send className="mr-2 h-4 w-4" />
                 테스트 발송
               </Button>
@@ -226,16 +230,14 @@ export default function NotificationsPage() {
                   onClick={() => controlQueue('stop')}
                   className="text-red-600 border-red-200 hover:bg-red-50"
                 >
-                  <Pause className="mr-2 h-4 w-4" />
-                  큐 중지
+                  <Pause className="mr-2 h-4 w-4" />큐 중지
                 </Button>
               ) : (
                 <Button
                   onClick={() => controlQueue('start')}
                   className="bg-green-600 hover:bg-green-700"
                 >
-                  <Play className="mr-2 h-4 w-4" />
-                  큐 시작
+                  <Play className="mr-2 h-4 w-4" />큐 시작
                 </Button>
               )}
             </div>
@@ -277,7 +279,7 @@ export default function NotificationsPage() {
                           잔액: {status?.sms.balance || 0}개
                         </p>
                       </div>
-                      <Badge variant={status?.sms.available ? "default" : "secondary"}>
+                      <Badge variant={status?.sms.available ? 'default' : 'secondary'}>
                         {status?.sms.provider}
                       </Badge>
                     </div>
@@ -295,11 +297,9 @@ export default function NotificationsPage() {
                         <div className="text-2xl font-bold">
                           {status?.kakao.available ? '사용 가능' : '사용 불가'}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          알림톡/친구톡 지원
-                        </p>
+                        <p className="text-xs text-muted-foreground">알림톡/친구톡 지원</p>
                       </div>
-                      <Badge variant={status?.kakao.available ? "default" : "secondary"}>
+                      <Badge variant={status?.kakao.available ? 'default' : 'secondary'}>
                         {status?.kakao.provider}
                       </Badge>
                     </div>
@@ -311,9 +311,7 @@ export default function NotificationsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>큐 상태</CardTitle>
-                  <CardDescription>
-                    알림 큐의 현재 처리 상황을 확인하세요
-                  </CardDescription>
+                  <CardDescription>알림 큐의 현재 처리 상황을 확인하세요</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-5">
@@ -358,26 +356,22 @@ export default function NotificationsPage() {
                         <TrendingUp className="h-4 w-4 text-gray-500 mr-1" />
                         <span className="text-sm font-medium">총계</span>
                       </div>
-                      <div className="text-2xl font-bold">
-                        {status?.queue.stats.total || 0}
-                      </div>
+                      <div className="text-2xl font-bold">{status?.queue.stats.total || 0}</div>
                     </div>
                   </div>
 
                   <div className="mt-4 flex items-center justify-center">
                     <Badge
-                      variant={status?.queue.processing ? "default" : "secondary"}
+                      variant={status?.queue.processing ? 'default' : 'secondary'}
                       className="px-3 py-1"
                     >
                       {status?.queue.processing ? (
                         <>
-                          <Play className="mr-1 h-3 w-3" />
-                          큐 처리 중
+                          <Play className="mr-1 h-3 w-3" />큐 처리 중
                         </>
                       ) : (
                         <>
-                          <Pause className="mr-1 h-3 w-3" />
-                          큐 중지됨
+                          <Pause className="mr-1 h-3 w-3" />큐 중지됨
                         </>
                       )}
                     </Badge>
@@ -391,9 +385,7 @@ export default function NotificationsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>큐 제어</CardTitle>
-                  <CardDescription>
-                    알림 큐의 시작/중지 및 상태를 관리하세요
-                  </CardDescription>
+                  <CardDescription>알림 큐의 시작/중지 및 상태를 관리하세요</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -404,10 +396,7 @@ export default function NotificationsPage() {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => fetchNotificationStatus()}
-                      >
+                      <Button variant="outline" onClick={() => fetchNotificationStatus()}>
                         <Eye className="mr-2 h-4 w-4" />
                         상태 새로고침
                       </Button>
@@ -417,16 +406,14 @@ export default function NotificationsPage() {
                           onClick={() => controlQueue('stop')}
                           className="text-red-600 border-red-200 hover:bg-red-50"
                         >
-                          <Pause className="mr-2 h-4 w-4" />
-                          큐 중지
+                          <Pause className="mr-2 h-4 w-4" />큐 중지
                         </Button>
                       ) : (
                         <Button
                           onClick={() => controlQueue('start')}
                           className="bg-green-600 hover:bg-green-700"
                         >
-                          <Play className="mr-2 h-4 w-4" />
-                          큐 시작
+                          <Play className="mr-2 h-4 w-4" />큐 시작
                         </Button>
                       )}
                     </div>
@@ -457,9 +444,7 @@ export default function NotificationsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>발송 내역</CardTitle>
-                  <CardDescription>
-                    최근 알림 발송 내역을 확인하세요
-                  </CardDescription>
+                  <CardDescription>최근 알림 발송 내역을 확인하세요</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="text-center py-8 text-muted-foreground">
@@ -477,9 +462,7 @@ export default function NotificationsPage() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>테스트 알림 발송</DialogTitle>
-            <DialogDescription>
-              SMS 또는 카카오톡 알림을 테스트해보세요
-            </DialogDescription>
+            <DialogDescription>SMS 또는 카카오톡 알림을 테스트해보세요</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -489,7 +472,7 @@ export default function NotificationsPage() {
               <select
                 id="type"
                 value={testForm.type}
-                onChange={(e) => setTestForm({...testForm, type: e.target.value})}
+                onChange={(e) => setTestForm({ ...testForm, type: e.target.value })}
                 className="col-span-3 px-3 py-2 border border-input bg-background rounded-md text-sm"
               >
                 <option value="SMS">SMS</option>
@@ -503,7 +486,7 @@ export default function NotificationsPage() {
               <Input
                 id="recipient"
                 value={testForm.recipient}
-                onChange={(e) => setTestForm({...testForm, recipient: e.target.value})}
+                onChange={(e) => setTestForm({ ...testForm, recipient: e.target.value })}
                 className="col-span-3"
                 placeholder="010-0000-0000"
               />
@@ -515,7 +498,7 @@ export default function NotificationsPage() {
               <select
                 id="templateName"
                 value={testForm.templateName}
-                onChange={(e) => setTestForm({...testForm, templateName: e.target.value})}
+                onChange={(e) => setTestForm({ ...testForm, templateName: e.target.value })}
                 className="col-span-3 px-3 py-2 border border-input bg-background rounded-md text-sm"
               >
                 <option value="ORDER_RECEIVED_SMS">발주 접수 확인 (SMS)</option>
@@ -523,33 +506,37 @@ export default function NotificationsPage() {
               </select>
             </div>
             <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right pt-2">
-                변수
-              </Label>
+              <Label className="text-right pt-2">변수</Label>
               <div className="col-span-3 space-y-2">
                 <Input
                   placeholder="업체명"
                   value={testForm.variables.companyName}
-                  onChange={(e) => setTestForm({
-                    ...testForm,
-                    variables: {...testForm.variables, companyName: e.target.value}
-                  })}
+                  onChange={(e) =>
+                    setTestForm({
+                      ...testForm,
+                      variables: { ...testForm.variables, companyName: e.target.value },
+                    })
+                  }
                 />
                 <Input
                   placeholder="납품일"
                   value={testForm.variables.deliveryDate}
-                  onChange={(e) => setTestForm({
-                    ...testForm,
-                    variables: {...testForm.variables, deliveryDate: e.target.value}
-                  })}
+                  onChange={(e) =>
+                    setTestForm({
+                      ...testForm,
+                      variables: { ...testForm.variables, deliveryDate: e.target.value },
+                    })
+                  }
                 />
                 <Input
                   placeholder="납품시간"
                   value={testForm.variables.deliveryTime}
-                  onChange={(e) => setTestForm({
-                    ...testForm,
-                    variables: {...testForm.variables, deliveryTime: e.target.value}
-                  })}
+                  onChange={(e) =>
+                    setTestForm({
+                      ...testForm,
+                      variables: { ...testForm.variables, deliveryTime: e.target.value },
+                    })
+                  }
                 />
               </div>
             </div>
@@ -558,10 +545,7 @@ export default function NotificationsPage() {
             <Button variant="outline" onClick={() => setShowTestDialog(false)}>
               취소
             </Button>
-            <Button
-              onClick={sendTestNotification}
-              disabled={testLoading || !testForm.recipient}
-            >
+            <Button onClick={sendTestNotification} disabled={testLoading || !testForm.recipient}>
               {testLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (

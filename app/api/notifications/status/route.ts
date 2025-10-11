@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { logger } from '@/lib/utils/logger'
 import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validation'
 import { notificationService } from '@/lib/notifications/notification-service'
@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
       default:
         return handleSystemStatus()
     }
-
   } catch (error) {
     logger.error('알림 상태 조회 API 오류:', error)
     return createErrorResponse('상태 조회에 실패했습니다.')
@@ -38,15 +37,14 @@ async function handleSystemStatus() {
       ...status,
       queue: {
         ...status.queue,
-        stats: queueStats
+        stats: queueStats,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
 
     logger.info('시스템 상태 조회 완료')
 
     return createSuccessResponse(systemStatus)
-
   } catch (error) {
     logger.error('시스템 상태 조회 실패:', error)
     return createErrorResponse('시스템 상태 조회에 실패했습니다.')
@@ -61,11 +59,10 @@ async function handleQueueStatus() {
     const queueStatus = {
       processing: notificationQueue.processing,
       stats,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
 
     return createSuccessResponse(queueStatus)
-
   } catch (error) {
     logger.error('큐 상태 조회 실패:', error)
     return createErrorResponse('큐 상태 조회에 실패했습니다.')
@@ -80,15 +77,17 @@ async function handleTemplateList() {
     const templateList = {
       templates,
       count: templates.length,
-      byType: templates.reduce((acc, template) => {
-        acc[template.type] = (acc[template.type] || 0) + 1
-        return acc
-      }, {} as Record<string, number>),
-      timestamp: new Date().toISOString()
+      byType: templates.reduce(
+        (acc, template) => {
+          acc[template.type] = (acc[template.type] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>
+      ),
+      timestamp: new Date().toISOString(),
     }
 
     return createSuccessResponse(templateList)
-
   } catch (error) {
     logger.error('템플릿 목록 조회 실패:', error)
     return createErrorResponse('템플릿 목록 조회에 실패했습니다.')
@@ -103,11 +102,10 @@ async function handleProviderStatus() {
     const providerStatus = {
       sms: status.sms,
       kakao: status.kakao,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
 
     return createSuccessResponse(providerStatus)
-
   } catch (error) {
     logger.error('제공자 상태 조회 실패:', error)
     return createErrorResponse('제공자 상태 조회에 실패했습니다.')
@@ -130,7 +128,6 @@ export async function POST(request: NextRequest) {
       default:
         return createErrorResponse('지원하지 않는 액션입니다.', 400)
     }
-
   } catch (error) {
     logger.error('알림 제어 API 오류:', error)
     return createErrorResponse('제어 작업에 실패했습니다.')
@@ -148,7 +145,6 @@ async function handleStartQueue() {
       { processing: true, message: '큐 처리가 시작되었습니다.' },
       '큐 처리가 성공적으로 시작되었습니다.'
     )
-
   } catch (error) {
     logger.error('큐 시작 실패:', error)
     return createErrorResponse('큐 시작에 실패했습니다.')
@@ -166,7 +162,6 @@ async function handleStopQueue() {
       { processing: false, message: '큐 처리가 중지되었습니다.' },
       '큐 처리가 성공적으로 중지되었습니다.'
     )
-
   } catch (error) {
     logger.error('큐 중지 실패:', error)
     return createErrorResponse('큐 중지에 실패했습니다.')
@@ -184,7 +179,6 @@ async function handleClearCache() {
       { message: '캐시가 초기화되었습니다.' },
       '캐시가 성공적으로 초기화되었습니다.'
     )
-
   } catch (error) {
     logger.error('캐시 초기화 실패:', error)
     return createErrorResponse('캐시 초기화에 실패했습니다.')

@@ -111,10 +111,7 @@ const supabase = createClient(
 )
 
 async function testConnection() {
-  const { data, error } = await supabase
-    .from('companies')
-    .select('*')
-    .limit(5)
+  const { data, error } = await supabase.from('companies').select('*').limit(5)
 
   if (error) {
     console.error('Connection failed:', error)
@@ -132,12 +129,9 @@ testConnection()
 // 이메일 로그 실시간 구독
 const subscription = supabase
   .channel('email_logs')
-  .on('postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'email_logs' },
-    (payload) => {
-      console.log('New email received:', payload.new)
-    }
-  )
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'email_logs' }, (payload) => {
+    console.log('New email received:', payload.new)
+  })
   .subscribe()
 ```
 
@@ -158,14 +152,17 @@ const subscription = supabase
 ## 문제 해결
 
 ### 연결 오류
+
 - 환경변수 확인
 - 프로젝트 상태 확인 (paused 상태인지)
 - 네트워크/방화벽 설정 확인
 
 ### 권한 오류
+
 - RLS 정책 확인
 - Service role key vs Anon key 사용 구분
 
 ### 마이그레이션 오류
+
 - DATABASE_URL 형식 확인
 - SSL 설정: `?sslmode=require` 추가

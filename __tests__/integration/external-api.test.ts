@@ -43,7 +43,7 @@ describe('External API Integration Tests', () => {
       smsProvider = new SmsProvider({
         apiKey: process.env.SMS_API_KEY,
         apiSecret: process.env.SMS_API_SECRET,
-        sender: '1588-1234'
+        sender: '1588-1234',
       })
     })
 
@@ -55,17 +55,17 @@ describe('External API Integration Tests', () => {
           api_secret: 'test-sms-api-secret',
           from: '1588-1234',
           to: '010-1234-5678',
-          text: '테스트 메시지입니다.'
+          text: '테스트 메시지입니다.',
         })
         .reply(200, {
           success: true,
           message_id: 'sms-12345',
-          remaining_balance: 1000
+          remaining_balance: 1000,
         })
 
       const result = await smsProvider.send({
         recipient: '010-1234-5678',
-        message: '테스트 메시지입니다.'
+        message: '테스트 메시지입니다.',
       })
 
       expect(result.success).toBe(true)
@@ -75,18 +75,16 @@ describe('External API Integration Tests', () => {
 
     it('should handle SMS API rate limiting', async () => {
       // Rate limit 응답 모킹
-      const rateLimitMock = nock('https://api.sms-provider.com')
-        .post('/v2/send')
-        .reply(429, {
-          error: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many requests',
-          retry_after: 60
-        })
+      const rateLimitMock = nock('https://api.sms-provider.com').post('/v2/send').reply(429, {
+        error: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests',
+        retry_after: 60,
+      })
 
       await expect(
         smsProvider.send({
           recipient: '010-1234-5678',
-          message: '테스트 메시지'
+          message: '테스트 메시지',
         })
       ).rejects.toThrow('RATE_LIMIT_EXCEEDED')
 
@@ -95,17 +93,15 @@ describe('External API Integration Tests', () => {
 
     it('should handle SMS API authentication failure', async () => {
       // 인증 실패 모킹
-      const authFailMock = nock('https://api.sms-provider.com')
-        .post('/v2/send')
-        .reply(401, {
-          error: 'INVALID_API_KEY',
-          message: 'Invalid API credentials'
-        })
+      const authFailMock = nock('https://api.sms-provider.com').post('/v2/send').reply(401, {
+        error: 'INVALID_API_KEY',
+        message: 'Invalid API credentials',
+      })
 
       await expect(
         smsProvider.send({
           recipient: '010-1234-5678',
-          message: '테스트 메시지'
+          message: '테스트 메시지',
         })
       ).rejects.toThrow('INVALID_API_KEY')
 
@@ -120,23 +116,26 @@ describe('External API Integration Tests', () => {
       const retryMock = nock('https://api.sms-provider.com')
         .post('/v2/send')
         .times(2)
-        .reply(function() {
+        .reply(function () {
           attemptCount++
           if (attemptCount === 1) {
             // 타임아웃 시뮬레이션
             return [504, { error: 'GATEWAY_TIMEOUT' }]
           }
-          return [200, {
-            success: true,
-            message_id: 'sms-retry-success'
-          }]
+          return [
+            200,
+            {
+              success: true,
+              message_id: 'sms-retry-success',
+            },
+          ]
         })
 
       const result = await smsProvider.sendWithRetry({
         recipient: '010-1234-5678',
         message: '재시도 테스트',
         maxRetries: 3,
-        retryDelay: 100
+        retryDelay: 100,
       })
 
       expect(result.success).toBe(true)
@@ -146,29 +145,25 @@ describe('External API Integration Tests', () => {
 
     it('should validate phone number format before sending', async () => {
       const invalidNumbers = [
-        '1234567890',      // 하이픈 없음
-        '02-1234-5678',    // 010이 아님
-        '010-123-5678',    // 잘못된 형식
-        '',                // 빈 문자열
-        null               // null
+        '1234567890', // 하이픈 없음
+        '02-1234-5678', // 010이 아님
+        '010-123-5678', // 잘못된 형식
+        '', // 빈 문자열
+        null, // null
       ]
 
       for (const number of invalidNumbers) {
         await expect(
           smsProvider.send({
             recipient: number as string,
-            message: '테스트'
+            message: '테스트',
           })
         ).rejects.toThrow(/Invalid phone number/)
       }
     })
 
     it('should handle bulk SMS sending', async () => {
-      const recipients = [
-        '010-1111-1111',
-        '010-2222-2222',
-        '010-3333-3333'
-      ]
+      const recipients = ['010-1111-1111', '010-2222-2222', '010-3333-3333']
 
       // 대량 발송 API 모킹
       const bulkMock = nock('https://api.sms-provider.com')
@@ -176,28 +171,28 @@ describe('External API Integration Tests', () => {
           api_key: 'test-sms-api-key',
           api_secret: 'test-sms-api-secret',
           from: '1588-1234',
-          messages: recipients.map(to => ({
+          messages: recipients.map((to) => ({
             to,
-            text: '대량 발송 테스트'
-          }))
+            text: '대량 발송 테스트',
+          })),
         })
         .reply(200, {
           success: true,
           results: recipients.map((to, i) => ({
             to,
             message_id: `bulk-sms-${i}`,
-            status: 'sent'
-          }))
+            status: 'sent',
+          })),
         })
 
       const results = await smsProvider.sendBulk({
         recipients,
-        message: '대량 발송 테스트'
+        message: '대량 발송 테스트',
       })
 
       expect(results.success).toBe(true)
       expect(results.results).toHaveLength(3)
-      expect(results.results.every(r => r.status === 'sent')).toBe(true)
+      expect(results.results.every((r) => r.status === 'sent')).toBe(true)
       expect(bulkMock.isDone()).toBe(true)
     })
   })
@@ -209,7 +204,7 @@ describe('External API Integration Tests', () => {
       kakaoProvider = new KakaoProvider({
         apiKey: process.env.KAKAO_API_KEY,
         senderKey: process.env.KAKAO_SENDER_KEY,
-        templateCode: 'ORDER_NOTIFICATION_001'
+        templateCode: 'ORDER_NOTIFICATION_001',
       })
     })
 
@@ -221,19 +216,19 @@ describe('External API Integration Tests', () => {
           template_code: 'ORDER_NOTIFICATION_001',
           receiver_phone: '010-1234-5678',
           message: '카카오 알림톡 테스트',
-          button_info: []
+          button_info: [],
         })
         .matchHeader('Authorization', 'Bearer test-kakao-api-key')
         .reply(200, {
           success: true,
           message_id: 'kakao-12345',
-          request_id: 'req-12345'
+          request_id: 'req-12345',
         })
 
       const result = await kakaoProvider.sendAlimTalk({
         recipient: '010-1234-5678',
         message: '카카오 알림톡 테스트',
-        templateCode: 'ORDER_NOTIFICATION_001'
+        templateCode: 'ORDER_NOTIFICATION_001',
       })
 
       expect(result.success).toBe(true)
@@ -248,14 +243,14 @@ describe('External API Integration Tests', () => {
         .reply(400, {
           error: 'INVALID_TEMPLATE',
           message: 'Template not found or not approved',
-          template_code: 'INVALID_TEMPLATE_001'
+          template_code: 'INVALID_TEMPLATE_001',
         })
 
       await expect(
         kakaoProvider.sendAlimTalk({
           recipient: '010-1234-5678',
           message: '테스트',
-          templateCode: 'INVALID_TEMPLATE_001'
+          templateCode: 'INVALID_TEMPLATE_001',
         })
       ).rejects.toThrow('INVALID_TEMPLATE')
 
@@ -269,17 +264,17 @@ describe('External API Integration Tests', () => {
           sender_key: 'test-sender-key',
           receiver_phone: '010-1234-5678',
           message: '친구톡 메시지입니다.',
-          ad_flag: false
+          ad_flag: false,
         })
         .matchHeader('Authorization', 'Bearer test-kakao-api-key')
         .reply(200, {
           success: true,
-          message_id: 'friend-12345'
+          message_id: 'friend-12345',
         })
 
       const result = await kakaoProvider.sendFriendTalk({
         recipient: '010-1234-5678',
-        message: '친구톡 메시지입니다.'
+        message: '친구톡 메시지입니다.',
       })
 
       expect(result.success).toBe(true)
@@ -294,7 +289,7 @@ describe('External API Integration Tests', () => {
         .query({ phone: '010-1234-5678' })
         .reply(200, {
           is_friend: true,
-          friend_since: '2024-01-01T00:00:00Z'
+          friend_since: '2024-01-01T00:00:00Z',
         })
 
       const isFriend = await kakaoProvider.checkFriendStatus('010-1234-5678')
@@ -309,21 +304,19 @@ describe('External API Integration Tests', () => {
         .post('/v1/friendtalk/send')
         .reply(400, {
           error: 'NOT_FRIEND',
-          message: 'Recipient is not a friend'
+          message: 'Recipient is not a friend',
         })
 
       // 알림톡 성공 모킹
-      const alimTalkMock = nock('https://api.kakaoapi.com')
-        .post('/v1/alimtalk/send')
-        .reply(200, {
-          success: true,
-          message_id: 'alimtalk-fallback-12345'
-        })
+      const alimTalkMock = nock('https://api.kakaoapi.com').post('/v1/alimtalk/send').reply(200, {
+        success: true,
+        message_id: 'alimtalk-fallback-12345',
+      })
 
       const result = await kakaoProvider.sendWithFallback({
         recipient: '010-1234-5678',
         message: '폴백 테스트 메시지',
-        preferFriendTalk: true
+        preferFriendTalk: true,
       })
 
       expect(result.success).toBe(true)
@@ -351,7 +344,7 @@ describe('External API Integration Tests', () => {
         port: parseInt(process.env.IMAP_PORT),
         user: process.env.IMAP_USER,
         password: process.env.IMAP_PASSWORD,
-        tls: true
+        tls: true,
       })
 
       // 연결 모킹 주입
@@ -390,7 +383,7 @@ describe('External API Integration Tests', () => {
 
       // 검색 결과 모킹
       mockImapConnection.search.mockImplementation((criteria, callback) => {
-        callback(null, [1, 2, 3])  // 3개의 읽지 않은 메일 ID
+        callback(null, [1, 2, 3]) // 3개의 읽지 않은 메일 ID
       })
 
       // Fetch 모킹
@@ -402,7 +395,9 @@ describe('External API Integration Tests', () => {
               const msg = new EventEmitter()
               msg.on = jest.fn((evt, h) => {
                 if (evt === 'body') {
-                  h(Buffer.from(`Subject: Test Email ${i}\r\n\r\nBody content ${i}`), { which: 'TEXT' })
+                  h(Buffer.from(`Subject: Test Email ${i}\r\n\r\nBody content ${i}`), {
+                    which: 'TEXT',
+                  })
                 }
                 if (evt === 'attributes') {
                   h({ uid: i, flags: [], date: new Date() })
@@ -419,7 +414,7 @@ describe('External API Integration Tests', () => {
             handler()
           }
           return mockFetch
-        })
+        }),
       }
       mockImapConnection.fetch.mockReturnValue(mockFetch)
 
@@ -477,7 +472,7 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
             handler()
           }
           return mockFetch
-        })
+        }),
       }
       mockImapConnection.fetch.mockReturnValue(mockFetch)
 
@@ -504,7 +499,7 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
 
       // IDLE 모드 시작 시뮬레이션
       setImmediate(() => {
-        mockImapConnection.emit('mail', 1)  // 새 메일 도착
+        mockImapConnection.emit('mail', 1) // 새 메일 도착
       })
 
       const onNewMail = jest.fn()
@@ -515,7 +510,7 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
         imapClient.stopIdleMode()
       }, 100)
 
-      await new Promise(resolve => setTimeout(resolve, 150))
+      await new Promise((resolve) => setTimeout(resolve, 150))
 
       expect(onNewMail).toHaveBeenCalledWith(1)
     })
@@ -531,7 +526,7 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
       mockImapConnection.emit('close')
 
       // 재연결 시도 대기
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       expect(reconnectAttempts).toBeGreaterThan(0)
     })
@@ -545,8 +540,8 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
         sender: '1588-1234',
         circuitBreaker: {
           threshold: 3,
-          timeout: 1000
-        }
+          timeout: 1000,
+        },
       })
 
       // 3번 연속 실패 모킹
@@ -560,7 +555,7 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
         await expect(
           smsProvider.send({
             recipient: '010-1234-5678',
-            message: '테스트'
+            message: '테스트',
           })
         ).rejects.toThrow()
       }
@@ -569,12 +564,12 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
       await expect(
         smsProvider.send({
           recipient: '010-1234-5678',
-          message: '테스트'
+          message: '테스트',
         })
       ).rejects.toThrow(/Circuit breaker is open/)
 
       // 타임아웃 후 재시도 허용
-      await new Promise(resolve => setTimeout(resolve, 1100))
+      await new Promise((resolve) => setTimeout(resolve, 1100))
 
       // 성공 응답 모킹
       nock('https://api.sms-provider.com')
@@ -583,7 +578,7 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
 
       const result = await smsProvider.send({
         recipient: '010-1234-5678',
-        message: '복구 테스트'
+        message: '복구 테스트',
       })
 
       expect(result.success).toBe(true)
@@ -596,14 +591,14 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
         apiKey: 'test-key',
         senderKey: 'test-sender',
         cacheEnabled: true,
-        cacheTTL: 3600
+        cacheTTL: 3600,
       })
 
       // 친구 상태 확인 API 모킹 (1번만 호출되어야 함)
       const friendCheckMock = nock('https://api.kakaoapi.com')
         .get('/v1/friend/check')
         .query({ phone: '010-1234-5678' })
-        .once()  // 한 번만 호출
+        .once() // 한 번만 호출
         .reply(200, { is_friend: true })
 
       // 첫 번째 호출 - API 호출
@@ -625,7 +620,7 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
         message_id: 'sms-12345',
         status: 'delivered',
         delivered_at: '2024-01-15T10:30:00Z',
-        recipient: '010-1234-5678'
+        recipient: '010-1234-5678',
       }
 
       // Webhook 처리 시뮬레이션
@@ -633,7 +628,7 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
         // 데이터베이스 업데이트 로직
         return {
           success: true,
-          updated: true
+          updated: true,
         }
       }
 
@@ -647,21 +642,15 @@ JVBERi0xLjQKJeLjz9MKNCAwIG9iago=
       const webhookSecret = 'webhook-secret-key'
       const payload = JSON.stringify({
         message_id: 'test-123',
-        status: 'sent'
+        status: 'sent',
       })
 
       // HMAC 서명 생성
       const crypto = require('crypto')
-      const signature = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(payload)
-        .digest('hex')
+      const signature = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex')
 
       // 서명 검증
-      const isValid = crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(signature)
-      )
+      const isValid = crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(signature))
 
       expect(isValid).toBe(true)
     })

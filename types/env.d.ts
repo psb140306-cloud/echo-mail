@@ -45,6 +45,13 @@ declare namespace NodeJS {
     KAKAO_TEMPLATE_DELIVERY_NOTICE: string
     KAKAO_PLUS_FRIEND_ID: string
 
+    // 토스페이먼츠 API
+    TOSS_CLIENT_KEY: string
+    TOSS_SECRET_KEY: string
+    TOSS_WEBHOOK_SECRET: string
+    PAYMENT_SUCCESS_URL: string
+    PAYMENT_FAIL_URL: string
+
     // 공휴일 API
     HOLIDAY_API_KEY: string
     HOLIDAY_API_URL: string

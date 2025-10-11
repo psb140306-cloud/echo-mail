@@ -11,7 +11,10 @@ async function createTables() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   console.log('Supabase URL:', url)
-  console.log('Service Role Key:', serviceRoleKey ? `${serviceRoleKey.substring(0, 20)}...` : 'NOT SET')
+  console.log(
+    'Service Role Key:',
+    serviceRoleKey ? `${serviceRoleKey.substring(0, 20)}...` : 'NOT SET'
+  )
 
   if (!url || !serviceRoleKey) {
     console.error('❌ Supabase 환경변수가 설정되지 않았습니다.')
@@ -22,13 +25,19 @@ async function createTables() {
   const supabase = createClient(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
-    }
+      persistSession: false,
+    },
   })
 
   try {
     // 마이그레이션 SQL 파일 읽기
-    const migrationPath = path.join(__dirname, 'prisma', 'migrations', '20250924_initial_schema', 'migration.sql')
+    const migrationPath = path.join(
+      __dirname,
+      'prisma',
+      'migrations',
+      '20250924_initial_schema',
+      'migration.sql'
+    )
 
     if (!fs.existsSync(migrationPath)) {
       console.error('❌ 마이그레이션 파일을 찾을 수 없습니다:', migrationPath)
@@ -41,8 +50,8 @@ async function createTables() {
     // SQL을 개별 명령문으로 분리
     const statements = migrationSql
       .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'))
+      .map((stmt) => stmt.trim())
+      .filter((stmt) => stmt.length > 0 && !stmt.startsWith('--'))
 
     console.log(`📊 총 ${statements.length}개의 SQL 명령문 실행 예정`)
 
@@ -70,8 +79,10 @@ async function createTables() {
         console.error(`❌ SQL 실행 중 오류: ${sqlError.message}`)
 
         // 테이블 생성 관련 오류가 아니면 중단
-        if (!sqlError.message.includes('already exists') &&
-            !sqlError.message.includes('does not exist')) {
+        if (
+          !sqlError.message.includes('already exists') &&
+          !sqlError.message.includes('does not exist')
+        ) {
           throw sqlError
         }
       }
@@ -82,7 +93,6 @@ async function createTables() {
     // 테이블 목록 확인
     console.log('\n📋 생성된 테이블 확인...')
     await checkTables()
-
   } catch (error) {
     console.error('❌ 데이터베이스 테이블 생성 실패:', error.message)
   }
@@ -93,7 +103,14 @@ async function checkTables() {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const supabase = createClient(url, anonKey)
 
-  const tables = ['companies', 'contacts', 'users', 'email_logs', 'notification_logs', 'system_configs']
+  const tables = [
+    'companies',
+    'contacts',
+    'users',
+    'email_logs',
+    'notification_logs',
+    'system_configs',
+  ]
 
   for (const table of tables) {
     const { data, error, count } = await supabase

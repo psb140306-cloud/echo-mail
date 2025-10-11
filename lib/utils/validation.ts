@@ -3,35 +3,37 @@ import { NextResponse } from 'next/server'
 import { logger } from './logger'
 
 // 공통 검증 스키마들
-export const phoneSchema = z.string().regex(
-  /^010-\d{4}-\d{4}$/,
-  '올바른 전화번호 형식이 아닙니다 (010-0000-0000)'
-)
+export const phoneSchema = z
+  .string()
+  .regex(/^010-\d{4}-\d{4}$/, '올바른 전화번호 형식이 아닙니다 (010-0000-0000)')
 
 export const emailSchema = z.string().email('올바른 이메일 형식이 아닙니다')
 
-export const nameSchema = z.string()
+export const nameSchema = z
+  .string()
   .min(1, '이름은 필수입니다')
   .max(50, '이름은 50자 이하여야 합니다')
 
-export const companyNameSchema = z.string()
+export const companyNameSchema = z
+  .string()
   .min(1, '업체명은 필수입니다')
   .max(100, '업체명은 100자 이하여야 합니다')
 
-export const regionSchema = z.string()
+export const regionSchema = z
+  .string()
   .min(1, '지역은 필수입니다')
   .max(50, '지역은 50자 이하여야 합니다')
 
 // 페이지네이션 스키마
 export const paginationSchema = z.object({
   page: z.number().int().min(1, '페이지는 1 이상이어야 합니다').default(1),
-  limit: z.number().int().min(1).max(100, '한 페이지당 최대 100개까지 조회 가능합니다').default(10)
+  limit: z.number().int().min(1).max(100, '한 페이지당 최대 100개까지 조회 가능합니다').default(10),
 })
 
 // 검색 스키마
 export const searchSchema = z.object({
   search: z.string().optional(),
-  isActive: z.enum(['true', 'false']).optional()
+  isActive: z.enum(['true', 'false']).optional(),
 })
 
 // 에러 응답 생성기
@@ -40,26 +42,22 @@ export function createValidationErrorResponse(error: z.ZodError) {
     {
       success: false,
       error: '입력값이 올바르지 않습니다.',
-      details: error.errors.map(err => ({
+      details: error.errors.map((err) => ({
         field: err.path.join('.'),
         message: err.message,
-        code: err.code
-      }))
+        code: err.code,
+      })),
     },
     { status: 400 }
   )
 }
 
 // 일반 에러 응답 생성기
-export function createErrorResponse(
-  message: string,
-  statusCode: number = 500,
-  details?: any
-) {
+export function createErrorResponse(message: string, statusCode: number = 500, details?: any) {
   const response = {
     success: false,
     error: message,
-    ...(details && { details })
+    ...(details && { details }),
   }
 
   logger.error('API Error:', { message, statusCode, details })
@@ -68,15 +66,11 @@ export function createErrorResponse(
 }
 
 // 성공 응답 생성기
-export function createSuccessResponse(
-  data?: any,
-  message?: string,
-  statusCode: number = 200
-) {
+export function createSuccessResponse(data?: any, message?: string, statusCode: number = 200) {
   const response = {
     success: true,
     ...(data && { data }),
-    ...(message && { message })
+    ...(message && { message }),
   }
 
   return NextResponse.json(response, { status: statusCode })
@@ -96,8 +90,8 @@ export function createPaginatedResponse(
     data,
     pagination: {
       ...pagination,
-      pages: Math.ceil(pagination.total / pagination.limit)
-    }
+      pages: Math.ceil(pagination.total / pagination.limit),
+    },
   })
 }
 
@@ -177,7 +171,7 @@ export const validators = {
   // 이름 검증 (특수문자 제한)
   isValidName: (name: string): boolean => {
     return /^[가-힣a-zA-Z\s]{1,50}$/.test(name)
-  }
+  },
 }
 
 // 데이터 정제 함수들
@@ -201,5 +195,5 @@ export const sanitizers = {
   // 업체명 정제
   formatCompanyName: (name: string): string => {
     return name.trim().replace(/\s+/g, ' ')
-  }
+  },
 }

@@ -53,11 +53,7 @@ export class GlobalErrorHandler {
     context: ErrorContext = {},
     options: ErrorHandlerOptions = {}
   ): Promise<void> {
-    const {
-      logError = true,
-      notifyAdmin = true,
-      includeStack = true
-    } = options
+    const { logError = true, notifyAdmin = true, includeStack = true } = options
 
     // EchoMailError로 변환 또는 래핑
     const echoError = this.normalizeError(error, context)
@@ -68,7 +64,7 @@ export class GlobalErrorHandler {
       timestamp: new Date(),
       errorCode: echoError.code,
       errorCategory: echoError.category,
-      errorSeverity: echoError.severity
+      errorSeverity: echoError.severity,
     }
 
     try {
@@ -89,7 +85,6 @@ export class GlobalErrorHandler {
       if (echoError.recoverable) {
         await this.attemptRecovery(echoError, enrichedContext)
       }
-
     } catch (handlerError) {
       // 에러 핸들러 자체에서 오류 발생 시 기본 로깅
       console.error('Error handler failed:', handlerError)
@@ -111,7 +106,7 @@ export class GlobalErrorHandler {
       {
         originalMessage: error.message,
         originalName: error.name,
-        ...context
+        ...context,
       },
       error
     )
@@ -128,7 +123,7 @@ export class GlobalErrorHandler {
     const logData = {
       ...error.toLogObject(),
       context,
-      ...(includeStack && { stack: error.stack })
+      ...(includeStack && { stack: error.stack }),
     }
 
     switch (error.severity) {
@@ -152,10 +147,7 @@ export class GlobalErrorHandler {
   /**
    * 메트릭 수집
    */
-  private async collectMetrics(
-    error: EchoMailError,
-    context: ErrorContext
-  ): Promise<void> {
+  private async collectMetrics(error: EchoMailError, context: ErrorContext): Promise<void> {
     try {
       // 에러 카운터 증가
       await this.incrementErrorCounter(error.category, error.code.toString())
@@ -172,7 +164,6 @@ export class GlobalErrorHandler {
       if (context.companyId) {
         await this.recordErrorByCompany(context.companyId, error.category)
       }
-
     } catch (metricsError) {
       logger.warn('Failed to collect error metrics', { error: metricsError })
     }
@@ -181,14 +172,11 @@ export class GlobalErrorHandler {
   /**
    * 관리자 알림 큐에 추가
    */
-  private async queueAdminNotification(
-    error: EchoMailError,
-    context: ErrorContext
-  ): Promise<void> {
+  private async queueAdminNotification(error: EchoMailError, context: ErrorContext): Promise<void> {
     this.adminNotificationQueue.push({
       error,
       context,
-      timestamp: new Date()
+      timestamp: new Date(),
     })
 
     // 큐가 일정 크기를 초과하면 즉시 처리
@@ -217,7 +205,6 @@ export class GlobalErrorHandler {
       for (const [severity, errors] of Object.entries(groupedErrors)) {
         await this.sendAdminNotificationBatch(severity as ErrorSeverity, errors)
       }
-
     } catch (notificationError) {
       logger.error('Failed to send admin notifications', { error: notificationError })
       // 실패한 알림을 다시 큐에 추가
@@ -228,10 +215,7 @@ export class GlobalErrorHandler {
   /**
    * 자동 복구 시도
    */
-  private async attemptRecovery(
-    error: EchoMailError,
-    context: ErrorContext
-  ): Promise<void> {
+  private async attemptRecovery(error: EchoMailError, context: ErrorContext): Promise<void> {
     try {
       switch (error.category) {
         case ErrorCategory.EMAIL:
@@ -249,14 +233,13 @@ export class GlobalErrorHandler {
         default:
           logger.info('No recovery strategy available', {
             errorCode: error.code,
-            category: error.category
+            category: error.category,
           })
       }
-
     } catch (recoveryError) {
       logger.warn('Recovery attempt failed', {
         originalError: error.code,
-        recoveryError: recoveryError
+        recoveryError: recoveryError,
       })
     }
   }
@@ -264,10 +247,7 @@ export class GlobalErrorHandler {
   /**
    * 메일 연결 복구
    */
-  private async recoverEmailConnection(
-    error: EchoMailError,
-    context: ErrorContext
-  ): Promise<void> {
+  private async recoverEmailConnection(error: EchoMailError, context: ErrorContext): Promise<void> {
     logger.info('Attempting email connection recovery', { errorCode: error.code })
 
     // TODO: 메일 서버 재연결 로직 구현
@@ -294,10 +274,7 @@ export class GlobalErrorHandler {
   /**
    * 시스템 서비스 복구
    */
-  private async recoverSystemService(
-    error: EchoMailError,
-    context: ErrorContext
-  ): Promise<void> {
+  private async recoverSystemService(error: EchoMailError, context: ErrorContext): Promise<void> {
     logger.info('Attempting system service recovery', { errorCode: error.code })
 
     // TODO: 시스템 복구 로직 구현
@@ -309,10 +286,7 @@ export class GlobalErrorHandler {
   /**
    * 에러 카운터 증가
    */
-  private async incrementErrorCounter(
-    category: ErrorCategory,
-    errorCode: string
-  ): Promise<void> {
+  private async incrementErrorCounter(category: ErrorCategory, errorCode: string): Promise<void> {
     // TODO: 메트릭 수집 시스템 연동
     // Redis 또는 메트릭 저장소에 카운터 증가
     logger.debug('Error counter incremented', { category, errorCode })
@@ -321,10 +295,7 @@ export class GlobalErrorHandler {
   /**
    * 시간대별 에러 기록
    */
-  private async recordErrorByTime(
-    severity: ErrorSeverity,
-    timestamp: Date
-  ): Promise<void> {
+  private async recordErrorByTime(severity: ErrorSeverity, timestamp: Date): Promise<void> {
     // TODO: 시간대별 에러 통계 기록
     logger.debug('Error recorded by time', { severity, timestamp })
   }
@@ -332,10 +303,7 @@ export class GlobalErrorHandler {
   /**
    * 엔드포인트별 에러 기록
    */
-  private async recordErrorByEndpoint(
-    endpoint: string,
-    errorCode: string
-  ): Promise<void> {
+  private async recordErrorByEndpoint(endpoint: string, errorCode: string): Promise<void> {
     // TODO: API 엔드포인트별 에러 통계
     logger.debug('Error recorded by endpoint', { endpoint, errorCode })
   }
@@ -343,10 +311,7 @@ export class GlobalErrorHandler {
   /**
    * 업체별 에러 기록
    */
-  private async recordErrorByCompany(
-    companyId: string,
-    category: ErrorCategory
-  ): Promise<void> {
+  private async recordErrorByCompany(companyId: string, category: ErrorCategory): Promise<void> {
     // TODO: 업체별 에러 통계
     logger.debug('Error recorded by company', { companyId, category })
   }
@@ -361,14 +326,17 @@ export class GlobalErrorHandler {
       timestamp: Date
     }>
   ): Record<ErrorSeverity, typeof notifications> {
-    return notifications.reduce((groups, notification) => {
-      const severity = notification.error.severity
-      if (!groups[severity]) {
-        groups[severity] = []
-      }
-      groups[severity].push(notification)
-      return groups
-    }, {} as Record<ErrorSeverity, typeof notifications>)
+    return notifications.reduce(
+      (groups, notification) => {
+        const severity = notification.error.severity
+        if (!groups[severity]) {
+          groups[severity] = []
+        }
+        groups[severity].push(notification)
+        return groups
+      },
+      {} as Record<ErrorSeverity, typeof notifications>
+    )
   }
 
   /**
@@ -383,13 +351,12 @@ export class GlobalErrorHandler {
       logger.warn('Immediate admin notification sent', {
         errorCode: error.code,
         severity: error.severity,
-        context
+        context,
       })
-
     } catch (notificationError) {
       logger.error('Failed to send immediate admin notification', {
         error: notificationError,
-        originalError: error.code
+        originalError: error.code,
       })
     }
   }
@@ -410,17 +377,16 @@ export class GlobalErrorHandler {
       logger.info('Admin notification batch sent', {
         severity,
         errorCount: errors.length,
-        errors: errors.map(e => ({
+        errors: errors.map((e) => ({
           code: e.error.code,
-          timestamp: e.timestamp
-        }))
+          timestamp: e.timestamp,
+        })),
       })
-
     } catch (notificationError) {
       logger.error('Failed to send admin notification batch', {
         error: notificationError,
         severity,
-        errorCount: errors.length
+        errorCount: errors.length,
       })
     }
   }
@@ -439,7 +405,10 @@ export class GlobalErrorHandler {
   /**
    * 에러 핸들러 통계 조회
    */
-  async getErrorStats(startDate: Date, endDate: Date): Promise<{
+  async getErrorStats(
+    startDate: Date,
+    endDate: Date
+  ): Promise<{
     totalErrors: number
     errorsByCategory: Record<ErrorCategory, number>
     errorsBySeverity: Record<ErrorSeverity, number>
@@ -450,7 +419,7 @@ export class GlobalErrorHandler {
       totalErrors: 0,
       errorsByCategory: {} as Record<ErrorCategory, number>,
       errorsBySeverity: {} as Record<ErrorSeverity, number>,
-      topErrors: []
+      topErrors: [],
     }
   }
 }
@@ -475,8 +444,8 @@ export function expressErrorHandler() {
       additionalData: {
         body: req.body,
         params: req.params,
-        query: req.query
-      }
+        query: req.query,
+      },
     }
 
     await globalErrorHandler.handleError(error, context)
@@ -490,9 +459,9 @@ export function expressErrorHandler() {
           message: error.getUserFriendlyMessage(),
           ...(process.env.NODE_ENV === 'development' && {
             details: error.message,
-            stack: error.stack
-          })
-        }
+            stack: error.stack,
+          }),
+        },
       })
     } else {
       res.status(500).json({
@@ -500,9 +469,9 @@ export function expressErrorHandler() {
         error: {
           message: '서버 오류가 발생했습니다.',
           ...(process.env.NODE_ENV === 'development' && {
-            details: error.message
-          })
-        }
+            details: error.message,
+          }),
+        },
       })
     }
   }
@@ -522,8 +491,8 @@ export function nextApiErrorHandler(handler: Function) {
         method: req.method,
         additionalData: {
           body: req.body,
-          query: req.query
-        }
+          query: req.query,
+        },
       }
 
       await globalErrorHandler.handleError(error as Error, context)
@@ -533,15 +502,15 @@ export function nextApiErrorHandler(handler: Function) {
           success: false,
           error: {
             code: error.code,
-            message: error.getUserFriendlyMessage()
-          }
+            message: error.getUserFriendlyMessage(),
+          },
         })
       } else {
         res.status(500).json({
           success: false,
           error: {
-            message: '서버 오류가 발생했습니다.'
-          }
+            message: '서버 오류가 발생했습니다.',
+          },
         })
       }
     }
@@ -554,8 +523,8 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
   globalErrorHandler.handleError(error, {
     additionalData: {
       type: 'unhandledRejection',
-      promise: promise.toString()
-    }
+      promise: promise.toString(),
+    },
   })
 })
 
@@ -563,8 +532,8 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
 process.on('uncaughtException', (error: Error) => {
   globalErrorHandler.handleError(error, {
     additionalData: {
-      type: 'uncaughtException'
-    }
+      type: 'uncaughtException',
+    },
   })
 
   // Uncaught exception의 경우 프로세스 종료

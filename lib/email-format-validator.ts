@@ -108,7 +108,7 @@ export enum EmailErrorType {
   MISSING_ORDER_INFO = 'MISSING_ORDER_INFO',
   INVALID_DATE_FORMAT = 'INVALID_DATE_FORMAT',
   SUSPICIOUS_CONTENT = 'SUSPICIOUS_CONTENT',
-  OVERSIZED_EMAIL = 'OVERSIZED_EMAIL'
+  OVERSIZED_EMAIL = 'OVERSIZED_EMAIL',
 }
 
 export enum EmailWarningType {
@@ -117,7 +117,7 @@ export enum EmailWarningType {
   UNUSUAL_FORMATTING = 'UNUSUAL_FORMATTING',
   POTENTIAL_SPAM = 'POTENTIAL_SPAM',
   MISSING_ATTACHMENT = 'MISSING_ATTACHMENT',
-  INCOMPLETE_ORDER_INFO = 'INCOMPLETE_ORDER_INFO'
+  INCOMPLETE_ORDER_INFO = 'INCOMPLETE_ORDER_INFO',
 }
 
 /**
@@ -128,8 +128,18 @@ export class EmailFormatValidator {
   private readonly maxEmailSize = 25 * 1024 * 1024 // 25MB
   private readonly maxAttachmentSize = 10 * 1024 * 1024 // 10MB
   private readonly orderKeywords = [
-    '발주', '주문', '오더', 'order', '견적', '납품', '배송',
-    '구매', '청구', 'invoice', '계산서', '거래명세서'
+    '발주',
+    '주문',
+    '오더',
+    'order',
+    '견적',
+    '납품',
+    '배송',
+    '구매',
+    '청구',
+    'invoice',
+    '계산서',
+    '거래명세서',
   ]
 
   private constructor() {}
@@ -165,7 +175,7 @@ export class EmailFormatValidator {
       logger.debug('Validating email format', {
         from: emailData.from,
         subject: emailData.subject,
-        hasAttachments: (emailData.attachments?.length || 0) > 0
+        hasAttachments: (emailData.attachments?.length || 0) > 0,
       })
 
       // 1. 기본 형식 검증
@@ -197,14 +207,14 @@ export class EmailFormatValidator {
       confidence = this.calculateConfidence(errors, warnings, extractedData)
 
       // 9. 검증 결과 생성
-      const isValid = errors.filter(e => e.severity === 'CRITICAL').length === 0
+      const isValid = errors.filter((e) => e.severity === 'CRITICAL').length === 0
 
       const result: EmailValidationResult = {
         isValid,
         errors,
         warnings,
         extractedData,
-        confidence
+        confidence,
       }
 
       // 10. 오류 로깅 및 처리
@@ -213,7 +223,6 @@ export class EmailFormatValidator {
       }
 
       return result
-
     } catch (error) {
       logger.error('Email validation failed', { error, emailData: { from: emailData.from } })
 
@@ -222,14 +231,14 @@ export class EmailFormatValidator {
         field: 'email',
         message: '이메일 검증 중 오류가 발생했습니다.',
         severity: 'CRITICAL',
-        recoverable: false
+        recoverable: false,
       })
 
       return {
         isValid: false,
         errors,
         warnings,
-        confidence: 0
+        confidence: 0,
       }
     }
   }
@@ -249,7 +258,7 @@ export class EmailFormatValidator {
         field: 'from',
         message: '발신자 정보가 없습니다.',
         severity: 'CRITICAL',
-        recoverable: false
+        recoverable: false,
       })
     }
 
@@ -258,19 +267,21 @@ export class EmailFormatValidator {
         type: EmailWarningType.UNCLEAR_SUBJECT,
         field: 'subject',
         message: '제목이 없거나 비어있습니다.',
-        suggestion: '명확한 제목을 포함해주세요.'
+        suggestion: '명확한 제목을 포함해주세요.',
       })
     }
 
-    if ((!emailData.body || emailData.body.trim().length === 0) &&
-        (!emailData.html || emailData.html.trim().length === 0) &&
-        (!emailData.attachments || emailData.attachments.length === 0)) {
+    if (
+      (!emailData.body || emailData.body.trim().length === 0) &&
+      (!emailData.html || emailData.html.trim().length === 0) &&
+      (!emailData.attachments || emailData.attachments.length === 0)
+    ) {
       errors.push({
         type: EmailErrorType.EMPTY_CONTENT,
         field: 'content',
         message: '이메일 내용이 완전히 비어있습니다.',
         severity: 'HIGH',
-        recoverable: false
+        recoverable: false,
       })
     }
   }
@@ -294,7 +305,7 @@ export class EmailFormatValidator {
         field: 'from',
         message: '유효하지 않은 이메일 주소입니다.',
         severity: 'CRITICAL',
-        recoverable: false
+        recoverable: false,
       })
       return
     }
@@ -306,7 +317,7 @@ export class EmailFormatValidator {
         type: EmailWarningType.POTENTIAL_SPAM,
         field: 'from',
         message: '의심스러운 도메인에서 발송된 이메일입니다.',
-        suggestion: '발신자를 확인해주세요.'
+        suggestion: '발신자를 확인해주세요.',
       })
     }
 
@@ -317,7 +328,7 @@ export class EmailFormatValidator {
         field: 'from',
         message: '임시 이메일 주소는 허용되지 않습니다.',
         severity: 'HIGH',
-        recoverable: false
+        recoverable: false,
       })
     }
   }
@@ -336,7 +347,7 @@ export class EmailFormatValidator {
         type: EmailWarningType.UNUSUAL_FORMATTING,
         field: 'subject',
         message: '제목이 너무 깁니다.',
-        suggestion: '제목을 200자 이내로 작성해주세요.'
+        suggestion: '제목을 200자 이내로 작성해주세요.',
       })
     }
 
@@ -350,7 +361,7 @@ export class EmailFormatValidator {
     }
 
     // 발주 관련 키워드 확인
-    const hasOrderKeywords = this.orderKeywords.some(keyword =>
+    const hasOrderKeywords = this.orderKeywords.some((keyword) =>
       subject.toLowerCase().includes(keyword.toLowerCase())
     )
 
@@ -359,7 +370,7 @@ export class EmailFormatValidator {
         type: EmailWarningType.UNCLEAR_SUBJECT,
         field: 'subject',
         message: '발주 관련 키워드가 포함되지 않았습니다.',
-        suggestion: '발주, 주문, 견적 등의 키워드를 포함해주세요.'
+        suggestion: '발주, 주문, 견적 등의 키워드를 포함해주세요.',
       })
     }
   }
@@ -380,7 +391,7 @@ export class EmailFormatValidator {
       warnings.push({
         type: EmailWarningType.UNUSUAL_FORMATTING,
         field: 'content',
-        message: '이메일 내용이 너무 깁니다.'
+        message: '이메일 내용이 너무 깁니다.',
       })
     }
 
@@ -391,7 +402,7 @@ export class EmailFormatValidator {
         field: 'content',
         message: '인코딩 문제가 발생했습니다.',
         severity: 'MEDIUM',
-        recoverable: true
+        recoverable: true,
       })
     }
 
@@ -400,7 +411,7 @@ export class EmailFormatValidator {
       warnings.push({
         type: EmailWarningType.POTENTIAL_SPAM,
         field: 'content',
-        message: '의심스러운 내용이 포함되어 있습니다.'
+        message: '의심스러운 내용이 포함되어 있습니다.',
       })
     }
   }
@@ -425,14 +436,14 @@ export class EmailFormatValidator {
           field: 'attachment',
           message: `첨부파일 '${attachment.name}'이 너무 큽니다.`,
           severity: 'HIGH',
-          recoverable: false
+          recoverable: false,
         })
         continue
       }
 
       // 파일 형식 검증
       const allowedExtensions = ['.pdf', '.xlsx', '.xls', '.docx', '.doc', '.hwp', '.txt']
-      const hasAllowedExtension = allowedExtensions.some(ext =>
+      const hasAllowedExtension = allowedExtensions.some((ext) =>
         attachment.name.toLowerCase().endsWith(ext)
       )
 
@@ -441,7 +452,7 @@ export class EmailFormatValidator {
           type: EmailWarningType.UNUSUAL_FORMATTING,
           field: 'attachment',
           message: `'${attachment.name}'은 일반적이지 않은 파일 형식입니다.`,
-          suggestion: 'PDF, Excel, Word, HWP 파일을 권장합니다.'
+          suggestion: 'PDF, Excel, Word, HWP 파일을 권장합니다.',
         })
       }
 
@@ -452,7 +463,7 @@ export class EmailFormatValidator {
           field: 'attachment',
           message: `첨부파일 '${attachment.name}'이 손상되었습니다.`,
           severity: 'MEDIUM',
-          recoverable: true
+          recoverable: true,
         })
       }
     }
@@ -472,7 +483,7 @@ export class EmailFormatValidator {
         field: 'size',
         message: '이메일 크기가 허용 한도를 초과했습니다.',
         severity: 'HIGH',
-        recoverable: false
+        recoverable: false,
       })
     }
   }
@@ -487,20 +498,20 @@ export class EmailFormatValidator {
       content: {
         plainText: emailData.body,
         html: emailData.html,
-        attachments: await this.processAttachments(emailData.attachments || [])
+        attachments: await this.processAttachments(emailData.attachments || []),
       },
       metadata: {
         receivedAt: emailData.receivedAt || new Date(),
         size: emailData.size || 0,
-        contentType: emailData.contentType
-      }
+        contentType: emailData.contentType,
+      },
     }
 
     // 비즈니스 데이터 추출 시도
     extractedData.businessData = {
       orderInfo: await this.extractOrderInfo(emailData),
       companyInfo: await this.extractCompanyInfo(emailData),
-      deliveryInfo: await this.extractDeliveryInfo(emailData)
+      deliveryInfo: await this.extractDeliveryInfo(emailData),
     }
 
     return extractedData
@@ -518,7 +529,7 @@ export class EmailFormatValidator {
     return {
       email,
       name: nameMatch?.[1]?.trim().replace(/['"]/g, ''),
-      domain
+      domain,
     }
   }
 
@@ -529,7 +540,7 @@ export class EmailFormatValidator {
     return {
       raw: subject,
       normalized: subject.replace(/\s+/g, ' ').trim(),
-      keywords: this.extractKeywords(subject)
+      keywords: this.extractKeywords(subject),
     }
   }
 
@@ -550,7 +561,7 @@ export class EmailFormatValidator {
         contentType: attachment.contentType || 'application/octet-stream',
         isOrderDocument: isOrderDoc,
         confidence: isOrderDoc ? 0.8 : 0.3,
-        extractedText: await this.extractTextFromFile(attachment)
+        extractedText: await this.extractTextFromFile(attachment),
       })
     }
 
@@ -563,7 +574,7 @@ export class EmailFormatValidator {
   private async extractOrderInfo(emailData: any): Promise<OrderInfo> {
     // TODO: 실제 주문 정보 추출 로직 구현
     return {
-      confidence: 0.5
+      confidence: 0.5,
     }
   }
 
@@ -573,7 +584,7 @@ export class EmailFormatValidator {
   private async extractCompanyInfo(emailData: any): Promise<CompanyInfo> {
     // TODO: 실제 회사 정보 추출 로직 구현
     return {
-      confidence: 0.5
+      confidence: 0.5,
     }
   }
 
@@ -583,7 +594,7 @@ export class EmailFormatValidator {
   private async extractDeliveryInfo(emailData: any): Promise<DeliveryInfo> {
     // TODO: 실제 배송 정보 추출 로직 구현
     return {
-      confidence: 0.5
+      confidence: 0.5,
     }
   }
 
@@ -593,17 +604,17 @@ export class EmailFormatValidator {
 
   private isSuspiciousDomain(domain: string): boolean {
     const suspiciousDomains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com']
-    return suspiciousDomains.some(sus => domain.includes(sus))
+    return suspiciousDomains.some((sus) => domain.includes(sus))
   }
 
   private isTemporaryEmailDomain(domain: string): boolean {
     const tempDomains = ['tempmail', '10minute', 'guerrilla', 'throwaway']
-    return tempDomains.some(temp => domain.toLowerCase().includes(temp))
+    return tempDomains.some((temp) => domain.toLowerCase().includes(temp))
   }
 
   private isSpamSubject(subject: string): boolean {
     const spamPatterns = [/무료/i, /당첨/i, /클릭/i, /urgent/i, /!!!+/]
-    return spamPatterns.some(pattern => pattern.test(subject))
+    return spamPatterns.some((pattern) => pattern.test(subject))
   }
 
   private extractTextFromHtml(html: string): string {
@@ -618,9 +629,9 @@ export class EmailFormatValidator {
     const suspiciousPatterns = [
       /(?:click|클릭).{0,20}(?:here|여기)/i,
       /(?:free|무료).{0,20}(?:money|돈)/i,
-      /비트코인|투자|수익/i
+      /비트코인|투자|수익/i,
     ]
-    return suspiciousPatterns.some(pattern => pattern.test(content))
+    return suspiciousPatterns.some((pattern) => pattern.test(content))
   }
 
   private async isCorruptedFile(attachment: { content: Buffer; name: string }): Promise<boolean> {
@@ -639,17 +650,20 @@ export class EmailFormatValidator {
   }
 
   private isOrderDocument(fileName: string): boolean {
-    const orderPatterns = [
-      /발주/i, /주문/i, /order/i, /견적/i, /invoice/i, /구매/i, /청구/i
-    ]
-    return orderPatterns.some(pattern => pattern.test(fileName))
+    const orderPatterns = [/발주/i, /주문/i, /order/i, /견적/i, /invoice/i, /구매/i, /청구/i]
+    return orderPatterns.some((pattern) => pattern.test(fileName))
   }
 
   private extractKeywords(text: string): string[] {
     const keywords: string[] = []
     const keywordPatterns = [
       ...this.orderKeywords,
-      '긴급', '급함', 'urgent', '오늘', '내일', '당일'
+      '긴급',
+      '급함',
+      'urgent',
+      '오늘',
+      '내일',
+      '당일',
     ]
 
     for (const keyword of keywordPatterns) {
@@ -662,8 +676,8 @@ export class EmailFormatValidator {
   }
 
   private async extractTextFromFile(attachment: {
-    content: Buffer;
-    name: string;
+    content: Buffer
+    name: string
     contentType?: string
   }): Promise<string | undefined> {
     // TODO: 실제 파일 텍스트 추출 구현 (PDF, Excel 등)
@@ -678,12 +692,20 @@ export class EmailFormatValidator {
     let confidence = 1.0
 
     // 오류에 따른 신뢰도 감소
-    errors.forEach(error => {
+    errors.forEach((error) => {
       switch (error.severity) {
-        case 'CRITICAL': confidence *= 0.1; break
-        case 'HIGH': confidence *= 0.5; break
-        case 'MEDIUM': confidence *= 0.7; break
-        case 'LOW': confidence *= 0.9; break
+        case 'CRITICAL':
+          confidence *= 0.1
+          break
+        case 'HIGH':
+          confidence *= 0.5
+          break
+        case 'MEDIUM':
+          confidence *= 0.7
+          break
+        case 'LOW':
+          confidence *= 0.9
+          break
       }
     })
 
@@ -692,11 +714,11 @@ export class EmailFormatValidator {
 
     // 추출된 데이터 품질에 따른 신뢰도 조정
     if (extractedData?.businessData) {
-      const avgBusinessConfidence = (
-        (extractedData.businessData.orderInfo?.confidence || 0) +
-        (extractedData.businessData.companyInfo?.confidence || 0) +
-        (extractedData.businessData.deliveryInfo?.confidence || 0)
-      ) / 3
+      const avgBusinessConfidence =
+        ((extractedData.businessData.orderInfo?.confidence || 0) +
+          (extractedData.businessData.companyInfo?.confidence || 0) +
+          (extractedData.businessData.deliveryInfo?.confidence || 0)) /
+        3
 
       confidence = (confidence + avgBusinessConfidence) / 2
     }
@@ -704,19 +726,16 @@ export class EmailFormatValidator {
     return Math.max(0, Math.min(1, confidence))
   }
 
-  private async handleValidationErrors(
-    errors: EmailFormatError[],
-    emailData: any
-  ): Promise<void> {
-    const criticalErrors = errors.filter(e => e.severity === 'CRITICAL')
-    const highErrors = errors.filter(e => e.severity === 'HIGH')
+  private async handleValidationErrors(errors: EmailFormatError[], emailData: any): Promise<void> {
+    const criticalErrors = errors.filter((e) => e.severity === 'CRITICAL')
+    const highErrors = errors.filter((e) => e.severity === 'HIGH')
 
     if (criticalErrors.length > 0) {
       await globalErrorHandler.handleError(
         createEchoMailError.emailParseFailed({
           from: emailData.from,
           subject: emailData.subject,
-          errors: criticalErrors.map(e => e.message)
+          errors: criticalErrors.map((e) => e.message),
         }),
         { companyId: emailData.from }
       )
@@ -725,7 +744,7 @@ export class EmailFormatValidator {
     if (highErrors.length > 0) {
       logger.warn('High severity email format errors detected', {
         from: emailData.from,
-        errors: highErrors
+        errors: highErrors,
       })
     }
   }

@@ -17,7 +17,7 @@ export enum NotificationPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 export enum NotificationType {
@@ -29,7 +29,7 @@ export enum NotificationType {
   SERVICE_UNAVAILABLE = 'service_unavailable',
   PERFORMANCE_ISSUE = 'performance_issue',
   SECURITY_ALERT = 'security_alert',
-  CUSTOM_ALERT = 'custom_alert'
+  CUSTOM_ALERT = 'custom_alert',
 }
 
 export interface AdminNotification {
@@ -131,9 +131,9 @@ export class AdminNotificationSystem {
         smtpHost: process.env.SMTP_HOST,
         smtpPort: process.env.SMTP_PORT,
         smtpUser: process.env.SMTP_USER,
-        smtpPass: process.env.SMTP_PASS
+        smtpPass: process.env.SMTP_PASS,
       },
-      priority: [NotificationPriority.HIGH, NotificationPriority.CRITICAL]
+      priority: [NotificationPriority.HIGH, NotificationPriority.CRITICAL],
     })
 
     // Slack 알림
@@ -144,9 +144,13 @@ export class AdminNotificationSystem {
         webhookUrl: process.env.SLACK_WEBHOOK_URL,
         channel: process.env.SLACK_CHANNEL || '#echo-mail-alerts',
         username: 'Echo Mail Bot',
-        iconEmoji: ':warning:'
+        iconEmoji: ':warning:',
       },
-      priority: [NotificationPriority.MEDIUM, NotificationPriority.HIGH, NotificationPriority.CRITICAL]
+      priority: [
+        NotificationPriority.MEDIUM,
+        NotificationPriority.HIGH,
+        NotificationPriority.CRITICAL,
+      ],
     })
 
     // SMS 알림 (긴급용)
@@ -156,9 +160,9 @@ export class AdminNotificationSystem {
       config: {
         number: process.env.ADMIN_SMS_NUMBER,
         apiKey: process.env.SMS_API_KEY,
-        apiSecret: process.env.SMS_API_SECRET
+        apiSecret: process.env.SMS_API_SECRET,
       },
-      priority: [NotificationPriority.CRITICAL]
+      priority: [NotificationPriority.CRITICAL],
     })
 
     // 시스템 로그
@@ -166,7 +170,12 @@ export class AdminNotificationSystem {
       type: 'SYSTEM_LOG',
       enabled: true,
       config: {},
-      priority: [NotificationPriority.LOW, NotificationPriority.MEDIUM, NotificationPriority.HIGH, NotificationPriority.CRITICAL]
+      priority: [
+        NotificationPriority.LOW,
+        NotificationPriority.MEDIUM,
+        NotificationPriority.HIGH,
+        NotificationPriority.CRITICAL,
+      ],
     })
 
     // 웹훅
@@ -177,10 +186,10 @@ export class AdminNotificationSystem {
         url: process.env.ADMIN_WEBHOOK_URL,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.ADMIN_WEBHOOK_TOKEN}`
-        }
+          Authorization: `Bearer ${process.env.ADMIN_WEBHOOK_TOKEN}`,
+        },
       },
-      priority: [NotificationPriority.HIGH, NotificationPriority.CRITICAL]
+      priority: [NotificationPriority.HIGH, NotificationPriority.CRITICAL],
     })
   }
 
@@ -209,7 +218,7 @@ export class AdminNotificationSystem {
 즉시 확인이 필요합니다.
       `,
       channels: ['admin-email', 'slack-alerts', 'system-log'],
-      throttleMinutes: 10
+      throttleMinutes: 10,
     })
 
     this.templates.set(NotificationType.UNREGISTERED_COMPANY, {
@@ -229,7 +238,7 @@ export class AdminNotificationSystem {
       `,
       channels: ['admin-email', 'slack-alerts'],
       throttleMinutes: 60,
-      escalationMinutes: 240
+      escalationMinutes: 240,
     })
 
     this.templates.set(NotificationType.EMAIL_PROCESSING_ERROR, {
@@ -247,7 +256,7 @@ export class AdminNotificationSystem {
 해당 이메일이 정상적으로 처리되지 않았을 수 있습니다.
       `,
       channels: ['system-log', 'slack-alerts'],
-      throttleMinutes: 30
+      throttleMinutes: 30,
     })
 
     this.templates.set(NotificationType.NOTIFICATION_FAILURE, {
@@ -266,7 +275,7 @@ export class AdminNotificationSystem {
 SMS/카카오톡 발송 시스템을 점검해주세요.
       `,
       channels: ['admin-email', 'slack-alerts', 'system-log'],
-      throttleMinutes: 15
+      throttleMinutes: 15,
     })
 
     this.templates.set(NotificationType.QUOTA_EXCEEDED, {
@@ -285,7 +294,7 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
 즉시 한도를 늘리거나 사용량을 제한해주세요.
       `,
       channels: ['admin-email', 'admin-sms', 'slack-alerts'],
-      escalationMinutes: 30
+      escalationMinutes: 30,
     })
 
     this.templates.set(NotificationType.SERVICE_UNAVAILABLE, {
@@ -304,7 +313,7 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
 긴급 조치가 필요합니다.
       `,
       channels: ['admin-email', 'admin-sms', 'slack-alerts', 'webhook'],
-      escalationMinutes: 5
+      escalationMinutes: 5,
     })
   }
 
@@ -317,14 +326,14 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
       id: 'critical-errors',
       name: '크리티컬 에러 즉시 알림',
       conditions: {
-        severity: ErrorSeverity.CRITICAL
+        severity: ErrorSeverity.CRITICAL,
       },
       action: {
         type: NotificationType.SYSTEM_ERROR,
         priority: NotificationPriority.CRITICAL,
-        escalateAfterMinutes: 5
+        escalateAfterMinutes: 5,
       },
-      enabled: true
+      enabled: true,
     })
 
     // 이메일 처리 오류 빈발 알림
@@ -335,14 +344,14 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         category: ErrorCategory.EMAIL,
         frequency: {
           count: 5,
-          timeWindowMinutes: 10
-        }
+          timeWindowMinutes: 10,
+        },
       },
       action: {
         type: NotificationType.EMAIL_PROCESSING_ERROR,
-        priority: NotificationPriority.HIGH
+        priority: NotificationPriority.HIGH,
       },
-      enabled: true
+      enabled: true,
     })
 
     // 미등록 업체 다수 발생
@@ -352,15 +361,15 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
       conditions: {
         frequency: {
           count: 10,
-          timeWindowMinutes: 60
-        }
+          timeWindowMinutes: 60,
+        },
       },
       action: {
         type: NotificationType.UNREGISTERED_COMPANY,
         priority: NotificationPriority.MEDIUM,
-        customMessage: '단시간에 많은 미등록 업체에서 이메일이 수신되고 있습니다.'
+        customMessage: '단시간에 많은 미등록 업체에서 이메일이 수신되고 있습니다.',
       },
-      enabled: true
+      enabled: true,
     })
 
     // 알림 발송 실패 연속 발생
@@ -371,15 +380,15 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         category: ErrorCategory.NOTIFICATION,
         frequency: {
           count: 3,
-          timeWindowMinutes: 5
-        }
+          timeWindowMinutes: 5,
+        },
       },
       action: {
         type: NotificationType.NOTIFICATION_FAILURE,
         priority: NotificationPriority.HIGH,
-        escalateAfterMinutes: 10
+        escalateAfterMinutes: 10,
       },
-      enabled: true
+      enabled: true,
     })
   }
 
@@ -412,14 +421,14 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
       source: options.source || { component: 'system' },
       timestamp: new Date(),
       channels: options.channels || template.channels,
-      retryCount: 0
+      retryCount: 0,
     }
 
     // 쓰로틀링 확인
     if (await this.isThrottled(type, data)) {
       logger.debug('Notification throttled', {
         type,
-        title: notification.title
+        title: notification.title,
       })
       return notification
     }
@@ -435,13 +444,12 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         id: notification.id,
         type: notification.type,
         priority: notification.priority,
-        channels: notification.channels
+        channels: notification.channels,
       })
-
     } catch (error) {
       logger.error('Failed to send admin notification', {
         notificationId: notification.id,
-        error: error
+        error: error,
       })
 
       notification.retryCount++
@@ -472,23 +480,19 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         timestamp: error.timestamp.toISOString(),
         context: JSON.stringify(context, null, 2),
         component: context.component || 'unknown',
-        ...context
+        ...context,
       }
 
-      await this.sendNotification(
-        rule.action.type,
-        data,
-        {
-          priority: rule.action.priority,
-          customMessage: rule.action.customMessage,
-          channels: rule.action.channels,
-          source: {
-            component: context.component || 'error-handler',
-            function: context.function,
-            error
-          }
-        }
-      )
+      await this.sendNotification(rule.action.type, data, {
+        priority: rule.action.priority,
+        customMessage: rule.action.customMessage,
+        channels: rule.action.channels,
+        source: {
+          component: context.component || 'error-handler',
+          function: context.function,
+          error,
+        },
+      })
 
       // 에스컬레이션 설정
       if (rule.action.escalateAfterMinutes) {
@@ -510,17 +514,13 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
     channels?: AdminNotificationChannel['type'][],
     data?: Record<string, any>
   ): Promise<AdminNotification> {
-    return this.sendNotification(
-      NotificationType.CUSTOM_ALERT,
-      data,
-      {
-        priority,
-        customTitle: title,
-        customMessage: message,
-        channels,
-        source: { component: 'custom' }
-      }
-    )
+    return this.sendNotification(NotificationType.CUSTOM_ALERT, data, {
+      priority,
+      customTitle: title,
+      customMessage: message,
+      channels,
+      source: { component: 'custom' },
+    })
   }
 
   /**
@@ -540,10 +540,10 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         companyName: companyInfo.companyName || '알 수 없음',
         emailCount: companyInfo.emailCount,
         firstSeen: companyInfo.firstSeen.toISOString(),
-        lastSeen: companyInfo.lastSeen.toISOString()
+        lastSeen: companyInfo.lastSeen.toISOString(),
       },
       {
-        source: { component: 'unregistered-company-handler' }
+        source: { component: 'unregistered-company-handler' },
       }
     )
   }
@@ -564,11 +564,11 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         currentValue: metric.value,
         threshold: metric.threshold,
         unit: metric.unit,
-        overagePercent: Math.round(((metric.value - metric.threshold) / metric.threshold) * 100)
+        overagePercent: Math.round(((metric.value - metric.threshold) / metric.threshold) * 100),
       },
       {
         priority: NotificationPriority.MEDIUM,
-        source: { component: 'performance-monitor' }
+        source: { component: 'performance-monitor' },
       }
     )
   }
@@ -610,7 +610,7 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         logger.error(`Failed to send notification via ${channel.type}`, {
           notificationId: notification.id,
           channel: channelId,
-          error: error
+          error: error,
         })
       }
     })
@@ -629,7 +629,7 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
     logger.info('Email notification sent', {
       notificationId: notification.id,
       to: channel.config.to,
-      subject: notification.title
+      subject: notification.title,
     })
   }
 
@@ -649,13 +649,13 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
       username: channel.config.username,
       icon_emoji: channel.config.iconEmoji,
       text: `*${notification.title}*\n\n${notification.message}`,
-      color: this.getPriorityColor(notification.priority)
+      color: this.getPriorityColor(notification.priority),
     }
 
     // TODO: 실제 Slack 웹훅 호출 구현
     logger.info('Slack notification sent', {
       notificationId: notification.id,
-      channel: channel.config.channel
+      channel: channel.config.channel,
     })
   }
 
@@ -671,7 +671,7 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
     // TODO: 실제 SMS 발송 구현
     logger.info('SMS notification sent', {
       notificationId: notification.id,
-      to: channel.config.number
+      to: channel.config.number,
     })
   }
 
@@ -689,13 +689,13 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
       title: notification.title,
       message: notification.message,
       data: notification.data,
-      timestamp: notification.timestamp.toISOString()
+      timestamp: notification.timestamp.toISOString(),
     }
 
     // TODO: 실제 웹훅 호출 구현
     logger.info('Webhook notification sent', {
       notificationId: notification.id,
-      url: channel.config.url
+      url: channel.config.url,
     })
   }
 
@@ -714,7 +714,7 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
       priority: notification.priority,
       message: notification.message,
       data: notification.data,
-      source: notification.source
+      source: notification.source,
     })
   }
 
@@ -754,8 +754,11 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
     return false
   }
 
-  private findApplicableRules(error: EchoMailError, context: Record<string, any>): NotificationRule[] {
-    return Array.from(this.rules.values()).filter(rule => {
+  private findApplicableRules(
+    error: EchoMailError,
+    context: Record<string, any>
+  ): NotificationRule[] {
+    return Array.from(this.rules.values()).filter((rule) => {
       if (!rule.enabled) return false
 
       const conditions = rule.conditions
@@ -800,28 +803,38 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         priority: NotificationPriority.CRITICAL,
         customTitle: `[ESCALATED] ${error.message}`,
         channels: ['admin-email', 'admin-sms'],
-        source: { component: 'escalation' }
+        source: { component: 'escalation' },
       }
     )
   }
 
   private getPriorityColor(priority: NotificationPriority): string {
     switch (priority) {
-      case NotificationPriority.CRITICAL: return 'danger'
-      case NotificationPriority.HIGH: return 'warning'
-      case NotificationPriority.MEDIUM: return 'good'
-      case NotificationPriority.LOW: return '#808080'
-      default: return 'good'
+      case NotificationPriority.CRITICAL:
+        return 'danger'
+      case NotificationPriority.HIGH:
+        return 'warning'
+      case NotificationPriority.MEDIUM:
+        return 'good'
+      case NotificationPriority.LOW:
+        return '#808080'
+      default:
+        return 'good'
     }
   }
 
   private priorityToLogLevel(priority: NotificationPriority): 'error' | 'warn' | 'info' | 'debug' {
     switch (priority) {
-      case NotificationPriority.CRITICAL: return 'error'
-      case NotificationPriority.HIGH: return 'error'
-      case NotificationPriority.MEDIUM: return 'warn'
-      case NotificationPriority.LOW: return 'info'
-      default: return 'info'
+      case NotificationPriority.CRITICAL:
+        return 'error'
+      case NotificationPriority.HIGH:
+        return 'error'
+      case NotificationPriority.MEDIUM:
+        return 'warn'
+      case NotificationPriority.LOW:
+        return 'info'
+      default:
+        return 'info'
     }
   }
 
@@ -846,16 +859,16 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
 
     // 필터링
     if (options.type) {
-      notifications = notifications.filter(n => n.type === options.type)
+      notifications = notifications.filter((n) => n.type === options.type)
     }
     if (options.priority) {
-      notifications = notifications.filter(n => n.priority === options.priority)
+      notifications = notifications.filter((n) => n.priority === options.priority)
     }
     if (options.acknowledged !== undefined) {
-      notifications = notifications.filter(n => !!n.acknowledged === options.acknowledged)
+      notifications = notifications.filter((n) => !!n.acknowledged === options.acknowledged)
     }
     if (options.resolved !== undefined) {
-      notifications = notifications.filter(n => !!n.resolved === options.resolved)
+      notifications = notifications.filter((n) => !!n.resolved === options.resolved)
     }
 
     // 정렬 (최신순)
@@ -868,11 +881,15 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
 
     return {
       notifications: notifications.slice(start, end),
-      total
+      total,
     }
   }
 
-  async acknowledgeNotification(notificationId: string, acknowledgedBy: string, note?: string): Promise<boolean> {
+  async acknowledgeNotification(
+    notificationId: string,
+    acknowledgedBy: string,
+    note?: string
+  ): Promise<boolean> {
     const notification = this.notifications.get(notificationId)
     if (!notification) {
       return false
@@ -881,19 +898,23 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
     notification.acknowledged = {
       at: new Date(),
       by: acknowledgedBy,
-      note
+      note,
     }
 
     logger.info('Notification acknowledged', {
       notificationId,
       acknowledgedBy,
-      note
+      note,
     })
 
     return true
   }
 
-  async resolveNotification(notificationId: string, resolvedBy: string, solution?: string): Promise<boolean> {
+  async resolveNotification(
+    notificationId: string,
+    resolvedBy: string,
+    solution?: string
+  ): Promise<boolean> {
     const notification = this.notifications.get(notificationId)
     if (!notification) {
       return false
@@ -902,13 +923,13 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
     notification.resolved = {
       at: new Date(),
       by: resolvedBy,
-      solution
+      solution,
     }
 
     logger.info('Notification resolved', {
       notificationId,
       resolvedBy,
-      solution
+      solution,
     })
 
     return true
@@ -960,13 +981,13 @@ SMS/카카오톡 발송 시스템을 점검해주세요.
         name: `${channel.type} Channel (${channelId})`,
         status,
         message,
-        duration: Date.now() - start
+        duration: Date.now() - start,
       })
     }
 
     return {
       healthy: overallHealthy,
-      checks
+      checks,
     }
   }
 }

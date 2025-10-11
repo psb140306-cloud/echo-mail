@@ -34,7 +34,7 @@ class MemoryProfiler {
       arrayBuffers: memUsage.arrayBuffers / 1024 / 1024,
       rss: memUsage.rss / 1024 / 1024,
       iteration,
-      operation
+      operation,
     }
 
     this.snapshots.push(snapshot)
@@ -54,7 +54,7 @@ class MemoryProfiler {
     // 선형 회귀를 사용하여 메모리 사용 추세 분석
     const n = this.snapshots.length
     const x = this.snapshots.map((_, i) => i)
-    const y = this.snapshots.map(s => s.heapUsed)
+    const y = this.snapshots.map((s) => s.heapUsed)
 
     const sumX = x.reduce((a, b) => a + b, 0)
     const sumY = y.reduce((a, b) => a + b, 0)
@@ -75,7 +75,7 @@ class MemoryProfiler {
       slope,
       correlation,
       isIncreasing: slope > 0.1, // 1회 반복당 0.1MB 이상 증가
-      averageIncrease: slope
+      averageIncrease: slope,
     }
   }
 
@@ -96,7 +96,8 @@ class MemoryProfiler {
     if (this.snapshots.length > 5) {
       report += '\nMemory usage per iteration:\n'
       this.snapshots.forEach((snapshot, index) => {
-        if (index % Math.ceil(this.snapshots.length / 10) === 0) { // 10개 정도만 표시
+        if (index % Math.ceil(this.snapshots.length / 10) === 0) {
+          // 10개 정도만 표시
           report += `  Iteration ${snapshot.iteration || index}: ${snapshot.heapUsed.toFixed(2)} MB`
           if (snapshot.operation) {
             report += ` (${snapshot.operation})`
@@ -137,7 +138,10 @@ class HeapAnalyzer {
     })
   }
 
-  static compareHeapSnapshots(before: any, after: any): {
+  static compareHeapSnapshots(
+    before: any,
+    after: any
+  ): {
     newObjects: number
     deletedObjects: number
     sizeDifference: number
@@ -153,7 +157,7 @@ class HeapAnalyzer {
     return {
       newObjects: Math.max(0, afterObjects - beforeObjects),
       deletedObjects: Math.max(0, beforeObjects - afterObjects),
-      sizeDifference: (after.meta?.total_size || 0) - (before.meta?.total_size || 0)
+      sizeDifference: (after.meta?.total_size || 0) - (before.meta?.total_size || 0),
     }
   }
 }
@@ -177,9 +181,13 @@ class MemoryStressTester {
   }
 
   getRetainedMemory(): number {
-    return this.retainedObjects.reduce((total, obj) => {
-      return total + (obj.length || 0)
-    }, 0) / 1024 / 1024 // MB
+    return (
+      this.retainedObjects.reduce((total, obj) => {
+        return total + (obj.length || 0)
+      }, 0) /
+      1024 /
+      1024
+    ) // MB
   }
 }
 
@@ -240,16 +248,18 @@ describe('Memory Leak Detection Tests', () => {
               phone: '010-9999-8888',
               isActive: true,
               smsEnabled: true,
-              kakaoEnabled: false
-            }
-          }
-        }
+              kakaoEnabled: false,
+            },
+          },
+        },
       })
 
       const iterations = 50
       const emailsPerIteration = 5
 
-      console.log(`Testing memory leaks over ${iterations} iterations (${emailsPerIteration} emails each)...`)
+      console.log(
+        `Testing memory leaks over ${iterations} iterations (${emailsPerIteration} emails each)...`
+      )
 
       // 기준선 측정
       if (global.gc) global.gc()
@@ -269,9 +279,9 @@ describe('Memory Leak Detection Tests', () => {
               filename: `test_${iteration}_${emailIndex}.pdf`,
               contentType: 'application/pdf',
               size: 1024 * 10, // 10KB
-              content: Buffer.alloc(1024 * 10, `attachment-data-${iteration}-${emailIndex}`)
-            }
-          ]
+              content: Buffer.alloc(1024 * 10, `attachment-data-${iteration}-${emailIndex}`),
+            },
+          ],
         }))
 
         // 배치 처리
@@ -284,22 +294,23 @@ describe('Memory Leak Detection Tests', () => {
           await db.emailLog.deleteMany({
             where: {
               createdAt: {
-                lt: new Date(Date.now() - 60000) // 1분 전 데이터 삭제
-              }
-            }
+                lt: new Date(Date.now() - 60000), // 1분 전 데이터 삭제
+              },
+            },
           })
 
           await db.notificationLog.deleteMany({
             where: {
               createdAt: {
-                lt: new Date(Date.now() - 60000)
-              }
-            }
+                lt: new Date(Date.now() - 60000),
+              },
+            },
           })
         }
 
         // 메모리 스냅샷
-        if (iteration % 5 === 0) { // 5번마다 측정
+        if (iteration % 5 === 0) {
+          // 5번마다 측정
           if (global.gc) global.gc() // 가비지 컬렉션 강제 실행
           profiler.takeSnapshot(iteration, 'email-processing')
         }
@@ -307,7 +318,9 @@ describe('Memory Leak Detection Tests', () => {
         // 진행상황 출력
         if (iteration % 10 === 0) {
           const currentMemory = process.memoryUsage()
-          console.log(`Iteration ${iteration}/${iterations}: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`)
+          console.log(
+            `Iteration ${iteration}/${iterations}: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`
+          )
         }
       }
 
@@ -348,22 +361,27 @@ describe('Memory Leak Detection Tests', () => {
               phone: '010-8888-7777',
               isActive: true,
               smsEnabled: true,
-              kakaoEnabled: false
-            }
-          }
-        }
+              kakaoEnabled: false,
+            },
+          },
+        },
       })
 
       const iterations = 20
       const attachmentSizeMB = 5 // 5MB 첨부파일
 
-      console.log(`Testing large attachment memory handling (${attachmentSizeMB}MB × ${iterations} iterations)...`)
+      console.log(
+        `Testing large attachment memory handling (${attachmentSizeMB}MB × ${iterations} iterations)...`
+      )
 
       profiler.takeSnapshot(0, 'baseline')
 
       for (let iteration = 1; iteration <= iterations; iteration++) {
         // 대용량 첨부파일 이메일 생성
-        const largeAttachment = Buffer.alloc(attachmentSizeMB * 1024 * 1024, `large-data-${iteration}`)
+        const largeAttachment = Buffer.alloc(
+          attachmentSizeMB * 1024 * 1024,
+          `large-data-${iteration}`
+        )
 
         const email = {
           messageId: `large-attachment-${iteration}-${Date.now()}`,
@@ -377,9 +395,9 @@ describe('Memory Leak Detection Tests', () => {
               filename: `large_file_${iteration}.zip`,
               contentType: 'application/zip',
               size: largeAttachment.length,
-              content: largeAttachment
-            }
-          ]
+              content: largeAttachment,
+            },
+          ],
         }
 
         // 이메일 처리
@@ -395,13 +413,18 @@ describe('Memory Leak Detection Tests', () => {
           profiler.takeSnapshot(iteration, 'large-attachment')
 
           const currentMemory = process.memoryUsage()
-          console.log(`Iteration ${iteration}: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`)
+          console.log(
+            `Iteration ${iteration}: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`
+          )
         }
 
         // 메모리 사용량 확인 (과도한 증가 시 조기 종료)
         const currentMemory = process.memoryUsage()
-        if (currentMemory.heapUsed > 500 * 1024 * 1024) { // 500MB 초과
-          console.warn(`Memory usage too high: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`)
+        if (currentMemory.heapUsed > 500 * 1024 * 1024) {
+          // 500MB 초과
+          console.warn(
+            `Memory usage too high: ${(currentMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`
+          )
           break
         }
       }
@@ -449,10 +472,10 @@ describe('Memory Leak Detection Tests', () => {
                     phone: `010-${String(iteration).padStart(4, '0')}-${String(op).padStart(4, '0')}`,
                     isActive: true,
                     smsEnabled: true,
-                    kakaoEnabled: false
-                  }
-                }
-              }
+                    kakaoEnabled: false,
+                  },
+                },
+              },
             }),
 
             // 이메일 로그 생성
@@ -464,15 +487,15 @@ describe('Memory Leak Detection Tests', () => {
                 recipient: 'order@echomail.com',
                 receivedAt: new Date(),
                 hasAttachment: false,
-                status: 'RECEIVED'
-              }
+                status: 'RECEIVED',
+              },
             }),
 
             // 복잡한 쿼리
             db.company.findMany({
               where: { isActive: true },
               include: { contacts: true, emailLogs: true },
-              take: 5
+              take: 5,
             })
           )
         }
@@ -488,17 +511,17 @@ describe('Memory Leak Detection Tests', () => {
           await db.company.deleteMany({
             where: {
               email: {
-                startsWith: `db${iteration - 4}_`
-              }
-            }
+                startsWith: `db${iteration - 4}_`,
+              },
+            },
           })
 
           await db.emailLog.deleteMany({
             where: {
               messageId: {
-                startsWith: `db-test-${iteration - 4}-`
-              }
-            }
+                startsWith: `db-test-${iteration - 4}-`,
+              },
+            },
           })
         }
 
@@ -540,7 +563,7 @@ describe('Memory Leak Detection Tests', () => {
             data: `test-data-${iteration}-${op}`,
             timestamp: Date.now(),
             iteration,
-            operation: op
+            operation: op,
           })
 
           redisOperations.push(
@@ -587,7 +610,9 @@ describe('Memory Leak Detection Tests', () => {
           // Redis 메모리 사용량도 확인
           const redisInfo = await redis.memory('usage', 'redis-test:sample-key')
           if (iteration % 10 === 0) {
-            console.log(`Iteration ${iteration}: Node memory ${process.memoryUsage().heapUsed / 1024 / 1024}MB`)
+            console.log(
+              `Iteration ${iteration}: Node memory ${process.memoryUsage().heapUsed / 1024 / 1024}MB`
+            )
           }
         }
       }
@@ -646,10 +671,10 @@ describe('Memory Leak Detection Tests', () => {
                 phone: `010-${String(pressureMB).padStart(4, '0')}-0000`,
                 isActive: true,
                 smsEnabled: true,
-                kakaoEnabled: false
-              }
-            }
-          }
+                kakaoEnabled: false,
+              },
+            },
+          },
         })
 
         // 메모리 압박 상황에서 이메일 처리
@@ -660,7 +685,7 @@ describe('Memory Leak Detection Tests', () => {
           to: 'order@echomail.com',
           receivedAt: new Date(),
           body: '메모리 압박 상황에서의 이메일 처리 테스트',
-          attachments: []
+          attachments: [],
         }
 
         try {
@@ -680,7 +705,8 @@ describe('Memory Leak Detection Tests', () => {
         console.log(`  Retained by tester: ${stressTester.getRetainedMemory().toFixed(2)}MB`)
 
         // 메모리 사용량이 너무 높으면 조기 종료
-        if (currentMemory.heapUsed > 1024 * 1024 * 1024) { // 1GB
+        if (currentMemory.heapUsed > 1024 * 1024 * 1024) {
+          // 1GB
           console.log('Memory usage too high, stopping pressure test')
           break
         }
@@ -692,7 +718,7 @@ describe('Memory Leak Detection Tests', () => {
       profiler.takeSnapshot(0, 'pressure-released')
 
       // 복구 확인
-      await new Promise(resolve => setTimeout(resolve, 1000)) // 복구 시간
+      await new Promise((resolve) => setTimeout(resolve, 1000)) // 복구 시간
       if (global.gc) global.gc()
       profiler.takeSnapshot(0, 'recovered')
 
@@ -704,7 +730,9 @@ describe('Memory Leak Detection Tests', () => {
       const recoveryDiff = recovered.heapUsed - baseline.heapUsed
       expect(recoveryDiff).toBeLessThan(30) // 30MB 이내 차이
 
-      console.log(`Memory pressure test: baseline ${baseline.heapUsed.toFixed(2)}MB → recovered ${recovered.heapUsed.toFixed(2)}MB (diff: ${recoveryDiff.toFixed(2)}MB)`)
+      console.log(
+        `Memory pressure test: baseline ${baseline.heapUsed.toFixed(2)}MB → recovered ${recovered.heapUsed.toFixed(2)}MB (diff: ${recoveryDiff.toFixed(2)}MB)`
+      )
     })
   })
 
@@ -732,9 +760,9 @@ describe('Memory Leak Detection Tests', () => {
             metadata: {
               iteration,
               index: i,
-              type: 'heap-test-object'
+              type: 'heap-test-object',
             },
-            largeString: 'x'.repeat(1000)
+            largeString: 'x'.repeat(1000),
           }
 
           batchObjects.push(testObject)
@@ -789,7 +817,9 @@ describe('Memory Leak Detection Tests', () => {
 
       expect(netIncrease).toBeLessThan(20) // 20MB 미만 순 증가
 
-      console.log(`Heap cleanup: ${memoryBeforeTest.toFixed(2)}MB → ${memoryAfterCleanup.toFixed(2)}MB (net: ${netIncrease.toFixed(2)}MB)`)
+      console.log(
+        `Heap cleanup: ${memoryBeforeTest.toFixed(2)}MB → ${memoryAfterCleanup.toFixed(2)}MB (net: ${netIncrease.toFixed(2)}MB)`
+      )
     })
   })
 })

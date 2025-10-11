@@ -1,18 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
-import { createErrorResponse, createSuccessResponse, parseAndValidate } from '@/lib/utils/validation'
-
-const prisma = new PrismaClient()
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  parseAndValidate,
+} from '@/lib/utils/validation'
 
 // 납품 규칙 수정 스키마
 const updateDeliveryRuleSchema = z.object({
-  morningCutoff: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)').optional(),
-  afternoonCutoff: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)').optional(),
-  morningDeliveryDays: z.number().int().min(0, '배송일은 0 이상이어야 합니다').max(14, '배송일은 14일 이하여야 합니다').optional(),
-  afternoonDeliveryDays: z.number().int().min(0, '배송일은 0 이상이어야 합니다').max(14, '배송일은 14일 이하여야 합니다').optional(),
-  isActive: z.boolean().optional()
+  morningCutoff: z
+    .string()
+    .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)')
+    .optional(),
+  afternoonCutoff: z
+    .string()
+    .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)')
+    .optional(),
+  morningDeliveryDays: z
+    .number()
+    .int()
+    .min(0, '배송일은 0 이상이어야 합니다')
+    .max(14, '배송일은 14일 이하여야 합니다')
+    .optional(),
+  afternoonDeliveryDays: z
+    .number()
+    .int()
+    .min(0, '배송일은 0 이상이어야 합니다')
+    .max(14, '배송일은 14일 이하여야 합니다')
+    .optional(),
+  isActive: z.boolean().optional(),
 })
 
 interface RouteParams {
@@ -22,10 +40,7 @@ interface RouteParams {
 }
 
 // 납품 규칙 상세 조회
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -34,7 +49,7 @@ export async function GET(
     }
 
     const deliveryRule = await prisma.deliveryRule.findUnique({
-      where: { id }
+      where: { id },
     })
 
     if (!deliveryRule) {
@@ -44,7 +59,6 @@ export async function GET(
     logger.info(`납품 규칙 상세 조회: ${deliveryRule.region}`, { id })
 
     return createSuccessResponse(deliveryRule)
-
   } catch (error) {
     logger.error('납품 규칙 상세 조회 실패:', error)
     return createErrorResponse('납품 규칙 조회에 실패했습니다.')
@@ -52,10 +66,7 @@ export async function GET(
 }
 
 // 납품 규칙 수정
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -68,7 +79,7 @@ export async function PUT(
 
     // 납품 규칙 존재 확인
     const existingRule = await prisma.deliveryRule.findUnique({
-      where: { id }
+      where: { id },
     })
 
     if (!existingRule) {
@@ -81,10 +92,7 @@ export async function PUT(
       const afternoonTime = parseTime(data.afternoonCutoff)
 
       if (morningTime >= afternoonTime) {
-        return createErrorResponse(
-          '오전 마감시간은 오후 마감시간보다 빨라야 합니다.',
-          400
-        )
+        return createErrorResponse('오전 마감시간은 오후 마감시간보다 빨라야 합니다.', 400)
       }
     } else if (data.morningCutoff) {
       // 오전 시간만 변경되는 경우
@@ -92,10 +100,7 @@ export async function PUT(
       const afternoonTime = parseTime(existingRule.afternoonCutoff)
 
       if (morningTime >= afternoonTime) {
-        return createErrorResponse(
-          '오전 마감시간은 오후 마감시간보다 빨라야 합니다.',
-          400
-        )
+        return createErrorResponse('오전 마감시간은 오후 마감시간보다 빨라야 합니다.', 400)
       }
     } else if (data.afternoonCutoff) {
       // 오후 시간만 변경되는 경우
@@ -103,29 +108,22 @@ export async function PUT(
       const afternoonTime = parseTime(data.afternoonCutoff)
 
       if (morningTime >= afternoonTime) {
-        return createErrorResponse(
-          '오후 마감시간은 오전 마감시간보다 늦어야 합니다.',
-          400
-        )
+        return createErrorResponse('오후 마감시간은 오전 마감시간보다 늦어야 합니다.', 400)
       }
     }
 
     // 납품 규칙 수정
     const updatedRule = await prisma.deliveryRule.update({
       where: { id },
-      data
+      data,
     })
 
     logger.info(`납품 규칙 수정 완료: ${updatedRule.region}`, {
       id,
-      changes: data
+      changes: data,
     })
 
-    return createSuccessResponse(
-      updatedRule,
-      '납품 규칙이 성공적으로 수정되었습니다.'
-    )
-
+    return createSuccessResponse(updatedRule, '납품 규칙이 성공적으로 수정되었습니다.')
   } catch (error) {
     logger.error('납품 규칙 수정 실패:', error)
     return createErrorResponse('납품 규칙 수정에 실패했습니다.')
@@ -133,10 +131,7 @@ export async function PUT(
 }
 
 // 납품 규칙 삭제
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -146,7 +141,7 @@ export async function DELETE(
 
     // 납품 규칙 존재 확인
     const existingRule = await prisma.deliveryRule.findUnique({
-      where: { id }
+      where: { id },
     })
 
     if (!existingRule) {
@@ -157,8 +152,8 @@ export async function DELETE(
     const companiesUsingRegion = await prisma.company.count({
       where: {
         region: existingRule.region,
-        isActive: true
-      }
+        isActive: true,
+      },
     })
 
     if (companiesUsingRegion > 0) {
@@ -170,18 +165,17 @@ export async function DELETE(
 
     // 납품 규칙 삭제
     await prisma.deliveryRule.delete({
-      where: { id }
+      where: { id },
     })
 
     logger.info(`납품 규칙 삭제 완료: ${existingRule.region}`, { id })
 
     return createSuccessResponse(
       {
-        deletedRegion: existingRule.region
+        deletedRegion: existingRule.region,
       },
       `'${existingRule.region}' 지역의 납품 규칙이 성공적으로 삭제되었습니다.`
     )
-
   } catch (error) {
     logger.error('납품 규칙 삭제 실패:', error)
     return createErrorResponse('납품 규칙 삭제에 실패했습니다.')

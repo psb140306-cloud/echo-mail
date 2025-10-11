@@ -1,41 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { NotificationType } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
-import { createErrorResponse, createSuccessResponse, parseAndValidate } from '@/lib/utils/validation'
-import { notificationService, sendOrderReceivedNotification } from '@/lib/notifications/notification-service'
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  parseAndValidate,
+} from '@/lib/utils/validation'
+import {
+  notificationService,
+  sendOrderReceivedNotification,
+} from '@/lib/notifications/notification-service'
+import { withTenantRateLimit } from '@/lib/middleware/rate-limiter'
 
 // 개별 알림 발송 스키마
 const sendNotificationSchema = z.object({
-  type: z.nativeEnum(NotificationType, { errorMap: () => ({ message: '올바른 알림 타입이 아닙니다' }) }),
+  type: z.nativeEnum(NotificationType, {
+    errorMap: () => ({ message: '올바른 알림 타입이 아닙니다' }),
+  }),
   recipient: z.string().min(1, '수신자는 필수입니다'),
   templateName: z.string().min(1, '템플릿명은 필수입니다'),
   variables: z.record(z.string()).default({}),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
-  scheduledAt: z.string().optional().refine(
-    (dateStr) => !dateStr || !isNaN(new Date(dateStr).getTime()),
-    '올바른 날짜 형식이 아닙니다'
-  ),
+  scheduledAt: z
+    .string()
+    .optional()
+    .refine(
+      (dateStr) => !dateStr || !isNaN(new Date(dateStr).getTime()),
+      '올바른 날짜 형식이 아닙니다'
+    ),
   companyId: z.string().optional(),
   contactId: z.string().optional(),
   enableFailover: z.boolean().optional(),
-  useQueue: z.boolean().optional()
+  useQueue: z.boolean().optional(),
 })
 
 // 대량 알림 발송 스키마
 const sendBulkNotificationSchema = z.object({
   notifications: z.array(sendNotificationSchema).min(1, '최소 1개의 알림이 필요합니다'),
-  batchSize: z.number().int().min(1).max(100).optional()
+  batchSize: z.number().int().min(1).max(100).optional(),
 })
 
 // 발주 접수 알림 스키마
 const orderNotificationSchema = z.object({
-  companyId: z.string().min(1, '업체 ID는 필수입니다')
+  companyId: z.string().min(1, '업체 ID는 필수입니다'),
 })
 
 // 개별 알림 발송
 export async function POST(request: NextRequest) {
   try {
+    // Rate Limiting 적용
+    const rateLimitResponse = await withTenantRateLimit('notifications')(request)
+    if (rateLimitResponse.status === 429) {
+      return rateLimitResponse
+    }
+
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
@@ -47,7 +66,6 @@ export async function POST(request: NextRequest) {
       default:
         return handleSingleNotification(request)
     }
-
   } catch (error) {
     logger.error('알림 발송 API 오류:', error)
     return createErrorResponse('알림 발송에 실패했습니다.')
@@ -69,7 +87,7 @@ async function handleSingleNotification(request: NextRequest) {
       scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,
       companyId: data.companyId,
       contactId: data.contactId,
-      enableFailover: data.enableFailover ?? true
+      enableFailover: data.enableFailover ?? true,
     }
 
     let result
@@ -81,7 +99,7 @@ async function handleSingleNotification(request: NextRequest) {
       result = {
         queued: true,
         jobId,
-        message: '알림이 큐에 등록되었습니다.'
+        message: '알림이 큐에 등록되었습니다.',
       }
     } else {
       // 즉시 발송
@@ -92,11 +110,10 @@ async function handleSingleNotification(request: NextRequest) {
       type: data.type,
       recipient: data.recipient,
       template: data.templateName,
-      useQueue: data.useQueue
+      useQueue: data.useQueue,
     })
 
     return createSuccessResponse(result, '알림이 성공적으로 처리되었습니다.')
-
   } catch (error) {
     logger.error('단일 알림 발송 실패:', error)
     return createErrorResponse(error instanceof Error ? error.message : '알림 발송에 실패했습니다.')
@@ -110,7 +127,7 @@ async function handleBulkNotification(request: NextRequest) {
 
   try {
     const bulkRequest = {
-      notifications: data.notifications.map(notification => ({
+      notifications: data.notifications.map((notification) => ({
         type: notification.type,
         recipient: notification.recipient,
         templateName: notification.templateName,
@@ -119,9 +136,9 @@ async function handleBulkNotification(request: NextRequest) {
         scheduledAt: notification.scheduledAt ? new Date(notification.scheduledAt) : undefined,
         companyId: notification.companyId,
         contactId: notification.contactId,
-        enableFailover: notification.enableFailover ?? true
+        enableFailover: notification.enableFailover ?? true,
       })),
-      batchSize: data.batchSize
+      batchSize: data.batchSize,
     }
 
     const result = await notificationService.sendBulkNotifications(bulkRequest)
@@ -129,14 +146,18 @@ async function handleBulkNotification(request: NextRequest) {
     logger.info('대량 알림 발송 API 성공', {
       total: result.totalCount,
       success: result.successCount,
-      failure: result.failureCount
+      failure: result.failureCount,
     })
 
-    return createSuccessResponse(result, `${result.totalCount}개 중 ${result.successCount}개 알림이 성공적으로 발송되었습니다.`)
-
+    return createSuccessResponse(
+      result,
+      `${result.totalCount}개 중 ${result.successCount}개 알림이 성공적으로 발송되었습니다.`
+    )
   } catch (error) {
     logger.error('대량 알림 발송 실패:', error)
-    return createErrorResponse(error instanceof Error ? error.message : '대량 알림 발송에 실패했습니다.')
+    return createErrorResponse(
+      error instanceof Error ? error.message : '대량 알림 발송에 실패했습니다.'
+    )
   }
 }
 
@@ -148,25 +169,29 @@ async function handleOrderReceivedNotification(request: NextRequest) {
   try {
     const results = await sendOrderReceivedNotification(data.companyId)
 
-    const successCount = results.filter(r => r.success).length
+    const successCount = results.filter((r) => r.success).length
     const totalCount = results.length
 
     logger.info('발주 접수 알림 API 성공', {
       companyId: data.companyId,
       total: totalCount,
-      success: successCount
+      success: successCount,
     })
 
-    return createSuccessResponse({
-      companyId: data.companyId,
-      totalCount,
-      successCount,
-      failureCount: totalCount - successCount,
-      results
-    }, `발주 접수 알림이 ${successCount}/${totalCount}개 담당자에게 성공적으로 발송되었습니다.`)
-
+    return createSuccessResponse(
+      {
+        companyId: data.companyId,
+        totalCount,
+        successCount,
+        failureCount: totalCount - successCount,
+        results,
+      },
+      `발주 접수 알림이 ${successCount}/${totalCount}개 담당자에게 성공적으로 발송되었습니다.`
+    )
   } catch (error) {
     logger.error('발주 접수 알림 실패:', error)
-    return createErrorResponse(error instanceof Error ? error.message : '발주 접수 알림 발송에 실패했습니다.')
+    return createErrorResponse(
+      error instanceof Error ? error.message : '발주 접수 알림 발송에 실패했습니다.'
+    )
   }
 }

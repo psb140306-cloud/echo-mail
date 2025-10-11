@@ -44,10 +44,7 @@ async function testSupabaseClient() {
     const tables = ['companies', 'contacts', 'users']
 
     for (const table of tables) {
-      const { data, error } = await supabase
-        .from(table)
-        .select('*')
-        .limit(1)
+      const { data, error } = await supabase.from(table).select('*').limit(1)
 
       if (error) {
         if (error.message.includes('relation') && error.message.includes('does not exist')) {
@@ -67,7 +64,6 @@ async function testSupabaseClient() {
     if (createError) {
       console.log('⚠️ 스키마 생성 권한 제한 (정상 - RLS 때문)')
     }
-
   } catch (error) {
     console.error('❌ 예상치 못한 오류:', error.message)
   }

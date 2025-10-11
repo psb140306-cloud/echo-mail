@@ -20,10 +20,7 @@ const customJestConfig = {
   },
 
   // 테스트 파일 패턴
-  testMatch: [
-    '**/__tests__/**/*.(ts|tsx|js|jsx)',
-    '**/*.(test|spec).(ts|tsx|js|jsx)'
-  ],
+  testMatch: ['**/__tests__/**/*.(ts|tsx|js|jsx)', '**/*.(test|spec).(ts|tsx|js|jsx)'],
 
   // 테스트 환경 설정 파일
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
@@ -39,7 +36,7 @@ const customJestConfig = {
     '!**/coverage/**',
     '!**/*.config.{js,ts}',
     '!**/setup.ts',
-    '!**/seed.ts'
+    '!**/seed.ts',
   ],
 
   // 커버리지 리포트 형식
@@ -51,23 +48,21 @@ const customJestConfig = {
       branches: 70,
       functions: 70,
       lines: 70,
-      statements: 70
-    }
+      statements: 70,
+    },
   },
 
   // 테스트 타임아웃
   testTimeout: 10000,
 
   // 모듈 변환 무시 패턈
-  transformIgnorePatterns: [
-    'node_modules/(?!((@supabase|@hookform|cmdk|date-fns)/.*|.*\\.mjs$))'
-  ],
+  transformIgnorePatterns: ['node_modules/(?!((@supabase|@hookform|cmdk|date-fns)/.*|.*\\.mjs$))'],
 
   // 전역 변수 설정
   globals: {
     'ts-jest': {
-      tsconfig: 'tsconfig.json'
-    }
+      tsconfig: 'tsconfig.json',
+    },
   },
 
   // 모듈 디렉토리
@@ -81,7 +76,7 @@ const customJestConfig = {
   maxWorkers: '50%',
 
   // 자세한 출력
-  verbose: true
+  verbose: true,
 }
 
 // Next.js와 Jest 설정을 병합하여 내보내기

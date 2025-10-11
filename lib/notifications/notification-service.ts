@@ -5,6 +5,14 @@ import { KakaoProvider, createKakaoProviderFromEnv, KakaoMessage } from './kakao
 import { notificationQueue, NotificationJob } from './queue/notification-queue'
 import { templateManager, renderNotificationTemplate } from './templates/template-manager'
 import { calculateDeliveryDate } from '@/lib/utils/delivery-calculator'
+import {
+  UsageTracker,
+  UsageType,
+  trackSMSUsage,
+  trackKakaoUsage,
+  checkNotificationLimit,
+} from '@/lib/usage/usage-tracker'
+import { TenantContext } from '@/lib/db'
 
 const prisma = new PrismaClient()
 
@@ -60,10 +68,41 @@ export class NotificationService {
    */
   async sendNotification(request: NotificationRequest): Promise<NotificationResult> {
     try {
+      // 테넌트 컨텍스트에서 테넌트 ID 가져오기
+      const tenantContext = TenantContext.getInstance()
+      const tenantId = tenantContext.getTenantId()
+
+      if (!tenantId) {
+        throw new Error('테넌트 컨텍스트가 설정되지 않았습니다.')
+      }
+
+      // 사용량 제한 체크
+      const limitCheck = await checkNotificationLimit(tenantId)
+      if (!limitCheck.allowed) {
+        logger.warn('알림 발송 제한 초과', {
+          tenantId,
+          type: request.type,
+          currentUsage: limitCheck.currentUsage,
+          limit: limitCheck.limit,
+          message: limitCheck.message,
+        })
+
+        return {
+          success: false,
+          error:
+            limitCheck.message ||
+            '월 알림 발송 한도를 초과했습니다. 플랜 업그레이드를 고려해주세요.',
+          provider: 'usage_limiter',
+        }
+      }
+
       logger.info('알림 발송 시작', {
+        tenantId,
         type: request.type,
         recipient: request.recipient,
-        template: request.templateName
+        template: request.templateName,
+        currentUsage: limitCheck.currentUsage,
+        limit: limitCheck.limit,
       })
 
       // 템플릿 렌더링
@@ -81,7 +120,7 @@ export class NotificationService {
           result = await this.sendSMS({
             to: request.recipient,
             message: rendered.content,
-            subject: rendered.subject
+            subject: rendered.subject,
           })
           break
 
@@ -90,26 +129,26 @@ export class NotificationService {
             to: request.recipient,
             templateCode: request.templateName,
             message: rendered.content,
-            variables: request.variables
+            variables: request.variables,
           })
 
           // 카카오 실패 시 SMS 폴백
           if (!result.success && request.enableFailover) {
             logger.info('카카오 알림톡 실패, SMS 폴백 시도', {
               recipient: request.recipient,
-              error: result.error
+              error: result.error,
             })
 
             const smsResult = await this.sendSMS({
               to: request.recipient,
-              message: rendered.content
+              message: rendered.content,
             })
 
             if (smsResult.success) {
               result = {
                 ...smsResult,
                 failoverUsed: true,
-                provider: 'SMS(폴백)'
+                provider: 'SMS(폴백)',
               }
             }
           }
@@ -118,7 +157,7 @@ export class NotificationService {
         case NotificationType.KAKAO_FRIENDTALK:
           result = await this.sendKakaoFriendTalk({
             to: request.recipient,
-            message: rendered.content
+            message: rendered.content,
           })
           break
 
@@ -126,25 +165,59 @@ export class NotificationService {
           throw new Error(`지원하지 않는 알림 타입: ${request.type}`)
       }
 
+      // 발송 성공시 사용량 추적
+      if (result.success) {
+        const usageMetadata = {
+          recipient: request.recipient,
+          templateName: request.templateName,
+          provider: result.provider,
+          messageId: result.messageId,
+          companyId: request.companyId,
+          contactId: request.contactId,
+        }
+
+        // 타입별 사용량 추적
+        switch (request.type) {
+          case NotificationType.SMS:
+            await trackSMSUsage(tenantId, 1, usageMetadata)
+            break
+          case NotificationType.KAKAO_ALIMTALK:
+          case NotificationType.KAKAO_FRIENDTALK:
+            await trackKakaoUsage(tenantId, 1, usageMetadata)
+            break
+        }
+
+        // 폴백 사용시 SMS 사용량도 추가
+        if (result.failoverUsed) {
+          await trackSMSUsage(tenantId, 1, { ...usageMetadata, fallback: true })
+        }
+
+        logger.debug('사용량 추적 완료', {
+          tenantId,
+          type: request.type,
+          failoverUsed: result.failoverUsed,
+        })
+      }
+
       // 발송 로그 저장
       await this.logNotification(request, result)
 
       logger.info('알림 발송 완료', {
+        tenantId,
         type: request.type,
         recipient: request.recipient,
         success: result.success,
         provider: result.provider,
-        failoverUsed: result.failoverUsed
+        failoverUsed: result.failoverUsed,
       })
 
       return result
-
     } catch (error) {
       logger.error('알림 발송 실패:', error)
 
       const errorResult: NotificationResult = {
         success: false,
-        error: error instanceof Error ? error.message : '알 수 없는 오류'
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
       }
 
       await this.logNotification(request, errorResult)
@@ -170,8 +243,8 @@ export class NotificationService {
         companyId: request.companyId,
         contactId: request.contactId,
         metadata: {
-          enableFailover: request.enableFailover
-        }
+          enableFailover: request.enableFailover,
+        },
       }
 
       const jobId = await notificationQueue.enqueue(job)
@@ -180,11 +253,10 @@ export class NotificationService {
         jobId,
         type: request.type,
         recipient: request.recipient,
-        template: request.templateName
+        template: request.templateName,
       })
 
       return jobId
-
     } catch (error) {
       logger.error('알림 큐 등록 실패:', error)
       throw error
@@ -207,10 +279,10 @@ export class NotificationService {
       const batch = request.notifications.slice(i, i + batchSize)
 
       const batchResults = await Promise.allSettled(
-        batch.map(notification => this.sendNotification(notification))
+        batch.map((notification) => this.sendNotification(notification))
       )
 
-      batchResults.forEach(result => {
+      batchResults.forEach((result) => {
         if (result.status === 'fulfilled') {
           results.push(result.value)
           if (result.value.success) {
@@ -221,7 +293,7 @@ export class NotificationService {
         } else {
           results.push({
             success: false,
-            error: result.reason?.message || '알 수 없는 오류'
+            error: result.reason?.message || '알 수 없는 오류',
           })
           failureCount++
         }
@@ -229,21 +301,21 @@ export class NotificationService {
 
       // 배치 간 간격 (Rate Limiting)
       if (i + batchSize < request.notifications.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
 
     logger.info('대량 알림 발송 완료', {
       total: request.notifications.length,
       success: successCount,
-      failure: failureCount
+      failure: failureCount,
     })
 
     return {
       totalCount: request.notifications.length,
       successCount,
       failureCount,
-      results
+      results,
     }
   }
 
@@ -257,9 +329,9 @@ export class NotificationService {
         where: { id: companyId },
         include: {
           contacts: {
-            where: { isActive: true }
-          }
-        }
+            where: { isActive: true },
+          },
+        },
       })
 
       if (!company) {
@@ -269,7 +341,7 @@ export class NotificationService {
       // 납품일 계산
       const deliveryResult = await calculateDeliveryDate({
         region: company.region,
-        orderDateTime: new Date()
+        orderDateTime: new Date(),
       })
 
       const variables = {
@@ -278,9 +350,9 @@ export class NotificationService {
           year: 'numeric',
           month: 'long',
           day: 'numeric',
-          weekday: 'long'
+          weekday: 'long',
         }),
-        deliveryTime: deliveryResult.deliveryTime === 'morning' ? '오전' : '오후'
+        deliveryTime: deliveryResult.deliveryTime === 'morning' ? '오전' : '오후',
       }
 
       const results: NotificationResult[] = []
@@ -296,7 +368,7 @@ export class NotificationService {
             variables,
             companyId: company.id,
             contactId: contact.id,
-            enableFailover: contact.smsEnabled
+            enableFailover: contact.smsEnabled,
           })
 
           results.push(kakaoResult)
@@ -315,7 +387,7 @@ export class NotificationService {
             templateName: 'ORDER_RECEIVED_SMS',
             variables,
             companyId: company.id,
-            contactId: contact.id
+            contactId: contact.id,
           })
 
           results.push(smsResult)
@@ -327,11 +399,10 @@ export class NotificationService {
         companyName: company.name,
         contactCount: company.contacts.length,
         notificationCount: results.length,
-        successCount: results.filter(r => r.success).length
+        successCount: results.filter((r) => r.success).length,
       })
 
       return results
-
     } catch (error) {
       logger.error('발주 접수 알림 발송 실패:', error)
       throw error
@@ -349,15 +420,14 @@ export class NotificationService {
         success: result.success,
         messageId: result.messageId,
         error: result.error,
-        provider: 'SMS'
+        provider: 'SMS',
       }
-
     } catch (error) {
       logger.error('SMS 발송 오류:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : '알 수 없는 오류',
-        provider: 'SMS'
+        provider: 'SMS',
       }
     }
   }
@@ -373,15 +443,14 @@ export class NotificationService {
         success: result.success,
         messageId: result.messageId,
         error: result.error,
-        provider: 'KakaoAlimTalk'
+        provider: 'KakaoAlimTalk',
       }
-
     } catch (error) {
       logger.error('카카오 알림톡 발송 오류:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : '알 수 없는 오류',
-        provider: 'KakaoAlimTalk'
+        provider: 'KakaoAlimTalk',
       }
     }
   }
@@ -389,7 +458,9 @@ export class NotificationService {
   /**
    * 카카오 친구톡 발송
    */
-  private async sendKakaoFriendTalk(message: Omit<KakaoMessage, 'templateCode'>): Promise<NotificationResult> {
+  private async sendKakaoFriendTalk(
+    message: Omit<KakaoMessage, 'templateCode'>
+  ): Promise<NotificationResult> {
     try {
       const result = await this.kakaoProvider.sendFriendTalk(message)
 
@@ -397,15 +468,14 @@ export class NotificationService {
         success: result.success,
         messageId: result.messageId,
         error: result.error,
-        provider: 'KakaoFriendTalk'
+        provider: 'KakaoFriendTalk',
       }
-
     } catch (error) {
       logger.error('카카오 친구톡 발송 오류:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : '알 수 없는 오류',
-        provider: 'KakaoFriendTalk'
+        provider: 'KakaoFriendTalk',
       }
     }
   }
@@ -413,7 +483,10 @@ export class NotificationService {
   /**
    * 알림 발송 로그 저장
    */
-  private async logNotification(request: NotificationRequest, result: NotificationResult): Promise<void> {
+  private async logNotification(
+    request: NotificationRequest,
+    result: NotificationResult
+  ): Promise<void> {
     try {
       // 실제 구현에서는 NotificationLog 테이블에 저장
       logger.debug('알림 로그 저장', {
@@ -421,7 +494,7 @@ export class NotificationService {
         recipient: request.recipient,
         template: request.templateName,
         success: result.success,
-        provider: result.provider
+        provider: result.provider,
       })
 
       // await prisma.notificationLog.create({
@@ -440,7 +513,6 @@ export class NotificationService {
       //     sentAt: new Date()
       //   }
       // })
-
     } catch (error) {
       logger.error('알림 로그 저장 실패:', error)
     }
@@ -489,13 +561,12 @@ export class NotificationService {
           variables: job.variables || {},
           companyId: job.companyId,
           contactId: job.contactId,
-          enableFailover: job.metadata?.enableFailover
+          enableFailover: job.metadata?.enableFailover,
         }
 
         const result = await this.sendNotification(request)
 
         return result.success
-
       } catch (error) {
         logger.error(`큐 작업 처리 실패 (${job.id}):`, error)
         return false
@@ -525,23 +596,23 @@ export class NotificationService {
   async getStatus() {
     const [smsBalance, queueStats] = await Promise.all([
       this.smsProvider.getBalance().catch(() => 0),
-      notificationQueue.getStats()
+      notificationQueue.getStats(),
     ])
 
     return {
       sms: {
         provider: 'aligo',
         balance: smsBalance,
-        available: smsBalance > 0
+        available: smsBalance > 0,
       },
       kakao: {
         provider: 'kakao',
-        available: await this.kakaoProvider.validateConfig()
+        available: await this.kakaoProvider.validateConfig(),
       },
       queue: {
         processing: this.isQueueProcessing,
-        stats: queueStats
-      }
+        stats: queueStats,
+      },
     }
   }
 }
@@ -558,6 +629,8 @@ export async function queueNotification(request: NotificationRequest): Promise<s
   return notificationService.queueNotification(request)
 }
 
-export async function sendOrderReceivedNotification(companyId: string): Promise<NotificationResult[]> {
+export async function sendOrderReceivedNotification(
+  companyId: string
+): Promise<NotificationResult[]> {
   return notificationService.sendOrderReceivedNotification(companyId)
 }

@@ -22,9 +22,10 @@ import {
   TestTube,
   AlertTriangle,
   CheckCircle,
-  Loader2
+  Loader2,
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/components/ui/use-toast'
+import { UsageDisplay } from '@/components/subscription/usage-display'
 
 interface SystemSettings {
   mailServer: {
@@ -73,7 +74,7 @@ export default function SettingsPage() {
       password: '',
       useSSL: true,
       checkInterval: 5,
-      enabled: false
+      enabled: false,
     },
     sms: {
       provider: 'aligo',
@@ -81,26 +82,27 @@ export default function SettingsPage() {
       apiSecret: '',
       senderId: '',
       enabled: false,
-      testMode: true
+      testMode: true,
     },
     kakao: {
       apiKey: '',
       plusFriendId: '',
       enabled: false,
       testMode: true,
-      fallbackToSMS: true
+      fallbackToSMS: true,
     },
     system: {
       timezone: 'Asia/Seoul',
       queueSize: 1000,
       retryAttempts: 3,
       logLevel: 'info',
-      enableNotifications: true
+      enableNotifications: true,
     },
     templates: {
       smsTemplate: '[{companyName}] 발주 확인: {orderDate}까지 납품 예정입니다.',
-      kakaoTemplate: '안녕하세요, {companyName}입니다.\n\n발주가 확인되었습니다.\n납품 예정일: {orderDate}\n\n문의사항이 있으시면 연락 주세요.'
-    }
+      kakaoTemplate:
+        '안녕하세요, {companyName}입니다.\n\n발주가 확인되었습니다.\n납품 예정일: {orderDate}\n\n문의사항이 있으시면 연락 주세요.',
+    },
   })
 
   const [loading, setLoading] = useState(true)
@@ -189,9 +191,9 @@ export default function SettingsPage() {
 
       const data = await response.json()
 
-      setTestResults(prev => ({
+      setTestResults((prev) => ({
         ...prev,
-        [type]: data.success
+        [type]: data.success,
       }))
 
       if (data.success) {
@@ -207,9 +209,9 @@ export default function SettingsPage() {
         })
       }
     } catch (error) {
-      setTestResults(prev => ({
+      setTestResults((prev) => ({
         ...prev,
-        [type]: false
+        [type]: false,
       }))
       toast({
         title: '연결 실패',
@@ -223,12 +225,12 @@ export default function SettingsPage() {
 
   // 설정 값 업데이트
   const updateSetting = (section: keyof SystemSettings, field: string, value: any) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       [section]: {
         ...prev[section],
-        [field]: value
-      }
+        [field]: value,
+      },
     }))
   }
 
@@ -271,8 +273,12 @@ export default function SettingsPage() {
 
       {/* Main Content */}
       <main className="container py-6">
-        <Tabs defaultValue="mail" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+        <Tabs defaultValue="usage" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="usage" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              사용량
+            </TabsTrigger>
             <TabsTrigger value="mail" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
               메일 서버
@@ -295,6 +301,19 @@ export default function SettingsPage() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Usage Statistics */}
+          <TabsContent value="usage" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>사용량 및 구독 정보</CardTitle>
+                <CardDescription>현재 플랜의 사용량과 제한사항을 확인하세요</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UsageDisplay />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Mail Server Settings */}
           <TabsContent value="mail" className="space-y-6">
             <Card>
@@ -303,7 +322,7 @@ export default function SettingsPage() {
                   <span>메일 서버 설정</span>
                   <div className="flex items-center gap-2">
                     {testResults.mail !== undefined && (
-                      <Badge variant={testResults.mail ? "default" : "destructive"}>
+                      <Badge variant={testResults.mail ? 'default' : 'destructive'}>
                         {testResults.mail ? (
                           <>
                             <CheckCircle className="mr-1 h-3 w-3" />
@@ -332,9 +351,7 @@ export default function SettingsPage() {
                     </Button>
                   </div>
                 </CardTitle>
-                <CardDescription>
-                  메일을 받아올 IMAP 서버 설정을 입력하세요
-                </CardDescription>
+                <CardDescription>메일을 받아올 IMAP 서버 설정을 입력하세요</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -365,7 +382,9 @@ export default function SettingsPage() {
                       type="number"
                       placeholder="993"
                       value={settings.mailServer.port}
-                      onChange={(e) => updateSetting('mailServer', 'port', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        updateSetting('mailServer', 'port', parseInt(e.target.value))
+                      }
                     />
                   </div>
                 </div>
@@ -409,7 +428,9 @@ export default function SettingsPage() {
                       min="1"
                       max="60"
                       value={settings.mailServer.checkInterval}
-                      onChange={(e) => updateSetting('mailServer', 'checkInterval', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        updateSetting('mailServer', 'checkInterval', parseInt(e.target.value))
+                      }
                     />
                   </div>
                 </div>
@@ -425,7 +446,7 @@ export default function SettingsPage() {
                   <span>SMS 발송 설정</span>
                   <div className="flex items-center gap-2">
                     {testResults.sms !== undefined && (
-                      <Badge variant={testResults.sms ? "default" : "destructive"}>
+                      <Badge variant={testResults.sms ? 'default' : 'destructive'}>
                         {testResults.sms ? (
                           <>
                             <CheckCircle className="mr-1 h-3 w-3" />
@@ -454,9 +475,7 @@ export default function SettingsPage() {
                     </Button>
                   </div>
                 </CardTitle>
-                <CardDescription>
-                  SMS 발송을 위한 API 설정을 입력하세요
-                </CardDescription>
+                <CardDescription>SMS 발송을 위한 API 설정을 입력하세요</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -537,7 +556,7 @@ export default function SettingsPage() {
                   <span>카카오톡 발송 설정</span>
                   <div className="flex items-center gap-2">
                     {testResults.kakao !== undefined && (
-                      <Badge variant={testResults.kakao ? "default" : "destructive"}>
+                      <Badge variant={testResults.kakao ? 'default' : 'destructive'}>
                         {testResults.kakao ? (
                           <>
                             <CheckCircle className="mr-1 h-3 w-3" />
@@ -566,9 +585,7 @@ export default function SettingsPage() {
                     </Button>
                   </div>
                 </CardTitle>
-                <CardDescription>
-                  카카오 비즈메시지 API 설정을 입력하세요
-                </CardDescription>
+                <CardDescription>카카오 비즈메시지 API 설정을 입력하세요</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -629,9 +646,7 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>시스템 설정</CardTitle>
-                <CardDescription>
-                  전체 시스템 동작에 관한 설정입니다
-                </CardDescription>
+                <CardDescription>전체 시스템 동작에 관한 설정입니다</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -656,7 +671,9 @@ export default function SettingsPage() {
                       min="100"
                       max="10000"
                       value={settings.system.queueSize}
-                      onChange={(e) => updateSetting('system', 'queueSize', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        updateSetting('system', 'queueSize', parseInt(e.target.value))
+                      }
                     />
                   </div>
                   <div>
@@ -667,7 +684,9 @@ export default function SettingsPage() {
                       min="1"
                       max="10"
                       value={settings.system.retryAttempts}
-                      onChange={(e) => updateSetting('system', 'retryAttempts', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        updateSetting('system', 'retryAttempts', parseInt(e.target.value))
+                      }
                     />
                   </div>
                 </div>
@@ -692,7 +711,9 @@ export default function SettingsPage() {
                   <Switch
                     id="enable-notifications"
                     checked={settings.system.enableNotifications}
-                    onCheckedChange={(checked) => updateSetting('system', 'enableNotifications', checked)}
+                    onCheckedChange={(checked) =>
+                      updateSetting('system', 'enableNotifications', checked)
+                    }
                   />
                 </div>
               </CardContent>

@@ -9,6 +9,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_DIRECT")
 }
 
 // =============================================================================
@@ -17,10 +18,15 @@ datasource db {
 
 model Company {
   id        String   @id @default(cuid())
-  name      String   @unique
-  email     String   @unique
+  name      String
+  email     String
   region    String
   isActive  Boolean  @default(true)
+
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -29,6 +35,13 @@ model Company {
   emailLogs     EmailLog[]
   notifications NotificationLog[]
 
+  // 테넌트 내에서 유니크
+  @@unique([tenantId, name])
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@index([tenantId, region])
+  @@index([createdAt])
   @@map("companies")
 }
 
@@ -44,6 +57,10 @@ model Contact {
   smsEnabled   Boolean @default(true)
   kakaoEnabled Boolean @default(false)
 
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   // 관계
   companyId String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -51,6 +68,12 @@ model Contact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@index([tenantId, companyId])
+  @@index([phone])
+  @@index([email])
+  @@index([companyId])
   @@map("contacts")
 }
 
@@ -60,7 +83,7 @@ model Contact {
 
 model DeliveryRule {
   id     String @id @default(cuid())
-  region String @unique
+  region String
 
   // 납품 규칙
   morningCutoff   String // 오전 마감 시간 (HH:mm)
@@ -74,22 +97,40 @@ model DeliveryRule {
   excludeWeekends Boolean @default(true)
   excludeHolidays Boolean @default(true)
 
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 테넌트 내에서 지역별 유니크
+  @@unique([tenantId, region])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@index([region])
   @@map("delivery_rules")
 }
 
 model Holiday {
   id          String   @id @default(cuid())
-  date        DateTime @unique @db.Date
+  date        DateTime @db.Date
   name        String
   isRecurring Boolean  @default(false) // 매년 반복 여부
+
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 테넌트 내에서 날짜별 유니크
+  @@unique([tenantId, date])
+  @@index([tenantId])
+  @@index([date])
+  @@index([tenantId, isRecurring])
   @@map("holidays")
 }
 
@@ -97,11 +138,53 @@ model Holiday {
 // 메일 처리 및 로그
 // =============================================================================
 
+// 테넌트별 이메일 계정 설정
+model EmailAccount {
+  id String @id @default(cuid())
+
+  // 계정 정보
+  email    String
+  password String // 암호화하여 저장
+
+  // IMAP 설정
+  imapHost  String
+  imapPort  Int     @default(993)
+  imapSecure Boolean @default(true)
+
+  // SMTP 설정 (선택사항 - 답장용)
+  smtpHost  String?
+  smtpPort  Int?    @default(587)
+  smtpSecure Boolean @default(false)
+
+  // 폴링 설정
+  pollInterval Int     @default(60) // 초 단위
+  isActive     Boolean @default(true)
+
+  // 마지막 동기화 정보
+  lastSyncAt   DateTime?
+  lastErrorAt  DateTime?
+  lastErrorMsg String?
+
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 테넌트별 유니크
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@index([lastSyncAt])
+  @@map("email_accounts")
+}
+
 model EmailLog {
   id String @id @default(cuid())
 
   // 메일 정보
-  messageId  String   @unique
+  messageId  String
   subject    String
   sender     String
   recipient  String
@@ -114,6 +197,10 @@ model EmailLog {
   // 처리 상태
   status      EmailStatus @default(RECEIVED)
   processedAt DateTime?
+
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // 업체 매칭
   companyId String?
@@ -128,6 +215,16 @@ model EmailLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 테넌트 내에서 메시지 ID 유니크
+  @@unique([tenantId, messageId])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, companyId])
+  @@index([receivedAt])
+  @@index([sender])
+  @@index([recipient])
+  @@index([status])
+  @@index([createdAt])
   @@map("email_logs")
 }
 
@@ -161,6 +258,10 @@ model NotificationLog {
   maxRetries  Int       @default(3)
   nextRetryAt DateTime?
 
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   // 관련 정보
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
@@ -177,6 +278,15 @@ model NotificationLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+  @@index([status, nextRetryAt])
+  @@index([recipient])
+  @@index([emailLogId])
+  @@index([companyId])
+  @@index([createdAt])
+  @@index([sentAt])
   @@map("notification_logs")
 }
 
@@ -201,24 +311,37 @@ enum NotificationStatus {
 
 model SystemConfig {
   id          String  @id @default(cuid())
-  key         String  @unique
+  key         String
   value       String
   description String?
   category    String  @default("general")
 
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 테넌트 내에서 키별 유니크
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@index([tenantId, category])
+  @@index([key])
   @@map("system_configs")
 }
 
 model MessageTemplate {
   id        String           @id @default(cuid())
-  name      String           @unique
+  name      String
   type      NotificationType
   subject   String? // 알림톡의 경우
   content   String
   variables Json? // 사용 가능한 변수 목록
+
+  // 멀티테넌시
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   isActive  Boolean @default(true)
   isDefault Boolean @default(false)
@@ -226,7 +349,121 @@ model MessageTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 테넌트 내에서 이름별 유니크
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, type])
+  @@index([tenantId, isActive])
+  @@index([tenantId, isDefault])
   @@map("message_templates")
+}
+
+// =============================================================================
+// SaaS 멀티테넌시 시스템
+// =============================================================================
+
+model Tenant {
+  id               String             @id @default(cuid())
+  name             String
+  subdomain        String             @unique
+  customDomain     String?
+  subscriptionPlan SubscriptionPlan   @default(FREE_TRIAL)
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  trialEndsAt      DateTime
+
+  // 소유자
+  ownerId          String?
+
+  // 사용량 제한
+  maxCompanies     Int @default(10)
+  maxContacts      Int @default(50)
+  maxEmails        Int @default(500)
+  maxNotifications Int @default(1000)
+
+  // 관계
+  users            User[]
+  tenantUsers      TenantUser[]      // 다대다 관계
+  invitations      TenantInvitation[]
+  companies        Company[]
+  contacts         Contact[]
+  deliveryRules    DeliveryRule[]
+  holidays         Holiday[]
+  emailLogs        EmailLog[]
+  emailAccounts    EmailAccount[]
+  notificationLogs NotificationLog[]
+  messageTemplates MessageTemplate[]
+  systemConfigs    SystemConfig[]
+  subscriptions    Subscription[]
+  invoices         Invoice[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([subdomain])
+  @@index([customDomain])
+  @@index([subscriptionPlan])
+  @@index([subscriptionStatus])
+  @@index([trialEndsAt])
+  @@index([createdAt])
+  @@map("tenants")
+}
+
+enum SubscriptionPlan {
+  FREE_TRIAL
+  STARTER
+  PROFESSIONAL
+  BUSINESS
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  UNPAID
+  INCOMPLETE
+}
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  tenantId              String
+  tenant                Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  plan                  SubscriptionPlan
+  status                SubscriptionStatus @default(ACTIVE)
+
+  // 결제 정보
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  cancelAtPeriodEnd     Boolean            @default(false)
+  cancelledAt           DateTime?
+
+  // 토스페이먼츠 연동
+  customerKey           String?            // 고객 키
+  billingKey            String?            // 빌링 키 (정기결제용)
+
+  // 가격 정보
+  priceAmount           Int                // 월 구독료 (원 단위)
+  currency              String             @default("KRW")
+
+  // 사용량 통계
+  currentEmailCount     Int                @default(0)
+  currentNotificationCount Int             @default(0)
+
+  // 관계
+  invoices              Invoice[]
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([tenantId])
+  @@index([plan])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@index([customerKey])
+  @@index([billingKey])
+  @@map("subscriptions")
 }
 
 // =============================================================================
@@ -240,6 +477,10 @@ model User {
   password String
   role     UserRole @default(ADMIN)
 
+  // 멀티테넌시 (nullable for super admin users)
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   isActive    Boolean   @default(true)
   lastLoginAt DateTime?
 
@@ -249,9 +490,17 @@ model User {
   accounts      Account[]
   sessions      Session[]
 
+  // 테넌트 관계
+  tenantUsers       TenantUser[]
+  sentInvitations   TenantInvitation[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([email])
+  @@index([tenantId])
+  @@index([isActive])
+  @@index([lastLoginAt])
   @@map("users")
 }
 
@@ -259,6 +508,149 @@ enum UserRole {
   ADMIN
   OPERATOR
   VIEWER
+}
+
+// 테넌트 내 사용자 역할
+enum TenantUserRole {
+  OWNER       // 소유자: 결제 관리, 테넌트 삭제 가능
+  ADMIN       // 관리자: 모든 설정 가능
+  MANAGER     // 매니저: 업체/담당자 관리
+  OPERATOR    // 운영자: 알림 발송만
+  VIEWER      // 뷰어: 읽기 전용
+}
+
+// 테넌트-사용자 관계 (다대다 관계)
+model TenantUser {
+  id       String         @id @default(cuid())
+
+  // 관계
+  tenantId String
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  userId   String
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 테넌트 내 역할
+  role     TenantUserRole @default(VIEWER)
+
+  // 초대 관련
+  invitedBy    String?
+  invitedAt    DateTime?
+  acceptedAt   DateTime?
+
+  // 상태
+  isActive     Boolean      @default(true)
+
+  // 메타데이터
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, role])
+  @@index([tenantId, isActive])
+  @@map("tenant_users")
+}
+
+// 테넌트 사용자 초대
+model TenantInvitation {
+  id          String         @id @default(cuid())
+
+  // 관계
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // 초대 정보
+  email       String
+  role        TenantUserRole @default(VIEWER)
+  token       String         @unique
+
+  // 초대자
+  invitedBy   String
+  inviter     User           @relation(fields: [invitedBy], references: [id])
+
+  // 상태
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([invitedBy])
+  @@map("tenant_invitations")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
+// 인보이스 및 결제
+model Invoice {
+  id              String         @id @default(cuid())
+
+  // 관계
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  subscriptionId  String
+  subscription    Subscription   @relation(fields: [subscriptionId], references: [id])
+
+  // 인보이스 정보
+  invoiceNumber   String         @unique
+  status          InvoiceStatus  @default(PENDING)
+
+  // 금액
+  subtotal        Int            // 세전 금액 (원 단위)
+  tax             Int            // 세금 (원 단위)
+  total           Int            // 총 금액 (원 단위)
+  currency        String         @default("KRW")
+
+  // 기간
+  periodStart     DateTime
+  periodEnd       DateTime
+
+  // 결제
+  paidAt          DateTime?
+  paymentMethod   String?        // 결제 방법
+
+  // 토스페이먼츠 연동
+  paymentKey      String?        // 토스페이먼츠 결제 키
+  orderId         String?        // 주문 ID
+
+  // PDF
+  pdfUrl          String?        // PDF 다운로드 URL
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([subscriptionId])
+  @@index([invoiceNumber])
+  @@index([status])
+  @@index([periodStart])
+  @@index([periodEnd])
+  @@index([paidAt])
+  @@index([paymentKey])
+  @@index([orderId])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  PENDING         // 결제 대기
+  PAID           // 결제 완료
+  FAILED         // 결제 실패
+  CANCELLED      // 취소됨
+  REFUNDED       // 환불됨
 }
 
 // =============================================================================
@@ -282,6 +674,8 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@index([provider])
   @@map("accounts")
 }
 
@@ -293,6 +687,8 @@ model Session {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([expires])
   @@map("sessions")
 }
 
@@ -302,5 +698,6 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@index([expires])
   @@map("verification_tokens")
 }
