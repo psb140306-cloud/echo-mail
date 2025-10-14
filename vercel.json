@@ -1,5 +1,4 @@
 {
-  "name": "echo-mail",
   "version": 2,
   "build": {
     "env": {
@@ -36,58 +35,10 @@
       ]
     }
   ],
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "REDIS_URL": "@redis_url",
-    "NEXTAUTH_URL": "@nextauth_url",
-    "NEXTAUTH_SECRET": "@nextauth_secret",
-    "SMTP_HOST": "@smtp_host",
-    "SMTP_PORT": "@smtp_port",
-    "SMTP_USER": "@smtp_user",
-    "SMTP_PASS": "@smtp_pass",
-    "SMS_API_KEY": "@sms_api_key",
-    "SMS_USER_ID": "@sms_user_id",
-    "KAKAO_API_KEY": "@kakao_api_key",
-    "KAKAO_ADMIN_KEY": "@kakao_admin_key"
-  },
-  "routes": [
-    {
-      "src": "/health",
-      "dest": "/api/health"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    }
-  ],
   "crons": [
     {
-      "path": "/api/cron/check-emails",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/cleanup-logs",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/trial-expiry",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/payment-retry",
-      "schedule": "0 10 * * *"
-    },
-    {
-      "path": "/api/cron/subscription-renewal",
+      "path": "/api/cron/daily-tasks",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/tenant-backup",
-      "schedule": "0 3 * * 0"
-    },
-    {
-      "path": "/api/cron/inactive-tenant-cleanup",
-      "schedule": "0 4 1 * *"
     }
   ]
 }
