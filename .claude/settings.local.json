@@ -10,7 +10,10 @@
       "Bash(npx prisma generate:*)",
       "Bash(find:*)",
       "Bash(timeout 120 npm run build)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(vercel:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

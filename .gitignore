@@ -115,3 +115,4 @@ mcp-logs/
 .mcp-temp/
 mcp-servers/*/logs/
 mcp-servers/*/cache/
+.vercel
