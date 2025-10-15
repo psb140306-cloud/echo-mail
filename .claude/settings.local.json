@@ -13,7 +13,16 @@
       "Bash(npx tsx:*)",
       "Bash(vercel:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(for file in \"app/super-admin/subscriptions/page.tsx\" \"app/super-admin/tenants/page.tsx\" \"app/super-admin/usage/page.tsx\" \"app/auth/verify-email/page.tsx\" \"app/team/accept-invitation/page.tsx\")",
+      "Bash(do)",
+      "Bash(if [ -f \"$file\" ])",
+      "Bash(then)",
+      "Bash(if ! grep -q \"export const dynamic\" \"$file\")",
+      "Bash(fi)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
