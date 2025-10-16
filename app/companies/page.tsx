@@ -6,9 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { useRBAC } from '@/lib/auth/hooks/use-rbac'
-import { Permission } from '@/lib/auth/rbac'
-import { PermissionGuard } from '@/components/rbac/permission-guard'
 import {
   Table,
   TableBody,
@@ -82,7 +79,6 @@ export default function CompaniesPage() {
   const [selectedRegion, setSelectedRegion] = useState('')
   const [deletingCompany, setDeletingCompany] = useState<string | null>(null)
   const { toast } = useToast()
-  const { can } = useRBAC()
 
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1)
