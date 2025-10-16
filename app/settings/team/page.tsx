@@ -22,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Table,
@@ -53,9 +52,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import {
   ArrowLeft,
-  Plus,
   MoreHorizontal,
-  Edit,
   Trash2,
   Mail,
   Shield,
@@ -66,6 +63,10 @@ import {
   UserPlus,
   Activity,
   Loader2,
+  Users,
+  Clock,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -173,7 +174,7 @@ export default function TeamPage() {
 
       if (data.success) {
         toast({
-          title: '성공',
+          title: '✅ 성공',
           description: '초대 이메일이 발송되었습니다.',
         })
 
@@ -182,14 +183,14 @@ export default function TeamPage() {
         loadTeamData()
       } else {
         toast({
-          title: '오류',
+          title: '❌ 오류',
           description: data.error || '초대 발송에 실패했습니다.',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: '오류',
+        title: '❌ 오류',
         description: '네트워크 오류가 발생했습니다.',
         variant: 'destructive',
       })
@@ -215,20 +216,20 @@ export default function TeamPage() {
 
       if (data.success) {
         toast({
-          title: '성공',
+          title: '✅ 성공',
           description: '사용자 역할이 변경되었습니다.',
         })
         loadTeamData()
       } else {
         toast({
-          title: '오류',
+          title: '❌ 오류',
           description: data.error || '역할 변경에 실패했습니다.',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: '오류',
+        title: '❌ 오류',
         description: '네트워크 오류가 발생했습니다.',
         variant: 'destructive',
       })
@@ -250,20 +251,20 @@ export default function TeamPage() {
 
       if (data.success) {
         toast({
-          title: '성공',
+          title: '✅ 성공',
           description: '사용자가 팀에서 제거되었습니다.',
         })
         loadTeamData()
       } else {
         toast({
-          title: '오류',
+          title: '❌ 오류',
           description: data.error || '사용자 제거에 실패했습니다.',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: '오류',
+        title: '❌ 오류',
         description: '네트워크 오류가 발생했습니다.',
         variant: 'destructive',
       })
@@ -285,20 +286,20 @@ export default function TeamPage() {
 
       if (data.success) {
         toast({
-          title: '성공',
+          title: '✅ 성공',
           description: '초대가 취소되었습니다.',
         })
         loadTeamData()
       } else {
         toast({
-          title: '오류',
+          title: '❌ 오류',
           description: data.error || '초대 취소에 실패했습니다.',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: '오류',
+        title: '❌ 오류',
         description: '네트워크 오류가 발생했습니다.',
         variant: 'destructive',
       })
@@ -309,11 +310,11 @@ export default function TeamPage() {
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
-      OWNER: { label: '소유자', color: 'bg-purple-100 text-purple-800', icon: Crown },
-      ADMIN: { label: '관리자', color: 'bg-red-100 text-red-800', icon: Shield },
-      MANAGER: { label: '매니저', color: 'bg-blue-100 text-blue-800', icon: Settings },
-      OPERATOR: { label: '운영자', color: 'bg-green-100 text-green-800', icon: User },
-      VIEWER: { label: '뷰어', color: 'bg-gray-100 text-gray-800', icon: Eye },
+      OWNER: { label: '소유자', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', icon: Crown },
+      ADMIN: { label: '관리자', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: Shield },
+      MANAGER: { label: '매니저', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Settings },
+      OPERATOR: { label: '운영자', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: User },
+      VIEWER: { label: '뷰어', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400', icon: Eye },
     }
 
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.VIEWER
@@ -328,40 +329,61 @@ export default function TeamPage() {
   }
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return <Badge className="bg-green-100 text-green-800">활성</Badge>
-      case 'INVITED':
-        return <Badge className="bg-yellow-100 text-yellow-800">초대됨</Badge>
-      case 'INACTIVE':
-        return <Badge className="bg-gray-100 text-gray-800">비활성</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
+    const statusConfig = {
+      ACTIVE: { label: '활성', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
+      INVITED: { label: '초대됨', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Mail },
+      INACTIVE: { label: '비활성', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400', icon: XCircle },
     }
+
+    const config = statusConfig[status as keyof typeof statusConfig]
+    if (!config) return <Badge variant="secondary">{status}</Badge>
+
+    const Icon = config.icon
+
+    return (
+      <Badge className={config.color}>
+        <Icon className="w-3 h-3 mr-1" />
+        {config.label}
+      </Badge>
+    )
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50/40 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen bg-gray-50/40 dark:bg-gray-950/40 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-sm text-muted-foreground">팀 정보를 불러오는 중...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/40">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/50">
       {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+      <header className="sticky top-0 z-40 w-full border-b bg-white/80 dark:bg-gray-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
+        <div className="container flex h-16 items-center">
           <div className="mr-4 flex">
-            <Link href="/settings" className="mr-6 flex items-center space-x-2">
+            <Link
+              href="/settings"
+              className="mr-6 flex items-center space-x-2 text-sm hover:text-blue-600 transition-colors"
+            >
               <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">설정</span>
+              <span>설정</span>
             </Link>
           </div>
           <div className="flex flex-1 items-center justify-between space-x-2">
-            <h1 className="text-lg font-semibold">팀 관리</h1>
-            <Button onClick={() => setShowInviteDialog(true)}>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                팀 관리
+              </h1>
+              <p className="text-sm text-muted-foreground">팀 멤버와 권한을 관리하세요</p>
+            </div>
+            <Button
+              onClick={() => setShowInviteDialog(true)}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
               <UserPlus className="mr-2 h-4 w-4" />
               사용자 초대
             </Button>
@@ -370,269 +392,319 @@ export default function TeamPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container py-6">
+      <main className="container py-8">
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
-          <Card>
+        <div className="grid gap-4 md:grid-cols-3 mb-8">
+          <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/50 dark:to-blue-900/30">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">팀 멤버</CardTitle>
-              <User className="h-4 w-4 text-muted-foreground" />
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                <Users className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{teamMembers.length}</div>
-              <p className="text-xs text-muted-foreground">
-                활성: {teamMembers.filter(m => m.status === 'ACTIVE').length}명
+              <div className="text-3xl font-bold text-blue-600">{teamMembers.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                활성: {teamMembers.filter((m) => m.status === 'ACTIVE').length}명
               </p>
             </CardContent>
           </Card>
-          <Card>
+
+          <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/50 dark:to-purple-900/30">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">대기중 초대</CardTitle>
-              <Mail className="h-4 w-4 text-muted-foreground" />
+              <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
+                <Mail className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {invitations.filter(i => i.status === 'PENDING').length}
+              <div className="text-3xl font-bold text-purple-600">
+                {invitations.filter((i) => i.status === 'PENDING').length}
               </div>
-              <p className="text-xs text-muted-foreground">
-                총 {invitations.length}개 초대
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">총 {invitations.length}개 초대</p>
             </CardContent>
           </Card>
-          <Card>
+
+          <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-950/50 dark:to-green-900/30">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">최근 활동</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center">
+                <Activity className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activities.length}</div>
-              <p className="text-xs text-muted-foreground">오늘</p>
+              <div className="text-3xl font-bold text-green-600">{activities.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">오늘</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Team Members */}
-        <Card className="mb-6">
+        <Card className="mb-8 border-none shadow-lg">
           <CardHeader>
-            <CardTitle>팀 멤버</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              팀 멤버
+            </CardTitle>
             <CardDescription>현재 팀에 소속된 사용자들을 관리하세요</CardDescription>
           </CardHeader>
           <CardContent>
             {teamMembers.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                팀 멤버가 없습니다.
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-muted-foreground">팀 멤버가 없습니다.</p>
+                <Button
+                  onClick={() => setShowInviteDialog(true)}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  첫 멤버 초대하기
+                </Button>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>사용자</TableHead>
-                    <TableHead>역할</TableHead>
-                    <TableHead>상태</TableHead>
-                    <TableHead>가입일</TableHead>
-                    <TableHead>최근 활동</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {teamMembers.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{member.name || member.email}</p>
-                          {member.name && (
-                            <p className="text-sm text-muted-foreground">{member.email}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getRoleBadge(member.role)}</TableCell>
-                      <TableCell>{getStatusBadge(member.status)}</TableCell>
-                      <TableCell>
-                        {member.joinedAt
-                          ? new Date(member.joinedAt).toLocaleDateString('ko-KR')
-                          : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {member.lastActive
-                          ? new Date(member.lastActive).toLocaleDateString('ko-KR')
-                          : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {member.role !== 'OWNER' && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>작업</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => changeUserRole(member.id, 'ADMIN')}
-                                disabled={actionLoading === `role-${member.id}`}
-                              >
-                                <Shield className="mr-2 h-4 w-4" />
-                                관리자로 변경
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => changeUserRole(member.id, 'MANAGER')}
-                                disabled={actionLoading === `role-${member.id}`}
-                              >
-                                <Settings className="mr-2 h-4 w-4" />
-                                매니저로 변경
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => changeUserRole(member.id, 'VIEWER')}
-                                disabled={actionLoading === `role-${member.id}`}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                뷰어로 변경
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <DropdownMenuItem
-                                    className="text-red-600"
-                                    onSelect={(e) => e.preventDefault()}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    팀에서 제거
-                                  </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>사용자 제거</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      {member.name || member.email}님을 팀에서 제거하시겠습니까?
-                                      <br />이 작업은 되돌릴 수 없습니다.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>취소</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => removeUser(member.id)}
-                                      disabled={actionLoading === `remove-${member.id}`}
-                                      className="bg-red-600 hover:bg-red-700"
-                                    >
-                                      {actionLoading === `remove-${member.id}` ? (
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                      )}
-                                      제거
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </TableCell>
+              <div className="rounded-lg border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50 dark:bg-gray-900">
+                      <TableHead>사용자</TableHead>
+                      <TableHead>역할</TableHead>
+                      <TableHead>상태</TableHead>
+                      <TableHead>가입일</TableHead>
+                      <TableHead>최근 활동</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {teamMembers.map((member) => (
+                      <TableRow key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                              <span className="text-white font-semibold text-sm">
+                                {(member.name || member.email).charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">{member.name || member.email}</p>
+                              {member.name && (
+                                <p className="text-sm text-muted-foreground">{member.email}</p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getRoleBadge(member.role)}</TableCell>
+                        <TableCell>{getStatusBadge(member.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            {member.joinedAt
+                              ? new Date(member.joinedAt).toLocaleDateString('ko-KR')
+                              : '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Activity className="w-3 h-3" />
+                            {member.lastActive
+                              ? new Date(member.lastActive).toLocaleDateString('ko-KR')
+                              : '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {member.role !== 'OWNER' && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>작업</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => changeUserRole(member.id, 'ADMIN')}
+                                  disabled={actionLoading === `role-${member.id}`}
+                                >
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  관리자로 변경
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => changeUserRole(member.id, 'MANAGER')}
+                                  disabled={actionLoading === `role-${member.id}`}
+                                >
+                                  <Settings className="mr-2 h-4 w-4" />
+                                  매니저로 변경
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => changeUserRole(member.id, 'VIEWER')}
+                                  disabled={actionLoading === `role-${member.id}`}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  뷰어로 변경
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onSelect={(e) => e.preventDefault()}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      팀에서 제거
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>사용자 제거</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        {member.name || member.email}님을 팀에서 제거하시겠습니까?
+                                        <br />이 작업은 되돌릴 수 없습니다.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>취소</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => removeUser(member.id)}
+                                        disabled={actionLoading === `remove-${member.id}`}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        {actionLoading === `remove-${member.id}` ? (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                        )}
+                                        제거
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* Pending Invitations */}
         {invitations.length > 0 && (
-          <Card className="mb-6">
+          <Card className="mb-8 border-none shadow-lg">
             <CardHeader>
-              <CardTitle>대기중인 초대</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-purple-600" />
+                대기중인 초대
+              </CardTitle>
               <CardDescription>아직 수락되지 않은 초대들입니다</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>이메일</TableHead>
-                    <TableHead>역할</TableHead>
-                    <TableHead>상태</TableHead>
-                    <TableHead>초대일</TableHead>
-                    <TableHead>만료일</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invitations.map((invitation) => (
-                    <TableRow key={invitation.id}>
-                      <TableCell className="font-medium">{invitation.email}</TableCell>
-                      <TableCell>{getRoleBadge(invitation.role)}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            invitation.status === 'PENDING'
-                              ? 'default'
-                              : invitation.status === 'EXPIRED'
-                              ? 'destructive'
-                              : 'secondary'
-                          }
-                        >
-                          {invitation.status === 'PENDING'
-                            ? '대기중'
-                            : invitation.status === 'EXPIRED'
-                            ? '만료됨'
-                            : invitation.status === 'ACCEPTED'
-                            ? '수락됨'
-                            : '거절됨'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(invitation.createdAt).toLocaleDateString('ko-KR')}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(invitation.expiresAt).toLocaleDateString('ko-KR')}
-                      </TableCell>
-                      <TableCell>
-                        {invitation.status === 'PENDING' && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => cancelInvitation(invitation.id)}
-                            disabled={actionLoading === `cancel-${invitation.id}`}
-                          >
-                            {actionLoading === `cancel-${invitation.id}` ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        )}
-                      </TableCell>
+              <div className="rounded-lg border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50 dark:bg-gray-900">
+                      <TableHead>이메일</TableHead>
+                      <TableHead>역할</TableHead>
+                      <TableHead>상태</TableHead>
+                      <TableHead>초대일</TableHead>
+                      <TableHead>만료일</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {invitations.map((invitation) => (
+                      <TableRow key={invitation.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                        <TableCell className="font-medium">{invitation.email}</TableCell>
+                        <TableCell>{getRoleBadge(invitation.role)}</TableCell>
+                        <TableCell>
+                          <Badge
+                            className={
+                              invitation.status === 'PENDING'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                : invitation.status === 'EXPIRED'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                  : invitation.status === 'ACCEPTED'
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+                            }
+                          >
+                            {invitation.status === 'PENDING'
+                              ? '대기중'
+                              : invitation.status === 'EXPIRED'
+                                ? '만료됨'
+                                : invitation.status === 'ACCEPTED'
+                                  ? '수락됨'
+                                  : '거절됨'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(invitation.createdAt).toLocaleDateString('ko-KR')}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(invitation.expiresAt).toLocaleDateString('ko-KR')}
+                        </TableCell>
+                        <TableCell>
+                          {invitation.status === 'PENDING' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => cancelInvitation(invitation.id)}
+                              disabled={actionLoading === `cancel-${invitation.id}`}
+                              className="hover:text-red-600"
+                            >
+                              {actionLoading === `cancel-${invitation.id}`? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}
 
         {/* Activity Log */}
-        <Card>
+        <Card className="border-none shadow-lg">
           <CardHeader>
-            <CardTitle>활동 로그</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-green-600" />
+              활동 로그
+            </CardTitle>
             <CardDescription>팀 멤버들의 최근 활동 내역입니다</CardDescription>
           </CardHeader>
           <CardContent>
             {activities.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                활동 내역이 없습니다.
+              <div className="text-center py-12">
+                <Activity className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-muted-foreground">활동 내역이 없습니다.</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {activities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3 p-3 border rounded-lg">
-                    <Activity className="h-4 w-4 mt-1 text-muted-foreground" />
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-4 p-4 border rounded-xl hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Activity className="h-5 w-5 text-white" />
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm">
-                        <span className="font-medium">{activity.userName}</span>
-                        {' '}
-                        {activity.description}
+                        <span className="font-semibold">{activity.userName}</span>{' '}
+                        <span className="text-muted-foreground">{activity.description}</span>
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <Clock className="w-3 h-3" />
                         {new Date(activity.createdAt).toLocaleString('ko-KR')}
                       </p>
                     </div>
@@ -648,41 +720,71 @@ export default function TeamPage() {
       <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>사용자 초대</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-blue-600" />
+              사용자 초대
+            </DialogTitle>
             <DialogDescription>
               새로운 팀 멤버를 초대하세요. 초대 이메일이 발송됩니다.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                이메일
-              </Label>
+            <div className="grid gap-2">
+              <Label htmlFor="email">이메일</Label>
               <Input
                 id="email"
                 type="email"
                 value={inviteForm.email}
                 onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                className="col-span-3"
                 placeholder="user@example.com"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">
-                역할
-              </Label>
+            <div className="grid gap-2">
+              <Label htmlFor="role">역할</Label>
               <Select
                 value={inviteForm.role}
                 onValueChange={(role) => setInviteForm({ ...inviteForm, role: role as any })}
               >
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="VIEWER">뷰어 - 보기만 가능</SelectItem>
-                  <SelectItem value="OPERATOR">운영자 - 기본 작업 수행</SelectItem>
-                  <SelectItem value="MANAGER">매니저 - 관리 기능 접근</SelectItem>
-                  <SelectItem value="ADMIN">관리자 - 모든 기능 접근</SelectItem>
+                  <SelectItem value="VIEWER">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">뷰어</div>
+                        <div className="text-xs text-muted-foreground">보기만 가능</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="OPERATOR">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">운영자</div>
+                        <div className="text-xs text-muted-foreground">기본 작업 수행</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="MANAGER">
+                    <div className="flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">매니저</div>
+                        <div className="text-xs text-muted-foreground">관리 기능 접근</div>
+                      </div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="ADMIN">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      <div>
+                        <div className="font-medium">관리자</div>
+                        <div className="text-xs text-muted-foreground">모든 기능 접근</div>
+                      </div>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -700,6 +802,7 @@ export default function TeamPage() {
             <Button
               onClick={inviteUser}
               disabled={!inviteForm.email || actionLoading === 'invite'}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               {actionLoading === 'invite' ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
