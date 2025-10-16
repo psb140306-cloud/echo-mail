@@ -219,13 +219,11 @@ export default function CompaniesPage() {
           </div>
           <div className="flex flex-1 items-center justify-between space-x-2">
             <h1 className="text-lg font-semibold">업체 관리</h1>
-            <PermissionGuard permission={Permission.COMPANIES_CREATE}>
-              <Button asChild>
-                <Link href="/companies/new">
-                  <Plus className="mr-2 h-4 w-4" />새 업체 추가
-                </Link>
-              </Button>
-            </PermissionGuard>
+            <Button asChild>
+              <Link href="/companies/new">
+                <Plus className="mr-2 h-4 w-4" />새 업체 추가
+              </Link>
+            </Button>
           </div>
         </div>
       </header>
@@ -370,18 +368,14 @@ export default function CompaniesPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>작업</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              {can(Permission.COMPANIES_UPDATE) && (
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/companies/${company.id}`}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    수정
-                                  </Link>
-                                </DropdownMenuItem>
-                              )}
-                              {can(Permission.COMPANIES_DELETE) && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <AlertDialog>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/companies/${company.id}`}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  수정
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                       <DropdownMenuItem
                                         className="text-red-600"
@@ -417,8 +411,6 @@ export default function CompaniesPage() {
                                       </AlertDialogFooter>
                                     </AlertDialogContent>
                                   </AlertDialog>
-                                </>
-                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
