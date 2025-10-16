@@ -59,9 +59,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
       setLoading(false)
 
-      // 세션 변경 시 페이지 새로고침으로 서버 상태 동기화
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        window.location.reload()
+      // 로그인/로그아웃 시에만 리다이렉트 (새로고침 대신)
+      if (event === 'SIGNED_IN') {
+        // 현재 페이지가 인증 페이지인 경우에만 대시보드로 리다이렉트
+        if (window.location.pathname.startsWith('/auth/')) {
+          window.location.href = '/dashboard'
+        }
+      } else if (event === 'SIGNED_OUT') {
+        // 로그아웃 시 로그인 페이지로 리다이렉트
+        if (!window.location.pathname.startsWith('/auth/')) {
+          window.location.href = '/auth/login'
+        }
       }
     })
 
