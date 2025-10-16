@@ -1,9 +1,12 @@
 import { logger } from '@/lib/utils/logger'
+import crypto from 'crypto'
 
 export interface SMSConfig {
   provider: 'aligo' | 'ncp' | 'solapi'
   apiKey: string
-  userId?: string
+  apiSecret?: string // NCP용
+  serviceId?: string // NCP용
+  userId?: string // Aligo용
   sender: string
   testMode?: boolean
 }
@@ -169,12 +172,24 @@ export class AligoSMSProvider implements SMSProvider {
   }
 }
 
-// NCP SMS Provider (Naver Cloud Platform)
+// NCP SMS Provider (Naver Cloud Platform SENS)
 export class NCPSMSProvider implements SMSProvider {
   private config: SMSConfig
+  private baseUrl = 'https://sens.apigw.ntruss.com'
 
   constructor(config: SMSConfig) {
     this.config = config
+  }
+
+  // HMAC SHA256 서명 생성 (NCP 인증용)
+  private makeSignature(method: string, url: string, timestamp: string): string {
+    const space = ' '
+    const newLine = '\n'
+    const hmac = crypto.createHmac('sha256', this.config.apiSecret!)
+
+    const message = [method, space, url, newLine, timestamp, newLine, this.config.apiKey].join('')
+
+    return hmac.update(message).digest('base64')
   }
 
   async sendSMS(message: SMSMessage): Promise<SMSResult> {
@@ -193,12 +208,68 @@ export class NCPSMSProvider implements SMSProvider {
         }
       }
 
-      // NCP SMS API 구현 (실제 구현 시 NCP 문서 참조)
-      logger.warn('NCP SMS Provider는 아직 구현되지 않았습니다')
+      if (!this.config.apiSecret || !this.config.serviceId) {
+        throw new Error('NCP API Secret 또는 Service ID가 설정되지 않았습니다')
+      }
 
-      return {
-        success: false,
-        error: 'NCP SMS Provider가 구현되지 않았습니다',
+      const timestamp = Date.now().toString()
+      const method = 'POST'
+      const url = `/sms/v2/services/${this.config.serviceId}/messages`
+      const signature = this.makeSignature(method, url, timestamp)
+
+      // 메시지 타입 결정 (SMS: 80바이트, LMS: 2000바이트)
+      const messageType = message.message.length > 80 ? 'LMS' : 'SMS'
+
+      const requestBody = {
+        type: messageType,
+        contentType: 'COMM',
+        countryCode: '82',
+        from: this.config.sender,
+        subject: message.subject || '알림',
+        content: message.message,
+        messages: [
+          {
+            to: message.to.replace(/-/g, ''), // NCP는 하이픈 제거
+          },
+        ],
+      }
+
+      const response = await fetch(`${this.baseUrl}${url}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'x-ncp-apigw-timestamp': timestamp,
+          'x-ncp-iam-access-key': this.config.apiKey,
+          'x-ncp-apigw-signature-v2': signature,
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.statusCode === '202') {
+        logger.info('NCP SMS 발송 성공', {
+          to: message.to,
+          requestId: result.requestId,
+          messageType,
+        })
+
+        return {
+          success: true,
+          messageId: result.requestId,
+          cost: messageType === 'SMS' ? 12 : 40, // 예상 비용
+        }
+      } else {
+        logger.error('NCP SMS 발송 실패', {
+          statusCode: result.statusCode,
+          statusName: result.statusName,
+          to: message.to,
+        })
+
+        return {
+          success: false,
+          error: result.statusName || '발송 실패',
+        }
       }
     } catch (error) {
       logger.error('NCP SMS 발송 오류:', error)
@@ -210,18 +281,108 @@ export class NCPSMSProvider implements SMSProvider {
   }
 
   async sendBulkSMS(messages: SMSMessage[]): Promise<SMSResult[]> {
-    return messages.map(() => ({
-      success: false,
-      error: 'NCP SMS Provider가 구현되지 않았습니다',
-    }))
+    try {
+      if (this.config.testMode) {
+        return messages.map((msg) => ({
+          success: true,
+          messageId: `test_ncp_bulk_${Date.now()}`,
+          cost: 0,
+        }))
+      }
+
+      if (!this.config.apiSecret || !this.config.serviceId) {
+        return messages.map(() => ({
+          success: false,
+          error: 'NCP API Secret 또는 Service ID가 설정되지 않았습니다',
+        }))
+      }
+
+      const timestamp = Date.now().toString()
+      const method = 'POST'
+      const url = `/sms/v2/services/${this.config.serviceId}/messages`
+      const signature = this.makeSignature(method, url, timestamp)
+
+      // 첫 번째 메시지로 타입 결정
+      const messageType = messages[0].message.length > 80 ? 'LMS' : 'SMS'
+
+      const requestBody = {
+        type: messageType,
+        contentType: 'COMM',
+        countryCode: '82',
+        from: this.config.sender,
+        subject: messages[0].subject || '알림',
+        content: messages[0].message,
+        messages: messages.map((msg) => ({
+          to: msg.to.replace(/-/g, ''),
+          content: msg.message, // 개별 메시지 내용
+        })),
+      }
+
+      const response = await fetch(`${this.baseUrl}${url}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'x-ncp-apigw-timestamp': timestamp,
+          'x-ncp-iam-access-key': this.config.apiKey,
+          'x-ncp-apigw-signature-v2': signature,
+        },
+        body: JSON.stringify(requestBody),
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.statusCode === '202') {
+        logger.info('NCP SMS 대량 발송 성공', {
+          count: messages.length,
+          requestId: result.requestId,
+        })
+
+        return messages.map(() => ({
+          success: true,
+          messageId: result.requestId,
+          cost: messageType === 'SMS' ? 12 : 40,
+        }))
+      } else {
+        logger.error('NCP SMS 대량 발송 실패', result)
+
+        return messages.map(() => ({
+          success: false,
+          error: result.statusName || '발송 실패',
+        }))
+      }
+    } catch (error) {
+      logger.error('NCP SMS 대량 발송 오류:', error)
+      return messages.map(() => ({
+        success: false,
+        error: error instanceof Error ? error.message : '알 수 없는 오류',
+      }))
+    }
   }
 
   async getBalance(): Promise<number> {
-    return 0
+    // NCP는 잔액 조회 API가 없음 (포인트 충전 방식)
+    // 콘솔에서 확인해야 함
+    logger.info('NCP는 잔액 조회 API를 제공하지 않습니다. 콘솔에서 확인하세요.')
+    return -1 // -1은 조회 불가를 의미
   }
 
   async validateConfig(): Promise<boolean> {
-    return false
+    try {
+      if (!this.config.apiKey || !this.config.apiSecret || !this.config.serviceId || !this.config.sender) {
+        return false
+      }
+
+      // 테스트 모드에서는 설정만 확인
+      if (this.config.testMode) {
+        return true
+      }
+
+      // 실제 환경에서는 간단한 API 호출로 검증 가능
+      // 여기서는 설정 값만 확인
+      return true
+    } catch (error) {
+      return false
+    }
   }
 }
 
@@ -242,18 +403,39 @@ export function createSMSProvider(config: SMSConfig): SMSProvider {
 // 환경변수에서 SMS 설정 로드
 export function createSMSProviderFromEnv(): SMSProvider {
   const provider = (process.env.SMS_PROVIDER || 'aligo') as SMSConfig['provider']
+  const testMode = process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
 
-  const config: SMSConfig = {
-    provider,
-    apiKey: process.env.ALIGO_API_KEY || '',
-    userId: process.env.ALIGO_USER_ID || '',
-    sender: process.env.ALIGO_SENDER || '',
-    testMode:
-      process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true',
-  }
+  let config: SMSConfig
 
-  if (!config.apiKey || !config.sender) {
-    throw new Error('SMS 설정이 완전하지 않습니다. 환경변수를 확인하세요.')
+  if (provider === 'ncp') {
+    // NCP 설정
+    config = {
+      provider: 'ncp',
+      apiKey: process.env.NCP_ACCESS_KEY || '',
+      apiSecret: process.env.NCP_SECRET_KEY || '',
+      serviceId: process.env.NCP_SERVICE_ID || '',
+      sender: process.env.NCP_SENDER || process.env.SMS_SENDER || '',
+      testMode,
+    }
+
+    if (!config.apiKey || !config.apiSecret || !config.serviceId || !config.sender) {
+      throw new Error('NCP SMS 설정이 완전하지 않습니다. 환경변수를 확인하세요.')
+    }
+  } else if (provider === 'aligo') {
+    // Aligo 설정
+    config = {
+      provider: 'aligo',
+      apiKey: process.env.ALIGO_API_KEY || '',
+      userId: process.env.ALIGO_USER_ID || '',
+      sender: process.env.ALIGO_SENDER || process.env.SMS_SENDER || '',
+      testMode,
+    }
+
+    if (!config.apiKey || !config.userId || !config.sender) {
+      throw new Error('Aligo SMS 설정이 완전하지 않습니다. 환경변수를 확인하세요.')
+    }
+  } else {
+    throw new Error(`지원하지 않는 SMS Provider: ${provider}`)
   }
 
   return createSMSProvider(config)
