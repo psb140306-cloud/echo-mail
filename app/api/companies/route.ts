@@ -9,10 +9,18 @@ import { TenantContext } from '@/lib/db'
 import { withTenantRateLimit } from '@/lib/middleware/rate-limiter'
 
 const createCompanySchema = z.object({
+  // 업체 정보
   name: z.string().min(1, '업체명은 필수입니다').max(100, '업체명은 100자 이하여야 합니다'),
   email: z.string().email('올바른 이메일 형식이 아닙니다'),
   region: z.string().min(1, '지역은 필수입니다').max(50, '지역은 50자 이하여야 합니다'),
   isActive: z.boolean().optional(),
+  // 담당자 정보 (선택적)
+  contactName: z.string().optional(),
+  contactPhone: z.string().optional(),
+  contactEmail: z.string().email('올바른 이메일 형식이 아닙니다').optional().or(z.literal('')),
+  contactPosition: z.string().optional(),
+  smsEnabled: z.boolean().optional(),
+  kakaoEnabled: z.boolean().optional(),
 })
 
 async function getCompanies(request: NextRequest) {
@@ -144,12 +152,28 @@ async function createCompany(request: NextRequest) {
       )
     }
 
+    // 트랜잭션으로 업체와 담당자를 함께 생성
     const company = await prisma.company.create({
       data: {
         name: validatedData.name,
         email: validatedData.email,
         region: validatedData.region,
         isActive: validatedData.isActive ?? true,
+        // 담당자 정보가 있으면 함께 생성
+        ...(validatedData.contactName &&
+          validatedData.contactPhone && {
+            contacts: {
+              create: {
+                name: validatedData.contactName,
+                phone: validatedData.contactPhone,
+                email: validatedData.contactEmail || null,
+                position: validatedData.contactPosition || null,
+                smsEnabled: validatedData.smsEnabled ?? true,
+                kakaoEnabled: validatedData.kakaoEnabled ?? false,
+                isActive: true,
+              },
+            },
+          }),
       },
       include: {
         contacts: {
@@ -169,6 +193,7 @@ async function createCompany(request: NextRequest) {
       name: company.name,
       email: company.email,
       region: company.region,
+      contactsCount: company._count.contacts,
     })
 
     return NextResponse.json(
