@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -15,15 +16,30 @@ export default function NewCompanyPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
+    // 업체 정보
     name: '',
     email: '',
     region: '',
+    // 담당자 정보
+    contactName: '',
+    contactPhone: '',
+    contactEmail: '',
+    contactPosition: '',
+    smsEnabled: true,
+    kakaoEnabled: false,
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
+    })
+  }
+
+  const handleSwitchChange = (name: string, checked: boolean) => {
+    setFormData({
+      ...formData,
+      [name]: checked,
     })
   }
 
@@ -35,6 +51,15 @@ export default function NewCompanyPage() {
       toast({
         title: '입력 오류',
         description: '업체명, 이메일, 지역은 필수 입력 항목입니다.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!formData.contactName || !formData.contactPhone) {
+      toast({
+        title: '입력 오류',
+        description: '담당자 이름과 전화번호는 필수 입력 항목입니다.',
         variant: 'destructive',
       })
       return
@@ -174,6 +199,100 @@ export default function NewCompanyPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* 구분선 */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold mb-4">담당자 정보</h3>
+
+                {/* 담당자 이름 */}
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="contactName">
+                    담당자 이름 <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="contactName"
+                    name="contactName"
+                    value={formData.contactName}
+                    onChange={handleChange}
+                    placeholder="홍길동"
+                    required
+                  />
+                </div>
+
+                {/* 담당자 전화번호 */}
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="contactPhone">
+                    전화번호 <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="contactPhone"
+                    name="contactPhone"
+                    type="tel"
+                    value={formData.contactPhone}
+                    onChange={handleChange}
+                    placeholder="010-1234-5678"
+                    required
+                  />
+                </div>
+
+                {/* 담당자 이메일 */}
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="contactEmail">담당자 이메일</Label>
+                  <Input
+                    id="contactEmail"
+                    name="contactEmail"
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={handleChange}
+                    placeholder="contact@company.com"
+                  />
+                </div>
+
+                {/* 담당자 직책 */}
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="contactPosition">직책</Label>
+                  <Input
+                    id="contactPosition"
+                    name="contactPosition"
+                    value={formData.contactPosition}
+                    onChange={handleChange}
+                    placeholder="대표, 영업팀장, 구매담당 등"
+                  />
+                </div>
+
+                {/* 알림 설정 */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h4 className="text-sm font-medium">알림 설정</h4>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="smsEnabled">SMS 알림</Label>
+                      <p className="text-sm text-muted-foreground">
+                        문자 메시지로 알림을 받습니다
+                      </p>
+                    </div>
+                    <Switch
+                      id="smsEnabled"
+                      checked={formData.smsEnabled}
+                      onCheckedChange={(checked) => handleSwitchChange('smsEnabled', checked)}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="kakaoEnabled">카카오톡 알림</Label>
+                      <p className="text-sm text-muted-foreground">
+                        카카오톡으로 알림을 받습니다
+                      </p>
+                    </div>
+                    <Switch
+                      id="kakaoEnabled"
+                      checked={formData.kakaoEnabled}
+                      onCheckedChange={(checked) => handleSwitchChange('kakaoEnabled', checked)}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* 버튼 */}
