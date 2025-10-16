@@ -49,14 +49,18 @@ export interface BulkNotificationResult {
 }
 
 export class NotificationService {
-  private smsProvider: SMSProvider
-  private kakaoProvider: KakaoProvider
+  private smsProvider: SMSProvider | null = null
+  private kakaoProvider: KakaoProvider | null = null
   private isQueueProcessing = false
+  private initialized = false
 
-  constructor() {
+  private initialize() {
+    if (this.initialized) return
+
     try {
       this.smsProvider = createSMSProviderFromEnv()
       this.kakaoProvider = createKakaoProviderFromEnv()
+      this.initialized = true
     } catch (error) {
       logger.warn('알림 제공자 초기화 실패:', error)
       throw error
@@ -68,6 +72,9 @@ export class NotificationService {
    */
   async sendNotification(request: NotificationRequest): Promise<NotificationResult> {
     try {
+      // 초기화 (최초 1회만 실행)
+      this.initialize()
+
       // 테넌트 컨텍스트에서 테넌트 ID 가져오기
       const tenantContext = TenantContext.getInstance()
       const tenantId = tenantContext.getTenantId()
@@ -414,6 +421,9 @@ export class NotificationService {
    */
   private async sendSMS(message: SMSMessage): Promise<NotificationResult> {
     try {
+      if (!this.smsProvider) {
+        throw new Error('SMS provider가 초기화되지 않았습니다')
+      }
       const result = await this.smsProvider.sendSMS(message)
 
       return {
@@ -437,6 +447,9 @@ export class NotificationService {
    */
   private async sendKakaoAlimTalk(message: KakaoMessage): Promise<NotificationResult> {
     try {
+      if (!this.kakaoProvider) {
+        throw new Error('Kakao provider가 초기화되지 않았습니다')
+      }
       const result = await this.kakaoProvider.sendAlimTalk(message)
 
       return {
@@ -462,6 +475,9 @@ export class NotificationService {
     message: Omit<KakaoMessage, 'templateCode'>
   ): Promise<NotificationResult> {
     try {
+      if (!this.kakaoProvider) {
+        throw new Error('Kakao provider가 초기화되지 않았습니다')
+      }
       const result = await this.kakaoProvider.sendFriendTalk(message)
 
       return {
@@ -594,8 +610,10 @@ export class NotificationService {
    * 서비스 상태 조회
    */
   async getStatus() {
+    this.initialize()
+
     const [smsBalance, queueStats] = await Promise.all([
-      this.smsProvider.getBalance().catch(() => 0),
+      this.smsProvider?.getBalance().catch(() => 0) || Promise.resolve(0),
       notificationQueue.getStats(),
     ])
 
@@ -607,7 +625,7 @@ export class NotificationService {
       },
       kakao: {
         provider: 'kakao',
-        available: await this.kakaoProvider.validateConfig(),
+        available: await (this.kakaoProvider?.validateConfig() || Promise.resolve(false)),
       },
       queue: {
         processing: this.isQueueProcessing,
