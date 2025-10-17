@@ -1,35 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
+import { TenantContext } from '@/lib/db'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { createNCPCallingNumberServiceFromEnv } from '@/lib/notifications/sms/ncp-calling-number'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth/auth-options'
 
 /**
  * 발신번호 조회
  */
 async function getSenderPhone(request: NextRequest) {
   try {
-    // 세션에서 사용자 정보 가져오기
-    const session = await getServerSession(authOptions)
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '로그인이 필요합니다.',
-        },
-        { status: 401 }
-      )
-    }
-
-    // 사용자의 테넌트 조회
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { tenantId: true },
-    })
-
-    if (!user?.tenantId) {
+    if (!tenantId) {
       return NextResponse.json(
         {
           success: false,
@@ -38,8 +22,6 @@ async function getSenderPhone(request: NextRequest) {
         { status: 401 }
       )
     }
-
-    const tenantId = user.tenantId
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -82,26 +64,10 @@ async function getSenderPhone(request: NextRequest) {
  */
 async function registerSenderPhone(request: NextRequest) {
   try {
-    // 세션에서 사용자 정보 가져오기
-    const session = await getServerSession(authOptions)
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '로그인이 필요합니다.',
-        },
-        { status: 401 }
-      )
-    }
-
-    // 사용자의 테넌트 조회
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { tenantId: true },
-    })
-
-    if (!user?.tenantId) {
+    if (!tenantId) {
       return NextResponse.json(
         {
           success: false,
@@ -110,8 +76,6 @@ async function registerSenderPhone(request: NextRequest) {
         { status: 401 }
       )
     }
-
-    const tenantId = user.tenantId
 
     const body = await request.json()
     const { phoneNumber } = body
@@ -212,26 +176,10 @@ async function registerSenderPhone(request: NextRequest) {
  */
 async function checkSenderPhoneStatus(request: NextRequest) {
   try {
-    // 세션에서 사용자 정보 가져오기
-    const session = await getServerSession(authOptions)
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
 
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: '로그인이 필요합니다.',
-        },
-        { status: 401 }
-      )
-    }
-
-    // 사용자의 테넌트 조회
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { tenantId: true },
-    })
-
-    if (!user?.tenantId) {
+    if (!tenantId) {
       return NextResponse.json(
         {
           success: false,
@@ -240,8 +188,6 @@ async function checkSenderPhoneStatus(request: NextRequest) {
         { status: 401 }
       )
     }
-
-    const tenantId = user.tenantId
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -304,16 +250,18 @@ async function checkSenderPhoneStatus(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const action = searchParams.get('action')
+  return withTenantContext(request, async (req) => {
+    const { searchParams } = new URL(req.url)
+    const action = searchParams.get('action')
 
-  if (action === 'check') {
-    return checkSenderPhoneStatus(request)
-  }
+    if (action === 'check') {
+      return checkSenderPhoneStatus(req)
+    }
 
-  return getSenderPhone(request)
+    return getSenderPhone(req)
+  })
 }
 
 export async function POST(request: NextRequest) {
-  return registerSenderPhone(request)
+  return withTenantContext(request, registerSenderPhone)
 }
