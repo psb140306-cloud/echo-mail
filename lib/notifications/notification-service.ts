@@ -68,6 +68,58 @@ export class NotificationService {
   }
 
   /**
+   * 테넌트별 SMS Provider 생성 (발신번호 포함)
+   */
+  private async getTenantSMSProvider(tenantId: string): Promise<SMSProvider> {
+    // 테넌트의 발신번호 조회
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        senderPhone: true,
+        senderVerified: true,
+      },
+    })
+
+    if (!tenant || !tenant.senderPhone || !tenant.senderVerified) {
+      logger.warn('테넌트 발신번호 미설정 또는 미인증', {
+        tenantId,
+        hasSenderPhone: !!tenant?.senderPhone,
+        isVerified: tenant?.senderVerified,
+      })
+      // 기본 Provider 사용 (환경변수의 발신번호)
+      return this.smsProvider!
+    }
+
+    // 테넌트 발신번호로 SMS Provider 생성
+    const provider = (process.env.SMS_PROVIDER || 'aligo') as 'aligo' | 'ncp' | 'solapi'
+    const testMode = process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
+
+    if (provider === 'ncp') {
+      const { NCPSMSProvider } = await import('./sms/sms-provider')
+      return new NCPSMSProvider({
+        provider: 'ncp',
+        apiKey: process.env.NCP_ACCESS_KEY || '',
+        apiSecret: process.env.NCP_SECRET_KEY || '',
+        serviceId: process.env.NCP_SERVICE_ID || '',
+        sender: tenant.senderPhone, // 테넌트 발신번호 사용
+        testMode,
+      })
+    } else if (provider === 'aligo') {
+      const { AligoSMSProvider } = await import('./sms/sms-provider')
+      return new AligoSMSProvider({
+        provider: 'aligo',
+        apiKey: process.env.ALIGO_API_KEY || '',
+        userId: process.env.ALIGO_USER_ID || '',
+        sender: tenant.senderPhone, // 테넌트 발신번호 사용
+        testMode,
+      })
+    }
+
+    // 기본 Provider 사용
+    return this.smsProvider!
+  }
+
+  /**
    * 즉시 알림 발송
    */
   async sendNotification(request: NotificationRequest): Promise<NotificationResult> {
@@ -128,7 +180,7 @@ export class NotificationService {
             to: request.recipient,
             message: rendered.content,
             subject: rendered.subject,
-          })
+          }, tenantId)
           break
 
         case NotificationType.KAKAO_ALIMTALK:
@@ -149,7 +201,7 @@ export class NotificationService {
             const smsResult = await this.sendSMS({
               to: request.recipient,
               message: rendered.content,
-            })
+            }, tenantId)
 
             if (smsResult.success) {
               result = {
@@ -419,12 +471,19 @@ export class NotificationService {
   /**
    * SMS 발송
    */
-  private async sendSMS(message: SMSMessage): Promise<NotificationResult> {
+  private async sendSMS(message: SMSMessage, tenantId?: string): Promise<NotificationResult> {
     try {
       if (!this.smsProvider) {
         throw new Error('SMS provider가 초기화되지 않았습니다')
       }
-      const result = await this.smsProvider.sendSMS(message)
+
+      // 테넌트별 SMS Provider 사용 (발신번호 포함)
+      let provider = this.smsProvider
+      if (tenantId) {
+        provider = await this.getTenantSMSProvider(tenantId)
+      }
+
+      const result = await provider.sendSMS(message)
 
       return {
         success: result.success,
