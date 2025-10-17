@@ -1,18 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
-import { TenantContext } from '@/lib/db'
 import { createNCPCallingNumberServiceFromEnv } from '@/lib/notifications/sms/ncp-calling-number'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth/auth-options'
 
 /**
  * 발신번호 조회
  */
 async function getSenderPhone(request: NextRequest) {
   try {
-    const tenantContext = TenantContext.getInstance()
-    const tenantId = tenantContext.getTenantId()
+    // 세션에서 사용자 정보 가져오기
+    const session = await getServerSession(authOptions)
 
-    if (!tenantId) {
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '로그인이 필요합니다.',
+        },
+        { status: 401 }
+      )
+    }
+
+    // 사용자의 테넌트 조회
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { tenantId: true },
+    })
+
+    if (!user?.tenantId) {
       return NextResponse.json(
         {
           success: false,
@@ -21,6 +38,8 @@ async function getSenderPhone(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    const tenantId = user.tenantId
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -63,10 +82,26 @@ async function getSenderPhone(request: NextRequest) {
  */
 async function registerSenderPhone(request: NextRequest) {
   try {
-    const tenantContext = TenantContext.getInstance()
-    const tenantId = tenantContext.getTenantId()
+    // 세션에서 사용자 정보 가져오기
+    const session = await getServerSession(authOptions)
 
-    if (!tenantId) {
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '로그인이 필요합니다.',
+        },
+        { status: 401 }
+      )
+    }
+
+    // 사용자의 테넌트 조회
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { tenantId: true },
+    })
+
+    if (!user?.tenantId) {
       return NextResponse.json(
         {
           success: false,
@@ -75,6 +110,8 @@ async function registerSenderPhone(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    const tenantId = user.tenantId
 
     const body = await request.json()
     const { phoneNumber } = body
@@ -175,10 +212,26 @@ async function registerSenderPhone(request: NextRequest) {
  */
 async function checkSenderPhoneStatus(request: NextRequest) {
   try {
-    const tenantContext = TenantContext.getInstance()
-    const tenantId = tenantContext.getTenantId()
+    // 세션에서 사용자 정보 가져오기
+    const session = await getServerSession(authOptions)
 
-    if (!tenantId) {
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '로그인이 필요합니다.',
+        },
+        { status: 401 }
+      )
+    }
+
+    // 사용자의 테넌트 조회
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { tenantId: true },
+    })
+
+    if (!user?.tenantId) {
       return NextResponse.json(
         {
           success: false,
@@ -187,6 +240,8 @@ async function checkSenderPhoneStatus(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    const tenantId = user.tenantId
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
