@@ -374,6 +374,12 @@ model Tenant {
   // 소유자
   ownerId          String?
 
+  // 알림 발신번호 설정
+  senderPhone      String?            // 발신번호 (010-1234-5678)
+  senderVerified   Boolean            @default(false) // 발신번호 인증 여부
+  senderVerifiedAt DateTime?          // 발신번호 인증 일시
+  ncpCallingNumberId String?          // NCP 발신번호 ID
+
   // 사용량 제한
   maxCompanies     Int @default(10)
   maxContacts      Int @default(50)
