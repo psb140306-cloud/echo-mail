@@ -22,7 +22,10 @@
       "Bash(then)",
       "Bash(if ! grep -q \"export const dynamic\" \"$file\")",
       "Bash(fi)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

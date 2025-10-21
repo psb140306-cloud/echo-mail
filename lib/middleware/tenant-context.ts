@@ -3,6 +3,11 @@ import { TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { prisma } from '@/lib/db'
 
+const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID ?? 'dev-tenant-id'
+const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? 'Development Tenant'
+const DEFAULT_TENANT_SUBDOMAIN = process.env.DEFAULT_TENANT_SUBDOMAIN ?? 'dev'
+const DEFAULT_TENANT_PLAN = process.env.DEFAULT_TENANT_PLAN ?? 'PROFESSIONAL'
+
 export interface TenantInfo {
   id: string
   name: string
@@ -32,6 +37,36 @@ export async function identifyTenant(request: NextRequest): Promise<TenantInfo |
   }
 
   try {
+    // 0. Vercel 기본/프리뷰 도메인 처리
+    if (host.endsWith('.vercel.app')) {
+      const subdomain = host.replace('.vercel.app', '')
+
+      const tenant = await prisma.tenant.findFirst({
+        where: {
+          OR: [{ subdomain }, { customDomain: host }],
+        },
+      })
+
+      if (tenant) {
+        logger.debug('Vercel domain tenant found', { host, tenantId: tenant.id })
+        return {
+          id: tenant.id,
+          name: tenant.name,
+          subdomain: tenant.subdomain,
+          customDomain: tenant.customDomain || undefined,
+          subscriptionPlan: tenant.subscriptionPlan,
+        }
+      }
+
+      logger.debug('Falling back to default tenant for Vercel domain', { host, subdomain })
+      return {
+        id: DEFAULT_TENANT_ID,
+        name: DEFAULT_TENANT_NAME,
+        subdomain: subdomain || DEFAULT_TENANT_SUBDOMAIN,
+        subscriptionPlan: DEFAULT_TENANT_PLAN,
+      }
+    }
+
     // 1. 커스텀 도메인 체크
     if (!host.includes('echomail.co.kr') && !host.includes('localhost')) {
       // 커스텀 도메인으로 테넌트 조회
@@ -152,6 +187,16 @@ function extractSubdomain(host: string): string | null {
     if (host.endsWith('.echomail.co.kr')) {
       const subdomain = host.replace('.echomail.co.kr', '')
       return subdomain.includes('.') ? null : subdomain
+    }
+
+    // vercel.app 기본/프리뷰 도메인 처리
+    if (host.endsWith('.vercel.app')) {
+      const subdomain = host.replace('.vercel.app', '')
+      if (!subdomain) {
+        return null
+      }
+      const [firstSegment] = subdomain.split('.')
+      return firstSegment || null
     }
 
     return null

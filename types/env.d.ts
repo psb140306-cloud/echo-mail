@@ -107,5 +107,11 @@ declare namespace NodeJS {
     SHADCN_REGISTRY_URL?: string
     SHADCN_COMPONENTS_PATH?: string
     SHADCN_UTILS_PATH?: string
+
+    // 기본 테넌트 폴백
+    DEFAULT_TENANT_ID?: string
+    DEFAULT_TENANT_NAME?: string
+    DEFAULT_TENANT_SUBDOMAIN?: string
+    DEFAULT_TENANT_PLAN?: string
   }
 }
