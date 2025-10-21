@@ -45,7 +45,13 @@ export function UsageDisplay() {
       const response = await fetch('/api/subscription/usage')
 
       if (!response.ok) {
-        throw new Error('Failed to fetch usage data')
+        const errorData = await response.json().catch(() => ({}))
+        if (response.status === 401) {
+          throw new Error('로그인이 필요합니다.')
+        } else if (response.status === 400) {
+          throw new Error('테넌트 정보가 없습니다. 회원가입을 완료해주세요.')
+        }
+        throw new Error(errorData.error || 'Failed to fetch usage data')
       }
 
       const data = await response.json()
@@ -79,8 +85,20 @@ export function UsageDisplay() {
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>오류</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
+        <AlertTitle>사용량 정보를 불러올 수 없습니다</AlertTitle>
+        <AlertDescription>
+          <p className="mb-2">{error}</p>
+          {error.includes('로그인') && (
+            <Button size="sm" variant="outline" onClick={() => window.location.href = '/auth/login'}>
+              로그인하기
+            </Button>
+          )}
+          {error.includes('테넌트') && (
+            <Button size="sm" variant="outline" onClick={() => window.location.href = '/auth/signup'}>
+              회원가입하기
+            </Button>
+          )}
+        </AlertDescription>
       </Alert>
     )
   }
