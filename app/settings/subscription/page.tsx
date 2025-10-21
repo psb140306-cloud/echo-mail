@@ -262,6 +262,38 @@ export default function SubscriptionPage() {
 
       {/* Main Content */}
       <main className="container py-6 space-y-6">
+        {/* 안내 섹션 */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">구독 관리</h2>
+          <p className="text-gray-600 mb-4">
+            Echo Mail의 구독 플랜을 관리하고 사용량을 확인하세요.
+            플랜을 변경하거나 업그레이드하여 더 많은 기능을 이용할 수 있습니다.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="flex items-start gap-2">
+              <Check className="h-5 w-5 text-green-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900">실시간 사용량 확인</p>
+                <p className="text-gray-500">업체, 담당자, 이메일, 알림 사용량을 실시간으로 모니터링</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Check className="h-5 w-5 text-green-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900">유연한 플랜 변경</p>
+                <p className="text-gray-500">언제든지 플랜을 업그레이드하거나 다운그레이드 가능</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Check className="h-5 w-5 text-green-600 mt-0.5" />
+              <div>
+                <p className="font-medium text-gray-900">투명한 요금제</p>
+                <p className="text-gray-500">숨겨진 비용 없이 명확한 가격 정책 제공</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* 현재 구독 정보 */}
         {subscription && (
           <Card>
@@ -418,11 +450,20 @@ export default function SubscriptionPage() {
         )}
 
         {/* 플랜 비교 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>플랜 비교</CardTitle>
-            <CardDescription>다른 플랜으로 업그레이드하거나 다운그레이드할 수 있습니다</CardDescription>
-          </CardHeader>
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">플랜 비교</h2>
+            <p className="text-gray-600">
+              비즈니스 규모와 필요에 맞는 플랜을 선택하세요.
+              모든 플랜은 언제든지 변경 가능하며, 업그레이드 시 즉시 적용됩니다.
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>사용 가능한 플랜</CardTitle>
+              <CardDescription>각 플랜의 제공 기능과 제한사항을 비교해보세요</CardDescription>
+            </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {availablePlans.map((plan) => {
@@ -498,6 +539,7 @@ export default function SubscriptionPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </main>
 
       {/* 플랜 변경 확인 다이얼로그 */}
