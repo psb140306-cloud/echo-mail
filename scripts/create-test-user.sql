@@ -67,7 +67,7 @@ SELECT
   'test@echomail.com',
   '테스트 사용자',
   -- bcrypt hash for 'test123!' (cost 12)
-  '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIeWYgMm7G',
+  '$2a$12$92z2JcJukD5jCeJ5UGSHyecwThmuyJjTHiaBOO/KzHzY9DlCYNduS',
   'ADMIN',
   NOW(), -- 이메일 인증 완료
   tenant_info.id,
@@ -78,7 +78,7 @@ FROM tenant_info
 ON CONFLICT (email)
 DO UPDATE SET
   "emailVerified" = NOW(),
-  password = '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIeWYgMm7G',
+  password = '$2a$12$92z2JcJukD5jCeJ5UGSHyecwThmuyJjTHiaBOO/KzHzY9DlCYNduS',
   "tenantId" = (SELECT id FROM tenants WHERE subdomain = 'test' LIMIT 1),
   "isActive" = true
 RETURNING id, email, "emailVerified";
