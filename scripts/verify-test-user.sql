@@ -72,10 +72,10 @@ WHERE u.email = 'test@echomail.com';
 -- 6. Auth user와 Prisma user의 ID가 같은지 확인
 SELECT
   '6. ID Match Check' as step,
-  au.id as auth_id,
+  au.id::text as auth_id,
   u.id as prisma_id,
   CASE
-    WHEN au.id = u.id THEN 'MATCH'
+    WHEN au.id::text = u.id THEN 'MATCH'
     ELSE 'MISMATCH'
   END as id_status
 FROM auth.users au
