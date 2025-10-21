@@ -150,6 +150,56 @@ RETURNING subdomain, "ownerId";
 -- =====================================================================
 -- STEP 5: 결과 확인
 -- =====================================================================
+DO $$
+DECLARE
+  result_record RECORD;
+  tenant_role_value TEXT;
+BEGIN
+  -- 먼저 기본 사용자 정보 조회
+  SELECT
+    u.email,
+    u.name,
+    u."emailVerified" IS NOT NULL as email_verified,
+    u."emailVerified" as email_verified_at,
+    t.subdomain as tenant,
+    t."subscriptionPlan" as subscription_plan,
+    t."subscriptionStatus" as subscription_status,
+    u.role as user_role
+  INTO result_record
+  FROM users u
+  LEFT JOIN tenants t ON u."tenantId" = t.id
+  WHERE u.email = 'test@echomail.com';
+
+  -- tenant_users 테이블이 있으면 역할 확인
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'tenant_users') THEN
+    SELECT tu.role INTO tenant_role_value
+    FROM tenant_users tu
+    JOIN users u ON tu."userId" = u.id
+    WHERE u.email = 'test@echomail.com'
+    LIMIT 1;
+  ELSE
+    tenant_role_value := 'N/A (table not exists)';
+  END IF;
+
+  -- 결과 출력
+  RAISE NOTICE '=================================================';
+  RAISE NOTICE '테스트 계정 생성 완료!';
+  RAISE NOTICE '=================================================';
+  RAISE NOTICE 'Email: %', result_record.email;
+  RAISE NOTICE 'Name: %', result_record.name;
+  RAISE NOTICE 'Email Verified: %', result_record.email_verified;
+  RAISE NOTICE 'Tenant: %', result_record.tenant;
+  RAISE NOTICE 'Subscription Plan: %', result_record.subscription_plan;
+  RAISE NOTICE 'User Role: %', result_record.user_role;
+  RAISE NOTICE 'Tenant Role: %', tenant_role_value;
+  RAISE NOTICE '=================================================';
+  RAISE NOTICE '로그인 정보:';
+  RAISE NOTICE '  이메일: test@echomail.com';
+  RAISE NOTICE '  비밀번호: test123!';
+  RAISE NOTICE '=================================================';
+END $$;
+
+-- 또는 간단한 조회 (tenant_users 없이)
 SELECT
   u.email,
   u.name,
@@ -158,12 +208,7 @@ SELECT
   t.subdomain as tenant,
   t."subscriptionPlan" as subscription_plan,
   t."subscriptionStatus" as subscription_status,
-  u.role as user_role,
-  CASE
-    WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tenant_users')
-    THEN (SELECT tu.role FROM tenant_users tu WHERE tu."userId" = u.id AND tu."tenantId" = t.id)
-    ELSE NULL
-  END as tenant_role
+  u.role as user_role
 FROM users u
 LEFT JOIN tenants t ON u."tenantId" = t.id
 WHERE u.email = 'test@echomail.com';
