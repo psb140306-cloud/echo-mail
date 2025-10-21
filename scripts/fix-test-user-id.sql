@@ -13,7 +13,7 @@
 -- 1. Supabase Dashboard → SQL Editor로 이동
 -- 2. 이 스크립트 전체를 복사하여 붙여넣기
 -- 3. Run 버튼 클릭
--- 4. STEP 4 결과에서 id_status와 tenant_status가 모두 ✓ 인지 확인
+-- 4. 마지막 결과에서 id_status와 tenant_status가 모두 ✓ 인지 확인
 -- =====================================================================
 
 -- STEP 1: 현재 상태 확인
@@ -26,57 +26,80 @@ FROM auth.users au
 LEFT JOIN users u ON u.email = au.email
 WHERE au.email = 'test@echomail.com';
 
--- STEP 2: 기존 Prisma 사용자 삭제하고 올바른 ID로 다시 생성
-WITH auth_user AS (
-  SELECT id, email FROM auth.users WHERE email = 'test@echomail.com' LIMIT 1
-),
-test_tenant AS (
-  SELECT id FROM tenants WHERE subdomain = 'test' LIMIT 1
-),
-old_user AS (
-  DELETE FROM users WHERE email = 'test@echomail.com' RETURNING "tenantId"
-)
-INSERT INTO users (
-  id,
-  email,
-  name,
-  password,
-  role,
-  "emailVerified",
-  "tenantId",
-  "isActive",
-  "createdAt",
-  "updatedAt"
-)
-SELECT
-  auth_user.id::text,  -- Supabase Auth의 UUID를 text로 변환
-  'test@echomail.com',
-  '테스트 사용자',
-  '$2a$12$92z2JcJukD5jCeJ5UGSHyecwThmuyJjTHiaBOO/KzHzY9DlCYNduS',  -- test123!
-  'ADMIN',
-  NOW(),
-  test_tenant.id,
-  true,
-  NOW(),
-  NOW()
-FROM auth_user, test_tenant;
+-- STEP 2: 트랜잭션으로 삭제 후 재생성
+DO $$
+DECLARE
+  auth_user_id text;
+  test_tenant_id text;
+  old_tenant_id text;
+BEGIN
+  -- Supabase Auth 사용자 ID 가져오기
+  SELECT id::text INTO auth_user_id
+  FROM auth.users
+  WHERE email = 'test@echomail.com'
+  LIMIT 1;
 
--- STEP 3: 테넌트 소유자 업데이트
-WITH auth_user AS (
-  SELECT id FROM auth.users WHERE email = 'test@echomail.com' LIMIT 1
-)
-UPDATE tenants
-SET "ownerId" = auth_user.id::text
-FROM auth_user
-WHERE subdomain = 'test';
+  -- 기존 사용자의 테넌트 ID 저장
+  SELECT "tenantId" INTO old_tenant_id
+  FROM users
+  WHERE email = 'test@echomail.com'
+  LIMIT 1;
 
--- STEP 4: 결과 확인
+  -- 테넌트 ID가 없으면 'test' 서브도메인으로 찾기
+  IF old_tenant_id IS NULL THEN
+    SELECT id INTO test_tenant_id
+    FROM tenants
+    WHERE subdomain = 'test'
+    LIMIT 1;
+  ELSE
+    test_tenant_id := old_tenant_id;
+  END IF;
+
+  -- 기존 사용자 삭제 (CASCADE로 관련 레코드도 삭제)
+  DELETE FROM users WHERE email = 'test@echomail.com';
+
+  -- 새 사용자 생성 (Supabase Auth ID 사용)
+  INSERT INTO users (
+    id,
+    email,
+    name,
+    password,
+    role,
+    "emailVerified",
+    "tenantId",
+    "isActive",
+    "createdAt",
+    "updatedAt"
+  ) VALUES (
+    auth_user_id,
+    'test@echomail.com',
+    '테스트 사용자',
+    '$2a$12$92z2JcJukD5jCeJ5UGSHyecwThmuyJjTHiaBOO/KzHzY9DlCYNduS',  -- test123!
+    'ADMIN',
+    NOW(),
+    test_tenant_id,
+    true,
+    NOW(),
+    NOW()
+  );
+
+  -- 테넌트 소유자 업데이트
+  UPDATE tenants
+  SET "ownerId" = auth_user_id
+  WHERE id = test_tenant_id;
+
+  RAISE NOTICE 'Successfully synced user ID: %', auth_user_id;
+  RAISE NOTICE 'Tenant ID: %', test_tenant_id;
+END $$;
+
+-- STEP 3: 결과 확인
 SELECT
   'After Update' as status,
   au.id::text as auth_id,
   u.id as new_prisma_id,
   u."tenantId",
   t.subdomain,
+  t.name as tenant_name,
   CASE
     WHEN au.id::text = u.id THEN 'MATCH ✓'
     ELSE 'MISMATCH ✗'
