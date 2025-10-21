@@ -303,7 +303,7 @@ export default function PricingPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-8 border-white text-white hover:bg-white hover:text-gray-900"
+                className="text-lg px-8 border-white text-white hover:bg-white/10"
               >
                 데모 요청하기
               </Button>
