@@ -11,7 +11,73 @@ async function main() {
   console.log('🌱 데이터베이스 시드 데이터 생성 시작...')
 
   // =============================================================================
-  // 관리자 계정 생성
+  // 테스트 테넌트 생성
+  // =============================================================================
+  const testTenant = await prisma.tenant.upsert({
+    where: { subdomain: 'test' },
+    update: {},
+    create: {
+      name: '테스트 회사',
+      subdomain: 'test',
+      subscriptionPlan: 'PROFESSIONAL',
+      subscriptionStatus: 'ACTIVE',
+      trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1년 후
+      maxCompanies: 50,
+      maxContacts: 300,
+      maxEmails: 5000,
+      maxNotifications: 10000,
+    },
+  })
+
+  console.log('✅ 테스트 테넌트 생성:', testTenant.subdomain)
+
+  // =============================================================================
+  // 테스트 계정 생성 (이메일 인증 완료)
+  // =============================================================================
+  const testHashedPassword = await bcrypt.hash('test123!', 12)
+
+  const testUser = await prisma.user.upsert({
+    where: { email: 'test@echomail.com' },
+    update: {},
+    create: {
+      email: 'test@echomail.com',
+      name: '테스트 사용자',
+      password: testHashedPassword,
+      role: 'ADMIN',
+      emailVerified: new Date(), // 이메일 인증 완료
+      tenantId: testTenant.id,
+    },
+  })
+
+  console.log('✅ 테스트 계정 생성:', testUser.email, '(이메일 인증 완료)')
+
+  // 테넌트-사용자 관계 설정 (OWNER 역할)
+  await prisma.tenantUser.upsert({
+    where: {
+      tenantId_userId: {
+        tenantId: testTenant.id,
+        userId: testUser.id,
+      },
+    },
+    update: {},
+    create: {
+      tenantId: testTenant.id,
+      userId: testUser.id,
+      role: 'OWNER',
+      acceptedAt: new Date(),
+    },
+  })
+
+  // 테넌트 소유자 설정
+  await prisma.tenant.update({
+    where: { id: testTenant.id },
+    data: { ownerId: testUser.id },
+  })
+
+  console.log('✅ 테넌트-사용자 관계 설정 완료')
+
+  // =============================================================================
+  // 관리자 계정 생성 (슈퍼 관리자 - tenantId 없음)
   // =============================================================================
   const hashedPassword = await bcrypt.hash('admin123!', 12)
 
@@ -23,10 +89,12 @@ async function main() {
       name: '시스템 관리자',
       password: hashedPassword,
       role: 'ADMIN',
+      emailVerified: new Date(), // 이메일 인증 완료
+      // tenantId 없음 (슈퍼 관리자)
     },
   })
 
-  console.log('✅ 관리자 계정 생성:', admin.email)
+  console.log('✅ 슈퍼 관리자 계정 생성:', admin.email)
 
   // =============================================================================
   // 시스템 설정
@@ -60,9 +128,17 @@ async function main() {
 
   for (const config of systemConfigs) {
     await prisma.systemConfig.upsert({
-      where: { key: config.key },
+      where: {
+        tenantId_key: {
+          tenantId: testTenant.id,
+          key: config.key,
+        },
+      },
       update: config,
-      create: config,
+      create: {
+        ...config,
+        tenantId: testTenant.id,
+      },
     })
   }
 
@@ -93,9 +169,17 @@ async function main() {
 
   for (const template of messageTemplates) {
     await prisma.messageTemplate.upsert({
-      where: { name: template.name },
+      where: {
+        tenantId_name: {
+          tenantId: testTenant.id,
+          name: template.name,
+        },
+      },
       update: template,
-      create: template,
+      create: {
+        ...template,
+        tenantId: testTenant.id,
+      },
     })
   }
 
@@ -137,24 +221,30 @@ async function main() {
     const { contacts, ...company } = companyData
 
     const createdCompany = await prisma.company.upsert({
-      where: { email: company.email },
+      where: {
+        tenantId_email: {
+          tenantId: testTenant.id,
+          email: company.email,
+        },
+      },
       update: company,
-      create: company,
+      create: {
+        ...company,
+        tenantId: testTenant.id,
+      },
     })
 
     // 담당자 생성
     for (const contact of contacts) {
       await prisma.contact.upsert({
         where: {
-          companyId_phone: {
-            companyId: createdCompany.id,
-            phone: contact.phone,
-          },
+          id: `${testTenant.id}-${createdCompany.id}-${contact.phone}`,
         },
         update: contact,
         create: {
           ...contact,
           companyId: createdCompany.id,
+          tenantId: testTenant.id,
         },
       })
     }
@@ -191,9 +281,17 @@ async function main() {
 
   for (const rule of deliveryRules) {
     await prisma.deliveryRule.upsert({
-      where: { region: rule.region },
+      where: {
+        tenantId_region: {
+          tenantId: testTenant.id,
+          region: rule.region,
+        },
+      },
       update: rule,
-      create: rule,
+      create: {
+        ...rule,
+        tenantId: testTenant.id,
+      },
     })
   }
 
@@ -222,15 +320,32 @@ async function main() {
 
   for (const holiday of holidays) {
     await prisma.holiday.upsert({
-      where: { date: holiday.date },
+      where: {
+        tenantId_date: {
+          tenantId: testTenant.id,
+          date: holiday.date,
+        },
+      },
       update: holiday,
-      create: holiday,
+      create: {
+        ...holiday,
+        tenantId: testTenant.id,
+      },
     })
   }
 
   console.log('✅ 공휴일 데이터 생성 완료')
 
-  console.log('🎉 데이터베이스 시드 데이터 생성 완료!')
+  console.log('\n🎉 데이터베이스 시드 데이터 생성 완료!')
+  console.log('\n📝 테스트 계정 정보:')
+  console.log('  - 이메일: test@echomail.com')
+  console.log('  - 비밀번호: test123!')
+  console.log('  - 테넌트: test.echomail.co.kr')
+  console.log('  - 이메일 인증: 완료')
+  console.log('\n📝 관리자 계정 정보:')
+  console.log('  - 이메일: admin@echomail.com')
+  console.log('  - 비밀번호: admin123!')
+  console.log('  - 역할: 슈퍼 관리자')
 }
 
 main()
