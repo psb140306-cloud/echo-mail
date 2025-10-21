@@ -4,7 +4,13 @@
 -- 이 스크립트를 Supabase SQL Editor에서 실행하세요
 -- =====================================================================
 
--- 1. 테스트 테넌트 생성
+-- 주의사항:
+-- 1. 이 스크립트는 여러 번 실행해도 안전합니다 (ON CONFLICT 처리)
+-- 2. 테이블이 존재하지 않으면 해당 부분을 주석 처리하세요
+
+-- =====================================================================
+-- STEP 1: 테스트 테넌트 생성
+-- =====================================================================
 INSERT INTO tenants (
   id,
   name,
@@ -32,15 +38,15 @@ INSERT INTO tenants (
   NOW(),
   NOW()
 )
-ON CONFLICT (subdomain) DO NOTHING
-RETURNING id;
+ON CONFLICT (subdomain) DO UPDATE SET
+  "subscriptionPlan" = 'PROFESSIONAL',
+  "subscriptionStatus" = 'ACTIVE',
+  "trialEndsAt" = NOW() + INTERVAL '1 year'
+RETURNING id, subdomain, "subscriptionPlan";
 
--- 테넌트 ID 저장 (다음 쿼리에서 사용)
--- 위 쿼리 실행 후 나온 ID를 복사하거나, 아래 쿼리로 확인:
--- SELECT id FROM tenants WHERE subdomain = 'test';
-
--- 2. 테스트 사용자 생성 (이메일 인증 완료)
--- 주의: <TENANT_ID>를 위에서 얻은 실제 테넌트 ID로 교체하세요
+-- =====================================================================
+-- STEP 2: 테스트 사용자 생성 (이메일 인증 완료)
+-- =====================================================================
 WITH tenant_info AS (
   SELECT id FROM tenants WHERE subdomain = 'test' LIMIT 1
 )
@@ -73,75 +79,120 @@ ON CONFLICT (email)
 DO UPDATE SET
   "emailVerified" = NOW(),
   password = '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIeWYgMm7G',
-  "tenantId" = (SELECT id FROM tenants WHERE subdomain = 'test' LIMIT 1)
-RETURNING id, email;
-
--- 3. 테넌트-사용자 관계 설정 (OWNER 역할)
-WITH tenant_info AS (
-  SELECT id FROM tenants WHERE subdomain = 'test' LIMIT 1
-),
-user_info AS (
-  SELECT id FROM users WHERE email = 'test@echomail.com' LIMIT 1
-)
-INSERT INTO tenant_users (
-  id,
-  "tenantId",
-  "userId",
-  role,
-  "acceptedAt",
-  "isActive",
-  "createdAt",
-  "updatedAt"
-)
-SELECT
-  gen_random_uuid(),
-  tenant_info.id,
-  user_info.id,
-  'OWNER',
-  NOW(),
-  true,
-  NOW(),
-  NOW()
-FROM tenant_info, user_info
-ON CONFLICT ("tenantId", "userId")
-DO UPDATE SET
-  role = 'OWNER',
-  "acceptedAt" = NOW(),
+  "tenantId" = (SELECT id FROM tenants WHERE subdomain = 'test' LIMIT 1),
   "isActive" = true
-RETURNING id;
+RETURNING id, email, "emailVerified";
 
--- 4. 테넌트 소유자 설정
+-- =====================================================================
+-- STEP 3: 테넌트-사용자 관계 설정 (tenant_users 테이블이 있는 경우)
+-- =====================================================================
+-- 주의: tenant_users 테이블이 없으면 이 부분을 주석 처리하거나 건너뛰세요
+
+DO $$
+BEGIN
+  -- tenant_users 테이블이 존재하는지 확인
+  IF EXISTS (
+    SELECT FROM information_schema.tables
+    WHERE table_schema = 'public'
+    AND table_name = 'tenant_users'
+  ) THEN
+    -- 테이블이 있으면 관계 설정
+    WITH tenant_info AS (
+      SELECT id FROM tenants WHERE subdomain = 'test' LIMIT 1
+    ),
+    user_info AS (
+      SELECT id FROM users WHERE email = 'test@echomail.com' LIMIT 1
+    )
+    INSERT INTO tenant_users (
+      id,
+      "tenantId",
+      "userId",
+      role,
+      "acceptedAt",
+      "isActive",
+      "createdAt",
+      "updatedAt"
+    )
+    SELECT
+      gen_random_uuid(),
+      tenant_info.id,
+      user_info.id,
+      'OWNER',
+      NOW(),
+      true,
+      NOW(),
+      NOW()
+    FROM tenant_info, user_info
+    ON CONFLICT ("tenantId", "userId")
+    DO UPDATE SET
+      role = 'OWNER',
+      "acceptedAt" = NOW(),
+      "isActive" = true;
+
+    RAISE NOTICE 'tenant_users 관계 설정 완료';
+  ELSE
+    RAISE NOTICE 'tenant_users 테이블이 없습니다. 건너뜁니다.';
+  END IF;
+END $$;
+
+-- =====================================================================
+-- STEP 4: 테넌트 소유자 설정
+-- =====================================================================
 WITH user_info AS (
   SELECT id FROM users WHERE email = 'test@echomail.com' LIMIT 1
 )
 UPDATE tenants
 SET "ownerId" = user_info.id
 FROM user_info
-WHERE subdomain = 'test';
+WHERE subdomain = 'test'
+RETURNING subdomain, "ownerId";
 
--- 5. 확인 쿼리
+-- =====================================================================
+-- STEP 5: 결과 확인
+-- =====================================================================
 SELECT
   u.email,
   u.name,
   u."emailVerified" IS NOT NULL as email_verified,
+  u."emailVerified" as email_verified_at,
   t.subdomain as tenant,
-  t."subscriptionPlan",
-  tu.role as tenant_role
+  t."subscriptionPlan" as subscription_plan,
+  t."subscriptionStatus" as subscription_status,
+  u.role as user_role,
+  CASE
+    WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tenant_users')
+    THEN (SELECT tu.role FROM tenant_users tu WHERE tu."userId" = u.id AND tu."tenantId" = t.id)
+    ELSE NULL
+  END as tenant_role
 FROM users u
 LEFT JOIN tenants t ON u."tenantId" = t.id
-LEFT JOIN tenant_users tu ON tu."userId" = u.id AND tu."tenantId" = t.id
 WHERE u.email = 'test@echomail.com';
+
+-- =====================================================================
+-- 추가: 현재 데이터베이스 테이블 목록 확인
+-- =====================================================================
+SELECT
+  table_name,
+  CASE
+    WHEN table_name IN ('tenants', 'users', 'tenant_users') THEN '✓ 중요'
+    ELSE ''
+  END as importance
+FROM information_schema.tables
+WHERE table_schema = 'public'
+AND table_name IN ('tenants', 'users', 'tenant_users', 'companies', 'contacts')
+ORDER BY table_name;
 
 -- =====================================================================
 -- 결과 확인
 -- =====================================================================
--- 위 쿼리 실행 결과:
+-- 성공하면 다음과 같은 결과가 표시됩니다:
 -- ✓ email: test@echomail.com
 -- ✓ name: 테스트 사용자
 -- ✓ email_verified: true
 -- ✓ tenant: test
 -- ✓ subscription_plan: PROFESSIONAL
--- ✓ tenant_role: OWNER
+-- ✓ user_role: ADMIN
+-- ✓ tenant_role: OWNER (tenant_users 테이블이 있는 경우)
 --
 -- 로그인 정보:
 -- 이메일: test@echomail.com
