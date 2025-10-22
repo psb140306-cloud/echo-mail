@@ -54,8 +54,15 @@ import {
   Loader2,
   Calendar,
   Calculator,
+  HelpCircle,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface DeliveryRule {
   id: string
@@ -291,15 +298,57 @@ export default function DeliveryRulesPage() {
           </div>
           <div className="flex flex-1 items-center justify-between space-x-2">
             <h1 className="text-lg font-semibold">배송 규칙 관리</h1>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowCalculatorDialog(true)}>
-                <Calculator className="mr-2 h-4 w-4" />
-                납품일 계산
-              </Button>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="mr-2 h-4 w-4" />새 규칙 추가
-              </Button>
-            </div>
+            <TooltipProvider>
+              <div className="flex gap-2">
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" onClick={() => setShowCalculatorDialog(true)}>
+                    <Calculator className="mr-2 h-4 w-4" />
+                    납품일 계산
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="text-muted-foreground hover:text-foreground">
+                        <HelpCircle className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="space-y-2 text-sm">
+                        <p className="font-semibold">📋 납품일 계산기 사용 방법</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>먼저 배송 규칙을 등록하세요</li>
+                          <li>등록된 지역이 자동으로 선택 가능합니다</li>
+                          <li>지역과 주문일시를 입력하여 정확한 납품일을 계산합니다</li>
+                        </ol>
+                        <p className="text-xs text-muted-foreground">✅ 활성 상태의 배송 규칙만 표시됩니다</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button onClick={() => setShowCreateDialog(true)}>
+                    <Plus className="mr-2 h-4 w-4" />새 규칙 추가
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="text-muted-foreground hover:text-foreground">
+                        <HelpCircle className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <div className="space-y-2 text-sm">
+                        <p className="font-semibold">📦 배송 규칙 등록 방법</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>배송할 지역명을 입력하세요</li>
+                          <li>오전/오후 주문 마감 시간을 설정하세요</li>
+                          <li>각 시간대별 배송 소요일을 입력하세요</li>
+                        </ol>
+                        <p className="text-xs text-muted-foreground">💡 등록된 규칙은 납품일 계산기에서 사용됩니다</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+            </TooltipProvider>
           </div>
         </div>
       </header>
