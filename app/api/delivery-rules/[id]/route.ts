@@ -7,6 +7,7 @@ import {
   createSuccessResponse,
   parseAndValidate,
 } from '@/lib/utils/validation'
+import { getTenantIdFromAuthUser } from '@/lib/auth/get-tenant-from-user'
 
 // 납품 규칙 수정 스키마
 const updateDeliveryRuleSchema = z.object({
@@ -42,14 +43,18 @@ interface RouteParams {
 // 납품 규칙 상세 조회
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const tenantId = await getTenantIdFromAuthUser()
     const { id } = params
 
     if (!id) {
       return createErrorResponse('납품 규칙 ID가 필요합니다.', 400)
     }
 
-    const deliveryRule = await prisma.deliveryRule.findUnique({
-      where: { id },
+    const deliveryRule = await prisma.deliveryRule.findFirst({
+      where: {
+        id,
+        tenantId, // 테넌트 격리
+      },
     })
 
     if (!deliveryRule) {
@@ -68,6 +73,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // 납품 규칙 수정
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const tenantId = await getTenantIdFromAuthUser()
     const { id } = params
 
     if (!id) {
@@ -78,8 +84,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (error) return error
 
     // 납품 규칙 존재 확인
-    const existingRule = await prisma.deliveryRule.findUnique({
-      where: { id },
+    const existingRule = await prisma.deliveryRule.findFirst({
+      where: {
+        id,
+        tenantId, // 테넌트 격리
+      },
     })
 
     if (!existingRule) {
@@ -133,6 +142,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // 납품 규칙 삭제
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const tenantId = await getTenantIdFromAuthUser()
     const { id } = params
 
     if (!id) {
@@ -140,8 +150,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // 납품 규칙 존재 확인
-    const existingRule = await prisma.deliveryRule.findUnique({
-      where: { id },
+    const existingRule = await prisma.deliveryRule.findFirst({
+      where: {
+        id,
+        tenantId, // 테넌트 격리
+      },
     })
 
     if (!existingRule) {
@@ -153,6 +166,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       where: {
         region: existingRule.region,
         isActive: true,
+        tenantId, // 같은 테넌트 내에서만 확인
       },
     })
 

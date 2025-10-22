@@ -9,6 +9,7 @@ import {
   createPaginatedResponse,
   parseAndValidate,
 } from '@/lib/utils/validation'
+import { getTenantIdFromAuthUser } from '@/lib/auth/get-tenant-from-user'
 
 // 납품 규칙 생성 스키마
 const createDeliveryRuleSchema = z.object({
@@ -35,6 +36,9 @@ const createDeliveryRuleSchema = z.object({
 // 납품 규칙 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    // 테넌트 ID 가져오기
+    const tenantId = await getTenantIdFromAuthUser()
+
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
@@ -44,7 +48,9 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // 검색 조건 구성
-    const where: Prisma.DeliveryRuleWhereInput = {}
+    const where: Prisma.DeliveryRuleWhereInput = {
+      tenantId, // 테넌트 격리
+    }
 
     if (region) {
       where.region = {
@@ -85,12 +91,18 @@ export async function GET(request: NextRequest) {
 // 납품 규칙 생성
 export async function POST(request: NextRequest) {
   try {
+    // 테넌트 ID 가져오기
+    const tenantId = await getTenantIdFromAuthUser()
+
     const { data, error } = await parseAndValidate(request, createDeliveryRuleSchema)
     if (error) return error
 
-    // 중복 지역 확인
-    const existingRule = await prisma.deliveryRule.findUnique({
-      where: { region: data.region },
+    // 중복 지역 확인 (같은 테넌트 내에서)
+    const existingRule = await prisma.deliveryRule.findFirst({
+      where: {
+        region: data.region,
+        tenantId,
+      },
     })
 
     if (existingRule) {
@@ -114,6 +126,7 @@ export async function POST(request: NextRequest) {
         morningDeliveryDays: data.morningDeliveryDays,
         afternoonDeliveryDays: data.afternoonDeliveryDays,
         isActive: data.isActive ?? true,
+        tenantId, // 테넌트 ID 추가
       },
     })
 
