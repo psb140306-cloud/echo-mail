@@ -443,7 +443,7 @@ function DashboardContent() {
                   <Button variant="outline" className="w-full justify-start" asChild>
                     <a href="/settings">
                       <Settings className="w-4 h-4 mr-2" />
-                      일반 설정
+                      시스템 설정
                     </a>
                   </Button>
                   <Button variant="outline" className="w-full justify-start" asChild>

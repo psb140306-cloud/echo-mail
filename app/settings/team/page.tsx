@@ -366,11 +366,11 @@ export default function TeamPage() {
         <div className="container flex h-16 items-center">
           <div className="mr-4 flex">
             <Link
-              href="/settings"
+              href="/"
               className="mr-6 flex items-center space-x-2 text-sm hover:text-blue-600 transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>설정</span>
+              <span>대시보드</span>
             </Link>
           </div>
           <div className="flex flex-1 items-center justify-between space-x-2">
