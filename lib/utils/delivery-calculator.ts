@@ -6,6 +6,7 @@ const prisma = new PrismaClient()
 export interface DeliveryCalculationOptions {
   region: string
   orderDateTime: Date
+  tenantId: string
   excludeWeekends?: boolean
   customHolidays?: Date[]
 }
@@ -37,7 +38,7 @@ export class DeliveryCalculator {
   async calculateDeliveryDate(options: DeliveryCalculationOptions): Promise<DeliveryResult> {
     try {
       // 납품 규칙 조회
-      const rule = await this.getDeliveryRule(options.region)
+      const rule = await this.getDeliveryRule(options.region, options.tenantId)
       if (!rule) {
         throw new Error(`'${options.region}' 지역의 납품 규칙을 찾을 수 없습니다.`)
       }
@@ -137,16 +138,17 @@ export class DeliveryCalculator {
   /**
    * 납품 규칙 조회 (캐싱)
    */
-  private async getDeliveryRule(region: string) {
-    const cacheKey = `rule_${region}`
+  private async getDeliveryRule(region: string, tenantId: string) {
+    const cacheKey = `rule_${tenantId}_${region}`
 
     if (this.deliveryRuleCache.has(cacheKey)) {
       return this.deliveryRuleCache.get(cacheKey)
     }
 
-    const rule = await prisma.deliveryRule.findUnique({
+    const rule = await prisma.deliveryRule.findFirst({
       where: {
         region,
+        tenantId,
         isActive: true,
       },
     })

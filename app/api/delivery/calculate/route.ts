@@ -11,6 +11,7 @@ import {
   getNextBusinessDay,
   getBusinessDaysBetween,
 } from '@/lib/utils/delivery-calculator'
+import { getTenantIdFromAuthUser } from '@/lib/auth/get-tenant-from-user'
 // 납품일 계산 요청 스키마
 const calculateDeliverySchema = z.object({
   region: z.string().min(1, '지역은 필수입니다'),
@@ -25,6 +26,8 @@ const calculateDeliverySchema = z.object({
 // 납품일 계산
 export async function POST(request: NextRequest) {
   try {
+    const tenantId = await getTenantIdFromAuthUser()
+
     const { data, error } = await parseAndValidate(request, calculateDeliverySchema)
     if (error) return error
     // 날짜 파싱
@@ -34,6 +37,7 @@ export async function POST(request: NextRequest) {
     const result = await calculateDeliveryDate({
       region: data.region,
       orderDateTime,
+      tenantId,
       excludeWeekends: data.excludeWeekends,
       customHolidays,
     })
