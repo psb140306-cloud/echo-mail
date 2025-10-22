@@ -401,6 +401,12 @@ function DashboardContent() {
               <TabsContent value="quick-actions" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button variant="outline" className="p-4 h-auto" asChild>
+                    <a href="/settings/subscription" className="flex flex-col items-center">
+                      <CreditCard className="w-6 h-6 mb-2" />
+                      <span>구독 및 결제 관리</span>
+                    </a>
+                  </Button>
+                  <Button variant="outline" className="p-4 h-auto" asChild>
                     <a href="/companies/new" className="flex flex-col items-center">
                       <Building className="w-6 h-6 mb-2" />
                       <span>새 업체 등록</span>
@@ -412,16 +418,10 @@ function DashboardContent() {
                       <span>배송 규칙 설정</span>
                     </a>
                   </Button>
-                  <Button variant="outline" className="p-4 h-auto" disabled>
-                    <div className="flex flex-col items-center">
-                      <Mail className="w-6 h-6 mb-2" />
-                      <span>메일 계정 연동</span>
-                    </div>
-                  </Button>
                   <Button variant="outline" className="p-4 h-auto" asChild>
                     <a href="/settings" className="flex flex-col items-center">
-                      <Settings className="w-6 h-6 mb-2" />
-                      <span>시스템 설정</span>
+                      <BarChart3 className="w-6 h-6 mb-2" />
+                      <span>사용량 통계</span>
                     </a>
                   </Button>
                 </div>
@@ -429,12 +429,6 @@ function DashboardContent() {
 
               <TabsContent value="settings" className="space-y-4">
                 <div className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <a href="/settings/subscription">
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      구독 및 결제 관리
-                    </a>
-                  </Button>
                   <Button variant="outline" className="w-full justify-start" asChild>
                     <a href="/settings/team">
                       <Users className="w-4 h-4 mr-2" />팀 관리
@@ -444,12 +438,6 @@ function DashboardContent() {
                     <a href="/settings">
                       <Settings className="w-4 h-4 mr-2" />
                       시스템 설정
-                    </a>
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <a href="/settings">
-                      <BarChart3 className="w-4 h-4 mr-2" />
-                      사용량 통계
                     </a>
                   </Button>
                 </div>
