@@ -447,7 +447,7 @@ function DashboardContent() {
                     </a>
                   </Button>
                   <Button variant="outline" className="w-full justify-start" asChild>
-                    <a href="/settings/billing">
+                    <a href="/settings">
                       <BarChart3 className="w-4 h-4 mr-2" />
                       사용량 통계
                     </a>
