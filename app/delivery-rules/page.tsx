@@ -90,6 +90,7 @@ export default function DeliveryRulesPage() {
   const [showCalculatorDialog, setShowCalculatorDialog] = useState(false)
   const [editingRule, setEditingRule] = useState<DeliveryRule | null>(null)
   const [calculationResult, setCalculationResult] = useState<any>(null)
+  const [generatingSampleData, setGeneratingSampleData] = useState(false)
   const { toast } = useToast()
 
   // 폼 상태
@@ -461,8 +462,10 @@ export default function DeliveryRulesPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={generatingSampleData}
                       onClick={async () => {
                         try {
+                          setGeneratingSampleData(true)
                           const response = await fetch('/api/delivery-rules/seed', {
                             method: 'POST',
                           })
@@ -487,10 +490,19 @@ export default function DeliveryRulesPage() {
                             description: '네트워크 오류가 발생했습니다.',
                             variant: 'destructive',
                           })
+                        } finally {
+                          setGeneratingSampleData(false)
                         }
                       }}
                     >
-                      샘플 데이터 생성하기
+                      {generatingSampleData ? (
+                        <>
+                          <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                          생성 중...
+                        </>
+                      ) : (
+                        '샘플 데이터 생성하기'
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -703,67 +715,93 @@ export default function DeliveryRulesPage() {
             <DialogDescription>주문 정보를 입력하여 정확한 납품일을 계산하세요</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="calcRegion" className="text-right">
-                지역
-              </Label>
-              <select
-                id="calcRegion"
-                value={calculationForm.region}
-                onChange={(e) => setCalculationForm({ ...calculationForm, region: e.target.value })}
-                className="col-span-3 px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                <option value="">지역 선택</option>
-                {deliveryRules
-                  .filter((r) => r.isActive)
-                  .map((rule) => (
-                    <option key={rule.id} value={rule.region}>
-                      {rule.region}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="orderDateTime" className="text-right">
-                주문일시
-              </Label>
-              <Input
-                id="orderDateTime"
-                type="datetime-local"
-                value={calculationForm.orderDateTime}
-                onChange={(e) =>
-                  setCalculationForm({ ...calculationForm, orderDateTime: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div>
-            <div className="flex justify-center pt-2">
-              <Button onClick={calculateDeliveryDate} disabled={!calculationForm.region}>
-                <Calculator className="mr-2 h-4 w-4" />
-                계산하기
-              </Button>
-            </div>
-
-            {calculationResult && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-semibold mb-2">계산 결과</h4>
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-medium">납품일:</span> {calculationResult.deliveryDateKR}
-                  </p>
-                  <p>
-                    <span className="font-medium">배송시간:</span>{' '}
-                    {calculationResult.deliveryTimeKR}
-                  </p>
-                  <p>
-                    <span className="font-medium">소요일:</span>{' '}
-                    {calculationResult.businessDaysUsed}영업일
-                  </p>
-                  <p>
-                    <span className="font-medium">지역:</span> {calculationResult.rule.region}
-                  </p>
+            {deliveryRules.filter((r) => r.isActive).length === 0 ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-5 w-5 text-yellow-600" />
+                  <p className="font-medium text-yellow-900">활성 배송 규칙이 없습니다</p>
                 </div>
+                <p className="text-sm text-yellow-800">
+                  납품일을 계산하려면 먼저 배송 규칙을 등록해주세요.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 border-yellow-300 text-yellow-900 hover:bg-yellow-100"
+                  onClick={() => {
+                    setShowCalculatorDialog(false)
+                    setShowCreateDialog(true)
+                  }}
+                >
+                  <Plus className="mr-2 h-3 w-3" />
+                  배송 규칙 등록하기
+                </Button>
               </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="calcRegion" className="text-right">
+                    지역
+                  </Label>
+                  <select
+                    id="calcRegion"
+                    value={calculationForm.region}
+                    onChange={(e) => setCalculationForm({ ...calculationForm, region: e.target.value })}
+                    className="col-span-3 px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  >
+                    <option value="">지역 선택</option>
+                    {deliveryRules
+                      .filter((r) => r.isActive)
+                      .map((rule) => (
+                        <option key={rule.id} value={rule.region}>
+                          {rule.region}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="orderDateTime" className="text-right">
+                    주문일시
+                  </Label>
+                  <Input
+                    id="orderDateTime"
+                    type="datetime-local"
+                    value={calculationForm.orderDateTime}
+                    onChange={(e) =>
+                      setCalculationForm({ ...calculationForm, orderDateTime: e.target.value })
+                    }
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="flex justify-center pt-2">
+                  <Button onClick={calculateDeliveryDate} disabled={!calculationForm.region}>
+                    <Calculator className="mr-2 h-4 w-4" />
+                    계산하기
+                  </Button>
+                </div>
+
+                {calculationResult && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold mb-2">계산 결과</h4>
+                    <div className="space-y-1 text-sm">
+                      <p>
+                        <span className="font-medium">납품일:</span> {calculationResult.deliveryDateKR}
+                      </p>
+                      <p>
+                        <span className="font-medium">배송시간:</span>{' '}
+                        {calculationResult.deliveryTimeKR}
+                      </p>
+                      <p>
+                        <span className="font-medium">소요일:</span>{' '}
+                        {calculationResult.businessDaysUsed}영업일
+                      </p>
+                      <p>
+                        <span className="font-medium">지역:</span> {calculationResult.rule.region}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
           <DialogFooter>
