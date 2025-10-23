@@ -426,8 +426,74 @@ export default function DeliveryRulesPage() {
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : deliveryRules.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                등록된 배송 규칙이 없습니다.
+              <div className="text-center py-12 px-4">
+                <div className="max-w-md mx-auto space-y-4">
+                  <div className="flex justify-center">
+                    <div className="rounded-full bg-blue-50 p-3">
+                      <MapPin className="h-8 w-8 text-blue-600" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">배송 규칙이 없습니다</h3>
+                    <p className="text-sm text-muted-foreground">
+                      배송 규칙을 등록하면 지역별 납품일을 자동으로 계산할 수 있습니다.
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-4 space-y-2 text-left">
+                    <p className="text-sm font-medium text-blue-900">시작하는 방법:</p>
+                    <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+                      <li>우측 상단의 &quot;새 규칙 추가&quot; 버튼을 클릭하세요</li>
+                      <li>배송할 지역명을 입력하세요 (예: 서울, 경기, 부산)</li>
+                      <li>오전/오후 주문 마감 시간을 설정하세요</li>
+                      <li>각 시간대별 배송 소요일을 입력하세요</li>
+                    </ol>
+                  </div>
+                  <div className="flex justify-center gap-2 pt-2">
+                    <Button onClick={() => setShowCreateDialog(true)} size="lg">
+                      <Plus className="mr-2 h-4 w-4" />
+                      첫 배송 규칙 만들기
+                    </Button>
+                  </div>
+                  <div className="pt-4 border-t">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      빠른 시작을 위한 샘플 데이터를 생성하시겠습니까?
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/delivery-rules/seed', {
+                            method: 'POST',
+                          })
+                          const data = await response.json()
+
+                          if (data.success) {
+                            toast({
+                              title: '성공',
+                              description: data.message,
+                            })
+                            fetchDeliveryRules() // 목록 새로고침
+                          } else {
+                            toast({
+                              title: '오류',
+                              description: data.error || '샘플 데이터 생성에 실패했습니다.',
+                              variant: 'destructive',
+                            })
+                          }
+                        } catch (error) {
+                          toast({
+                            title: '오류',
+                            description: '네트워크 오류가 발생했습니다.',
+                            variant: 'destructive',
+                          })
+                        }
+                      }}
+                    >
+                      샘플 데이터 생성하기
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="rounded-md border">
