@@ -305,6 +305,15 @@ export class KakaoProvider {
 
 // 환경변수에서 카카오 설정 로드
 export function createKakaoProviderFromEnv(): KakaoProvider {
+  const provider = process.env.KAKAO_PROVIDER || 'solapi'
+
+  if (provider === 'solapi') {
+    // SOLAPI 카카오 Provider 사용
+    const { createSolapiKakaoProviderFromEnv } = require('./solapi-kakao-provider')
+    return createSolapiKakaoProviderFromEnv()
+  }
+
+  // 기존 Aligo 기반 카카오 Provider
   const config: KakaoConfig = {
     apiKey: process.env.KAKAO_API_KEY || '',
     apiSecret: process.env.KAKAO_API_SECRET || '',
