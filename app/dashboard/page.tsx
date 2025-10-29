@@ -92,12 +92,19 @@ interface ActivityLog {
   type: 'email' | 'notification' | 'subscription' | 'system'
 }
 
+// 통계 정보 타입
+interface StatsData {
+  companies: number
+  todayNotifications: number
+}
+
 function DashboardContent() {
   const { user, signOut } = useAuth()
   const { toast } = useToast()
   const [usage, setUsage] = useState<UsageData | null>(null)
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
   const [activities, setActivities] = useState<ActivityLog[]>([])
+  const [stats, setStats] = useState<StatsData>({ companies: 0, todayNotifications: 0 })
   const [loading, setLoading] = useState(true)
 
   // 데이터 로딩
@@ -110,10 +117,11 @@ function DashboardContent() {
       setLoading(true)
 
       // 병렬로 데이터 로딩
-      const [usageRes, subscriptionRes, activitiesRes] = await Promise.all([
+      const [usageRes, subscriptionRes, activitiesRes, companiesRes] = await Promise.all([
         fetch('/api/usage'),
         fetch('/api/subscription'),
         fetch('/api/activities?limit=10'),
+        fetch('/api/companies?limit=1'), // 업체 수만 가져오기 위해 limit=1
       ])
 
       if (usageRes.ok) {
@@ -138,6 +146,14 @@ function DashboardContent() {
       if (activitiesRes.ok) {
         const activityData = await activitiesRes.json()
         setActivities(activityData.data || [])
+      }
+
+      if (companiesRes.ok) {
+        const companiesData = await companiesRes.json()
+        setStats({
+          companies: companiesData.pagination?.total || 0,
+          todayNotifications: 0, // TODO: 실제 오늘 알림 수 조회
+        })
       }
     } catch (error) {
       console.error('대시보드 데이터 로딩 실패:', error)
@@ -373,7 +389,9 @@ function DashboardContent() {
                       <CardTitle className="text-lg">업체 관리</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold mb-2">0개</div>
+                      <div className="text-2xl font-bold mb-2">
+                        {loading ? '...' : `${stats.companies}개`}
+                      </div>
                       <p className="text-sm text-muted-foreground mb-4">등록된 발주처 업체</p>
                       <Button size="sm" className="w-full" asChild>
                         <a href="/companies">업체 관리하기</a>
@@ -388,7 +406,9 @@ function DashboardContent() {
                       <CardTitle className="text-lg">알림 현황</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold mb-2">0건</div>
+                      <div className="text-2xl font-bold mb-2">
+                        {loading ? '...' : `${stats.todayNotifications}건`}
+                      </div>
                       <p className="text-sm text-muted-foreground mb-4">오늘 발송된 알림</p>
                       <Button size="sm" variant="outline" className="w-full" asChild>
                         <a href="/notifications">알림 관리</a>
