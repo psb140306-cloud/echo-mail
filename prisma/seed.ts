@@ -96,6 +96,47 @@ async function main() {
 
   console.log('✅ 슈퍼 관리자 계정 생성:', admin.email)
 
+  // TODO: seah0623@naver.com 관리자 계정 추가
+  // - 데이터베이스 연결 문제 해결 후 시드 실행 필요
+  // - 비밀번호: echomail2025!
+  // - 역할: OWNER (테넌트 관리자)
+  // 실제 사용자 관리자 계정
+  const realAdminPassword = await bcrypt.hash('echomail2025!', 12)
+
+  const realAdmin = await prisma.user.upsert({
+    where: { email: 'seah0623@naver.com' },
+    update: {},
+    create: {
+      email: 'seah0623@naver.com',
+      name: '에코메일 관리자',
+      password: realAdminPassword,
+      role: 'ADMIN',
+      emailVerified: new Date(), // 이메일 인증 완료
+      tenantId: testTenant.id,
+    },
+  })
+
+  console.log('✅ 실제 관리자 계정 생성:', realAdmin.email)
+
+  // 테넌트-사용자 관계 설정 (OWNER 역할)
+  await prisma.tenantUser.upsert({
+    where: {
+      tenantId_userId: {
+        tenantId: testTenant.id,
+        userId: realAdmin.id,
+      },
+    },
+    update: {},
+    create: {
+      tenantId: testTenant.id,
+      userId: realAdmin.id,
+      role: 'OWNER',
+      acceptedAt: new Date(),
+    },
+  })
+
+  console.log('✅ 실제 관리자 테넌트 연결 완료')
+
   // =============================================================================
   // 시스템 설정
   // =============================================================================
@@ -346,6 +387,11 @@ async function main() {
   console.log('  - 이메일: admin@echomail.com')
   console.log('  - 비밀번호: admin123!')
   console.log('  - 역할: 슈퍼 관리자')
+  console.log('\n📝 실제 관리자 계정:')
+  console.log('  - 이메일: seah0623@naver.com')
+  console.log('  - 비밀번호: echomail2025!')
+  console.log('  - 역할: OWNER (테넌트 관리자)')
+  console.log('  - 테넌트: test.echomail.co.kr')
 }
 
 main()
