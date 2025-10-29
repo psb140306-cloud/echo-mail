@@ -137,6 +137,13 @@ export async function checkCompanyLimit(tenantId: string): Promise<LimitCheckRes
     const { limits } = await getTenantSubscription(tenantId)
     const usage = await getTenantUsage(tenantId)
 
+    logger.info('[업체 수 체크]', {
+      tenantId,
+      currentCompanies: usage.companies,
+      maxCompanies: limits.maxCompanies,
+      unlimited: isUnlimited(limits.maxCompanies),
+    })
+
     const unlimited = isUnlimited(limits.maxCompanies)
     const allowed = unlimited || usage.companies < limits.maxCompanies
 
