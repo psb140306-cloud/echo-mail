@@ -1,51 +1,60 @@
 import Redis from 'ioredis'
 
 // Redis 연결 설정
-const getRedisUrl = (): string => {
+const getRedisUrl = (): string | null => {
   const url = process.env.REDIS_URL
   if (!url) {
-    throw new Error('REDIS_URL environment variable is not set')
+    console.warn('⚠️ REDIS_URL environment variable is not set - Redis features will be disabled')
+    return null
   }
   return url
 }
 
-// Redis 클라이언트 인스턴스 생성
-export const redis = new Redis(getRedisUrl(), {
-  // 연결 설정
-  maxRetriesPerRequest: 3,
-  retryDelayOnFailover: 100,
-  enableReadyCheck: false,
-  lazyConnect: true,
+// Redis 사용 가능 여부 확인
+const redisUrl = getRedisUrl()
+export const isRedisAvailable = !!redisUrl
 
-  // 타임아웃 설정
-  connectTimeout: 10000,
-  commandTimeout: 5000,
+// Redis 클라이언트 인스턴스 생성 (Redis가 설정된 경우에만)
+export const redis = redisUrl
+  ? new Redis(redisUrl, {
+      // 연결 설정
+      maxRetriesPerRequest: 3,
+      retryDelayOnFailover: 100,
+      enableReadyCheck: false,
+      lazyConnect: true,
 
-  // 재연결 설정
-  retryDelayOnReconnect: 200,
-  maxRetriesPerRequest: 3,
+      // 타임아웃 설정
+      connectTimeout: 10000,
+      commandTimeout: 5000,
 
-  // 로그 설정
-  onConnect: () => {
-    console.log('✅ Redis 연결 성공')
-  },
-  onError: (error) => {
-    console.error('❌ Redis 연결 오류:', error)
-  },
-  onReconnecting: () => {
-    console.log('🔄 Redis 재연결 시도 중...')
-  },
-})
+      // 재연결 설정
+      retryDelayOnReconnect: 200,
+
+      // 로그 설정
+      onConnect: () => {
+        console.log('✅ Redis 연결 성공')
+      },
+      onError: (error) => {
+        console.error('❌ Redis 연결 오류:', error)
+      },
+      onReconnecting: () => {
+        console.log('🔄 Redis 재연결 시도 중...')
+      },
+    })
+  : null
 
 // Bull 큐를 위한 별도 Redis 인스턴스
-export const queueRedis = new Redis(getRedisUrl(), {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-  retryDelayOnFailover: 100,
-})
+export const queueRedis = redisUrl
+  ? new Redis(redisUrl, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+      retryDelayOnFailover: 100,
+    })
+  : null
 
 // Redis 연결 상태 확인
 export const checkRedisConnection = async (): Promise<boolean> => {
+  if (!redis) return false
   try {
     const result = await redis.ping()
     return result === 'PONG'
@@ -59,6 +68,7 @@ export const checkRedisConnection = async (): Promise<boolean> => {
 export const cache = {
   // 값 저장 (TTL: 초 단위)
   set: async (key: string, value: any, ttl?: number): Promise<void> => {
+    if (!redis) return
     const serialized = JSON.stringify(value)
     if (ttl) {
       await redis.setex(key, ttl, serialized)
@@ -69,6 +79,7 @@ export const cache = {
 
   // 값 조회
   get: async <T = any>(key: string): Promise<T | null> => {
+    if (!redis) return null
     const cached = await redis.get(key)
     if (!cached) return null
 
@@ -82,22 +93,26 @@ export const cache = {
 
   // 값 삭제
   del: async (key: string): Promise<void> => {
+    if (!redis) return
     await redis.del(key)
   },
 
   // 키 존재 여부 확인
   exists: async (key: string): Promise<boolean> => {
+    if (!redis) return false
     const result = await redis.exists(key)
     return result === 1
   },
 
   // TTL 설정
   expire: async (key: string, ttl: number): Promise<void> => {
+    if (!redis) return
     await redis.expire(key, ttl)
   },
 
   // 패턴으로 키 삭제
   deletePattern: async (pattern: string): Promise<void> => {
+    if (!redis) return
     const keys = await redis.keys(pattern)
     if (keys.length > 0) {
       await redis.del(...keys)
@@ -106,11 +121,13 @@ export const cache = {
 
   // 해시 저장
   hset: async (key: string, field: string, value: any): Promise<void> => {
+    if (!redis) return
     await redis.hset(key, field, JSON.stringify(value))
   },
 
   // 해시 조회
   hget: async <T = any>(key: string, field: string): Promise<T | null> => {
+    if (!redis) return null
     const cached = await redis.hget(key, field)
     if (!cached) return null
 
@@ -124,6 +141,7 @@ export const cache = {
 
   // 해시 전체 조회
   hgetall: async <T = Record<string, any>>(key: string): Promise<T | null> => {
+    if (!redis) return null
     const cached = await redis.hgetall(key)
     if (!cached || Object.keys(cached).length === 0) return null
 
@@ -141,11 +159,13 @@ export const cache = {
 
   // 리스트에 추가 (왼쪽)
   lpush: async (key: string, value: any): Promise<void> => {
+    if (!redis) return
     await redis.lpush(key, JSON.stringify(value))
   },
 
   // 리스트에서 제거 (오른쪽)
   rpop: async <T = any>(key: string): Promise<T | null> => {
+    if (!redis) return null
     const cached = await redis.rpop(key)
     if (!cached) return null
 
@@ -159,6 +179,7 @@ export const cache = {
 
   // 리스트 길이 조회
   llen: async (key: string): Promise<number> => {
+    if (!redis) return 0
     return await redis.llen(key)
   },
 }
@@ -194,6 +215,15 @@ export const rateLimit = {
     limit: number,
     windowMs: number
   ): Promise<{ allowed: boolean; remaining: number; resetTime: Date }> => {
+    // Redis가 없으면 항상 허용
+    if (!redis) {
+      return {
+        allowed: true,
+        remaining: limit,
+        resetTime: new Date(Date.now() + windowMs),
+      }
+    }
+
     const now = Date.now()
     const window = Math.floor(now / windowMs)
     const rateLimitKey = `rate_limit:${key}:${window}`
@@ -223,6 +253,7 @@ export const lock = {
     ttl: number = 30,
     identifier: string = Math.random().toString(36)
   ): Promise<string | null> => {
+    if (!redis) return identifier // Redis가 없으면 바로 락 획득
     const lockKey = `lock:${key}`
     const result = await redis.set(lockKey, identifier, 'PX', ttl * 1000, 'NX')
 
@@ -231,6 +262,7 @@ export const lock = {
 
   // 락 해제
   release: async (key: string, identifier: string): Promise<boolean> => {
+    if (!redis) return true // Redis가 없으면 바로 성공
     const lockKey = `lock:${key}`
     const script = `
       if redis.call('get', KEYS[1]) == ARGV[1] then
@@ -247,7 +279,7 @@ export const lock = {
 
 // Redis 정리 (테스트용)
 export const cleanup = async (): Promise<void> => {
-  if (process.env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV === 'test' && redis) {
     await redis.flushdb()
   }
 }
