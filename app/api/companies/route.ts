@@ -159,6 +159,7 @@ async function createCompany(request: NextRequest) {
         email: validatedData.email,
         region: validatedData.region,
         isActive: validatedData.isActive ?? true,
+        tenantId, // tenant context에서 가져온 tenantId 추가
         // 담당자 정보가 있으면 함께 생성
         ...(validatedData.contactName &&
           validatedData.contactPhone && {
@@ -171,6 +172,7 @@ async function createCompany(request: NextRequest) {
                 smsEnabled: validatedData.smsEnabled ?? true,
                 kakaoEnabled: validatedData.kakaoEnabled ?? false,
                 isActive: true,
+                tenantId, // contact에도 tenantId 추가
               },
             },
           }),
