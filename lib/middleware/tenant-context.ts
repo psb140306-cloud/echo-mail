@@ -58,6 +58,24 @@ export async function identifyTenant(request: NextRequest): Promise<TenantInfo |
         }
       }
 
+      // Vercel에서 테넌트가 없을 경우, 'test' 테넌트로 폴백
+      // (개발/데모 환경에서 시드 데이터 사용 가능)
+      logger.debug('Vercel domain - looking for test tenant', { host, subdomain })
+      const testTenant = await prisma.tenant.findFirst({
+        where: { subdomain: 'test' },
+      })
+
+      if (testTenant) {
+        logger.debug('Using test tenant for Vercel deployment', { host, tenantId: testTenant.id })
+        return {
+          id: testTenant.id,
+          name: testTenant.name,
+          subdomain: testTenant.subdomain,
+          customDomain: testTenant.customDomain || undefined,
+          subscriptionPlan: testTenant.subscriptionPlan,
+        }
+      }
+
       logger.debug('Falling back to default tenant for Vercel domain', { host, subdomain })
       return {
         id: DEFAULT_TENANT_ID,
@@ -131,6 +149,23 @@ export async function identifyTenant(request: NextRequest): Promise<TenantInfo |
       process.env.NODE_ENV === 'development' &&
       (host.includes('localhost') || host.includes('127.0.0.1'))
     ) {
+      // 로컬 개발 환경에서도 'test' 테넌트 사용 (시드 데이터 활용)
+      const testTenant = await prisma.tenant.findFirst({
+        where: { subdomain: 'test' },
+      })
+
+      if (testTenant) {
+        logger.debug('Using test tenant for localhost', { host, tenantId: testTenant.id })
+        return {
+          id: testTenant.id,
+          name: testTenant.name,
+          subdomain: testTenant.subdomain,
+          customDomain: testTenant.customDomain || undefined,
+          subscriptionPlan: testTenant.subscriptionPlan,
+        }
+      }
+
+      // 폴백: 하드코딩된 dev tenant
       return {
         id: 'dev-tenant-id',
         name: 'Development Tenant',
