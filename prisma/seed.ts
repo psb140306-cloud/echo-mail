@@ -96,11 +96,28 @@ async function main() {
 
   console.log('✅ 슈퍼 관리자 계정 생성:', admin.email)
 
-  // TODO: seah0623@naver.com 관리자 계정 추가
-  // - 데이터베이스 연결 문제 해결 후 시드 실행 필요
-  // - 비밀번호: echomail2025!
-  // - 역할: OWNER (테넌트 관리자)
-  // 실제 사용자 관리자 계정
+  // =============================================================================
+  // 실제 사용자 테넌트 생성 (별도 독립 테넌트)
+  // =============================================================================
+  const realTenant = await prisma.tenant.upsert({
+    where: { subdomain: 'echomail' },
+    update: {},
+    create: {
+      name: '에코메일',
+      subdomain: 'echomail',
+      subscriptionPlan: 'FREE_TRIAL',
+      subscriptionStatus: 'TRIAL',
+      trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30일 후
+      maxCompanies: 10,
+      maxContacts: 50,
+      maxEmails: 100,
+      maxNotifications: 100,
+    },
+  })
+
+  console.log('✅ 실제 사용자 테넌트 생성:', realTenant.subdomain)
+
+  // 실제 사용자 관리자 계정 (별도 tenant 사용)
   const realAdminPassword = await bcrypt.hash('echomail2025!', 12)
 
   const realAdmin = await prisma.user.upsert({
@@ -111,8 +128,8 @@ async function main() {
       name: '에코메일 관리자',
       password: realAdminPassword,
       role: 'ADMIN',
-      emailVerified: new Date(), // 이메일 인증 완료
-      tenantId: testTenant.id,
+      emailVerified: new Date(),
+      tenantId: realTenant.id, // 별도 테넌트 사용
     },
   })
 
@@ -122,17 +139,23 @@ async function main() {
   await prisma.tenantUser.upsert({
     where: {
       tenantId_userId: {
-        tenantId: testTenant.id,
+        tenantId: realTenant.id,
         userId: realAdmin.id,
       },
     },
     update: {},
     create: {
-      tenantId: testTenant.id,
+      tenantId: realTenant.id,
       userId: realAdmin.id,
       role: 'OWNER',
       acceptedAt: new Date(),
     },
+  })
+
+  // 테넌트 소유자 설정
+  await prisma.tenant.update({
+    where: { id: realTenant.id },
+    data: { ownerId: realAdmin.id },
   })
 
   console.log('✅ 실제 관리자 테넌트 연결 완료')
@@ -381,17 +404,19 @@ async function main() {
   console.log('\n📝 테스트 계정 정보:')
   console.log('  - 이메일: test@echomail.com')
   console.log('  - 비밀번호: test123!')
-  console.log('  - 테넌트: test.echomail.co.kr')
+  console.log('  - 테넌트: test (독립)')
+  console.log('  - 플랜: PROFESSIONAL')
   console.log('  - 이메일 인증: 완료')
-  console.log('\n📝 관리자 계정 정보:')
+  console.log('\n📝 슈퍼 관리자 계정:')
   console.log('  - 이메일: admin@echomail.com')
   console.log('  - 비밀번호: admin123!')
-  console.log('  - 역할: 슈퍼 관리자')
+  console.log('  - 역할: 슈퍼 관리자 (모든 테넌트 접근)')
   console.log('\n📝 실제 관리자 계정:')
   console.log('  - 이메일: seah0623@naver.com')
   console.log('  - 비밀번호: echomail2025!')
+  console.log('  - 테넌트: echomail (독립)')
+  console.log('  - 플랜: FREE_TRIAL')
   console.log('  - 역할: OWNER (테넌트 관리자)')
-  console.log('  - 테넌트: test.echomail.co.kr')
 }
 
 main()
