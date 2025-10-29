@@ -141,6 +141,14 @@ export class UsageTracker {
       const types = usageType ? [usageType] : Object.values(UsageType)
       const result: Record<string, number> = {}
 
+      // Redis가 없으면 모두 0 반환
+      if (!redis) {
+        types.forEach((type) => {
+          result[type] = 0
+        })
+        return result
+      }
+
       const periodKey =
         period === 'day'
           ? this.getCurrentDay()
