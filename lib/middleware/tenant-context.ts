@@ -58,31 +58,10 @@ export async function identifyTenant(request: NextRequest): Promise<TenantInfo |
         }
       }
 
-      // Vercel에서 테넌트가 없을 경우, 'test' 테넌트로 폴백
-      // (개발/데모 환경에서 시드 데이터 사용 가능)
-      logger.debug('Vercel domain - looking for test tenant', { host, subdomain })
-      const testTenant = await prisma.tenant.findFirst({
-        where: { subdomain: 'test' },
-      })
-
-      if (testTenant) {
-        logger.debug('Using test tenant for Vercel deployment', { host, tenantId: testTenant.id })
-        return {
-          id: testTenant.id,
-          name: testTenant.name,
-          subdomain: testTenant.subdomain,
-          customDomain: testTenant.customDomain || undefined,
-          subscriptionPlan: testTenant.subscriptionPlan,
-        }
-      }
-
-      logger.debug('Falling back to default tenant for Vercel domain', { host, subdomain })
-      return {
-        id: DEFAULT_TENANT_ID,
-        name: DEFAULT_TENANT_NAME,
-        subdomain: subdomain || DEFAULT_TENANT_SUBDOMAIN,
-        subscriptionPlan: DEFAULT_TENANT_PLAN,
-      }
+      // Vercel에서 테넌트를 찾지 못한 경우 null 반환
+      // 사용자 세션의 tenantId를 사용하도록 함
+      logger.debug('No tenant found for Vercel domain - will use user session', { host, subdomain })
+      return null
     }
 
     // 1. 커스텀 도메인 체크
@@ -149,29 +128,9 @@ export async function identifyTenant(request: NextRequest): Promise<TenantInfo |
       process.env.NODE_ENV === 'development' &&
       (host.includes('localhost') || host.includes('127.0.0.1'))
     ) {
-      // 로컬 개발 환경에서도 'test' 테넌트 사용 (시드 데이터 활용)
-      const testTenant = await prisma.tenant.findFirst({
-        where: { subdomain: 'test' },
-      })
-
-      if (testTenant) {
-        logger.debug('Using test tenant for localhost', { host, tenantId: testTenant.id })
-        return {
-          id: testTenant.id,
-          name: testTenant.name,
-          subdomain: testTenant.subdomain,
-          customDomain: testTenant.customDomain || undefined,
-          subscriptionPlan: testTenant.subscriptionPlan,
-        }
-      }
-
-      // 폴백: 하드코딩된 dev tenant
-      return {
-        id: 'dev-tenant-id',
-        name: 'Development Tenant',
-        subdomain: 'dev',
-        subscriptionPlan: 'PROFESSIONAL',
-      }
+      // 로컬 개발에서도 사용자 세션의 tenantId 사용
+      logger.debug('Localhost - will use user session tenant', { host })
+      return null
     }
 
     logger.debug('No tenant identified', { host, url: url.pathname })
@@ -252,7 +211,44 @@ export async function withTenantContext<T>(
 
   try {
     // 테넌트 식별
-    const tenant = await identifyTenant(request)
+    let tenant = await identifyTenant(request)
+
+    // 도메인에서 tenant를 찾지 못한 경우, 사용자 세션에서 가져오기
+    if (!tenant) {
+      const sessionCookie = request.cookies.get('next-auth.session-token') || request.cookies.get('__Secure-next-auth.session-token')
+
+      if (sessionCookie) {
+        // 세션에서 사용자 정보 조회
+        const user = await prisma.user.findFirst({
+          where: {
+            sessions: {
+              some: {
+                sessionToken: sessionCookie.value,
+                expires: { gt: new Date() },
+              },
+            },
+          },
+          include: {
+            tenant: true,
+          },
+        })
+
+        if (user?.tenant) {
+          tenant = {
+            id: user.tenant.id,
+            name: user.tenant.name,
+            subdomain: user.tenant.subdomain,
+            customDomain: user.tenant.customDomain || undefined,
+            subscriptionPlan: user.tenant.subscriptionPlan,
+          }
+          logger.debug('Tenant found from user session', {
+            userId: user.id,
+            userEmail: user.email,
+            tenantId: tenant.id,
+          })
+        }
+      }
+    }
 
     if (tenant) {
       // 테넌트 컨텍스트 설정
