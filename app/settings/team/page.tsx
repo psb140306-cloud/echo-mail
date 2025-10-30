@@ -69,6 +69,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { AppHeader } from '@/components/layout/app-header'
 
 interface TeamMember {
   id: string
@@ -350,9 +351,9 @@ export default function TeamPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50/40 dark:bg-gray-950/40 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-sm text-muted-foreground">팀 정보를 불러오는 중...</p>
         </div>
       </div>
@@ -360,36 +361,33 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100/50 dark:from-gray-950 dark:to-gray-900/50">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-white/80 dark:bg-gray-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-950/60">
-        <div className="container flex h-16 items-center">
-          <div className="mr-4 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-background">
+      <AppHeader />
+
+      {/* Sub Header */}
+      <div className="border-b border-border bg-white dark:bg-card">
+        <div className="container flex h-14 items-center justify-between">
+          <div className="flex items-center space-x-4">
             <Link
-              href="/"
-              className="mr-6 flex items-center space-x-2 text-sm hover:text-blue-600 transition-colors"
+              href="/dashboard"
+              className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>대시보드</span>
             </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-between space-x-2">
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                팀 관리
-              </h1>
-              <p className="text-sm text-muted-foreground">팀 멤버와 권한을 관리하세요</p>
+              <h1 className="text-lg font-semibold dark:text-foreground">팀 관리</h1>
+              <p className="text-xs text-muted-foreground">팀 멤버와 권한을 관리하세요</p>
             </div>
-            <Button
-              onClick={() => setShowInviteDialog(true)}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              사용자 초대
-            </Button>
           </div>
+          <Button
+            onClick={() => setShowInviteDialog(true)}
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            사용자 초대
+          </Button>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <main className="container py-8">

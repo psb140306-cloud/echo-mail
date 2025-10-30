@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
+import { AppHeader } from '@/components/layout/app-header'
 import {
   ArrowLeft,
   Mail,
@@ -240,36 +241,36 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50/40 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
+    <div className="min-h-screen bg-gray-50 dark:bg-background">
+      <AppHeader />
+
+      {/* Sub Header */}
+      <div className="border-b border-border bg-white dark:bg-card">
+        <div className="container flex h-14 items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/dashboard" className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">대시보드</span>
+              <span>대시보드</span>
             </Link>
+            <h1 className="text-lg font-semibold dark:text-foreground">시스템 설정</h1>
           </div>
-          <div className="flex flex-1 items-center justify-between space-x-2">
-            <h1 className="text-lg font-semibold">시스템 설정</h1>
-            <Button onClick={saveSettings} disabled={saving}>
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              설정 저장
-            </Button>
-          </div>
+          <Button onClick={saveSettings} disabled={saving}>
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            설정 저장
+          </Button>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <main className="container py-6">
