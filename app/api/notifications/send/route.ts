@@ -12,6 +12,7 @@ import {
   sendOrderReceivedNotification,
 } from '@/lib/notifications/notification-service'
 import { withTenantRateLimit } from '@/lib/middleware/rate-limiter'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 개별 알림 발송 스키마
 const sendNotificationSchema = z.object({
@@ -48,6 +49,10 @@ const orderNotificationSchema = z.object({
 
 // 개별 알림 발송
 export async function POST(request: NextRequest) {
+  // 테넌트 컨텍스트 설정
+  const tenantResponse = await withTenantContext(request)
+  if (tenantResponse) return tenantResponse
+
   try {
     // Rate Limiting 적용
     const rateLimitResponse = await withTenantRateLimit('notifications')(request)
