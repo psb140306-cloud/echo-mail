@@ -58,11 +58,20 @@ export class NotificationService {
     if (this.initialized) return
 
     try {
+      // SMS Provider 초기화
       this.smsProvider = createSMSProviderFromEnv()
-      this.kakaoProvider = createKakaoProviderFromEnv()
+
+      // Kakao Provider 초기화 (선택적)
+      try {
+        this.kakaoProvider = createKakaoProviderFromEnv()
+      } catch (kakaoError) {
+        logger.info('카카오 Provider 초기화 실패 (선택사항이므로 계속 진행)', kakaoError)
+        this.kakaoProvider = null
+      }
+
       this.initialized = true
     } catch (error) {
-      logger.warn('알림 제공자 초기화 실패:', error)
+      logger.error('SMS Provider 초기화 실패:', error)
       throw error
     }
   }
@@ -184,6 +193,27 @@ export class NotificationService {
           break
 
         case NotificationType.KAKAO_ALIMTALK:
+          // 카카오 Provider가 없으면 즉시 SMS로 폴백
+          if (!this.kakaoProvider) {
+            logger.info('카카오 Provider 미설정, SMS로 폴백', {
+              recipient: request.recipient,
+            })
+
+            result = await this.sendSMS({
+              to: request.recipient,
+              message: rendered.content,
+            }, tenantId)
+
+            if (result.success) {
+              result = {
+                ...result,
+                failoverUsed: true,
+                provider: 'SMS(카카오 미설정으로 폴백)',
+              }
+            }
+            break
+          }
+
           result = await this.sendKakaoAlimTalk({
             to: request.recipient,
             templateCode: request.templateName,
@@ -214,6 +244,27 @@ export class NotificationService {
           break
 
         case NotificationType.KAKAO_FRIENDTALK:
+          // 카카오 Provider가 없으면 즉시 SMS로 폴백
+          if (!this.kakaoProvider) {
+            logger.info('카카오 Provider 미설정, SMS로 폴백', {
+              recipient: request.recipient,
+            })
+
+            result = await this.sendSMS({
+              to: request.recipient,
+              message: rendered.content,
+            }, tenantId)
+
+            if (result.success) {
+              result = {
+                ...result,
+                failoverUsed: true,
+                provider: 'SMS(카카오 미설정으로 폴백)',
+              }
+            }
+            break
+          }
+
           result = await this.sendKakaoFriendTalk({
             to: request.recipient,
             message: rendered.content,
