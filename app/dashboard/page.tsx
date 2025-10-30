@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { AppHeader } from '@/components/layout/app-header'
+import Link from 'next/link'
 import {
   Mail,
   Building,
@@ -25,6 +28,7 @@ import {
   MessageSquare,
   Smartphone,
   Eye,
+  TestTube,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -212,28 +216,8 @@ function DashboardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                <Mail className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-xl font-semibold text-gray-900">Echo Mail</h1>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">{user?.email}님 안녕하세요</span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="w-4 h-4 mr-2" />
-                로그아웃
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-50 dark:bg-background">
+      <AppHeader />
 
       {/* 메인 컨텐츠 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -241,22 +225,30 @@ function DashboardContent() {
         <div className="mb-8">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">대시보드</h2>
-              <p className="text-gray-600">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-foreground mb-2">대시보드</h2>
+              <p className="text-gray-600 dark:text-muted-foreground">
                 Echo Mail 발주 확인 자동 알림 시스템에 오신 것을 환영합니다!
               </p>
             </div>
-            {subscription && (
-              <div className="text-right">
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-sm font-medium">{subscription.plan.name}</span>
-                  {getStatusBadge(subscription.status)}
+            <div className="flex items-center gap-4">
+              <Button variant="outline" asChild>
+                <Link href="/notifications/test">
+                  <TestTube className="w-4 h-4 mr-2" />
+                  SMS 테스트
+                </Link>
+              </Button>
+              {subscription && (
+                <div className="text-right">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <span className="text-sm font-medium dark:text-foreground">{subscription.plan.name}</span>
+                    {getStatusBadge(subscription.status)}
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-muted-foreground">
+                    {new Date(subscription.currentPeriodEnd).toLocaleDateString()} 까지
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500">
-                  {new Date(subscription.currentPeriodEnd).toLocaleDateString()} 까지
-                </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* 사용량 경고 */}
