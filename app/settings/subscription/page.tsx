@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { SubscriptionPlan, PLAN_LIMITS, PLAN_PRICING, getPlanDisplayName } from '@/lib/subscription/plans'
+import { AppHeader } from '@/components/layout/app-header'
 
 interface SubscriptionInfo {
   plan: SubscriptionPlan
@@ -239,26 +240,28 @@ export default function SubscriptionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50/40 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/settings" className="mr-6 flex items-center space-x-2">
+    <div className="min-h-screen bg-gray-50 dark:bg-background">
+      <AppHeader />
+
+      {/* Sub Header */}
+      <div className="border-b border-border bg-white dark:bg-card">
+        <div className="container flex h-14 items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/dashboard" className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">설정</span>
+              <span>대시보드</span>
             </Link>
+            <h1 className="text-lg font-semibold dark:text-foreground">구독 관리</h1>
           </div>
-          <h1 className="text-lg font-semibold">구독 관리</h1>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <main className="container py-6 space-y-6">
