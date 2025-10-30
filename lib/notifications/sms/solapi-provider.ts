@@ -40,12 +40,23 @@ export class SolapiSMSProvider implements SMSProvider {
 
   async sendSMS(message: SMSMessage): Promise<SMSResult> {
     try {
+      // 환경 변수 디버깅
+      logger.info('[SOLAPI] 환경 변수 확인', {
+        NODE_ENV: process.env.NODE_ENV,
+        ENABLE_REAL_NOTIFICATIONS: process.env.ENABLE_REAL_NOTIFICATIONS,
+        testMode: this.config.testMode,
+        hasApiKey: !!this.config.apiKey,
+        hasApiSecret: !!this.config.apiSecret,
+        sender: this.config.sender,
+      })
+
       // 테스트 모드
       if (this.config.testMode) {
-        logger.info('[SOLAPI Test Mode] SMS 전송 시뮬레이션', {
+        logger.warn('[SOLAPI Test Mode] SMS 전송 시뮬레이션 (실제 발송 안됨!)', {
           to: message.to,
           from: this.config.sender,
           messageLength: message.message.length,
+          reason: process.env.NODE_ENV !== 'production' ? 'NODE_ENV가 production이 아님' : 'ENABLE_REAL_NOTIFICATIONS가 true가 아님',
         })
 
         return {
