@@ -93,9 +93,23 @@ async function handleSingleNotification(request: NextRequest) {
         },
         select: {
           tenantId: true,
+          email: true,
         },
       })
       tenantId = user?.tenantId || null
+
+      logger.info('세션에서 tenantId 조회', {
+        hasSessionCookie: !!sessionCookie,
+        userFound: !!user,
+        userEmail: user?.email,
+        tenantId,
+      })
+    }
+
+    if (!tenantId) {
+      logger.error('tenantId를 찾을 수 없습니다', {
+        hasSessionCookie: !!sessionCookie,
+      })
     }
 
     const notificationRequest = {
