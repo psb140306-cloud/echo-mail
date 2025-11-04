@@ -75,10 +75,28 @@ async function handleSingleNotification(request: NextRequest) {
   if (error) return error
 
   try {
-    // 테넌트 컨텍스트에서 tenantId 가져오기
-    const { TenantContext } = await import('@/lib/db')
-    const tenantContext = TenantContext.getInstance()
-    const tenantId = tenantContext.getTenantId()
+    // 세션에서 tenantId 가져오기
+    const { prisma } = await import('@/lib/db')
+    const sessionCookie = request.cookies.get('next-auth.session-token') || request.cookies.get('__Secure-next-auth.session-token')
+
+    let tenantId: string | null = null
+
+    if (sessionCookie) {
+      const user = await prisma.user.findFirst({
+        where: {
+          sessions: {
+            some: {
+              sessionToken: sessionCookie.value,
+              expires: { gt: new Date() },
+            },
+          },
+        },
+        select: {
+          tenantId: true,
+        },
+      })
+      tenantId = user?.tenantId || null
+    }
 
     const notificationRequest = {
       type: data.type,
