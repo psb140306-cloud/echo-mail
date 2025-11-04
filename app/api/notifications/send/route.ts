@@ -54,13 +54,6 @@ export async function POST(request: NextRequest) {
   if (tenantResponse) return tenantResponse
 
   try {
-    // Rate Limiting 적용
-    const rateLimiter = withTenantRateLimit('notifications')
-    const rateLimitResponse = await rateLimiter(request)
-    if (rateLimitResponse && rateLimitResponse.status === 429) {
-      return rateLimitResponse
-    }
-
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
