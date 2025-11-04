@@ -186,6 +186,16 @@ export class SolapiSMSProvider implements SMSProvider {
   private generateSignature(date: string, body?: any): string {
     const crypto = require('crypto')
 
+    // API Secret 검증
+    if (!this.config.apiSecret || typeof this.config.apiSecret !== 'string') {
+      logger.error('[SOLAPI] Invalid API Secret', {
+        hasSecret: !!this.config.apiSecret,
+        secretType: typeof this.config.apiSecret,
+        secretLength: this.config.apiSecret?.length,
+      })
+      throw new Error('SOLAPI API Secret must be a string')
+    }
+
     let message = date
     if (body) {
       message = date + JSON.stringify(body)

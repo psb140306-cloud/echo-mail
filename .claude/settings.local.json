@@ -33,7 +33,8 @@
       "Bash(npx tsc:*)",
       "Bash(cat:*)",
       "Bash(curl:*)",
-      "Bash(python -m json.tool:*)"
+      "Bash(python -m json.tool:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []
