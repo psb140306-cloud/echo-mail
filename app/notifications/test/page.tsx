@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,7 +26,24 @@ export default function NotificationTestPage() {
   const [variables, setVariables] = useState('{}')
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const [envConfig, setEnvConfig] = useState<any>(null)
   const { toast } = useToast()
+
+  // 환경 설정 가져오기
+  const fetchEnvConfig = async () => {
+    try {
+      const response = await fetch('/api/debug/env')
+      const data = await response.json()
+      setEnvConfig(data)
+    } catch (error) {
+      console.error('환경 설정 가져오기 실패:', error)
+    }
+  }
+
+  // 컴포넌트 마운트 시 환경 설정 가져오기
+  useEffect(() => {
+    fetchEnvConfig()
+  }, [])
 
   const handleSend = async () => {
     try {
@@ -312,12 +329,25 @@ export default function NotificationTestPage() {
                 <CardTitle>⚠️ 주의사항</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="font-medium text-yellow-900 mb-2">테스트 모드</p>
-                  <p className="text-yellow-800">
-                    현재 <code className="bg-yellow-100 px-1 rounded">ENABLE_REAL_NOTIFICATIONS=false</code>인 경우 실제 메시지가 발송되지 않고 로그에만 기록됩니다.
-                  </p>
-                </div>
+                {envConfig && envConfig.testMode && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="font-medium text-yellow-900 mb-2">⚠️ 테스트 모드 활성화</p>
+                    <p className="text-yellow-800 mb-2">
+                      현재 <code className="bg-yellow-100 px-1 rounded">testMode=true</code>로 설정되어 있어 <strong>실제 메시지가 발송되지 않고</strong> 로그에만 기록됩니다.
+                    </p>
+                    <p className="text-yellow-700 text-xs">
+                      실제 발송을 위해서는 <code className="bg-yellow-100 px-1 rounded">NODE_ENV=production</code> 및 <code className="bg-yellow-100 px-1 rounded">ENABLE_REAL_NOTIFICATIONS=true</code>로 설정해야 합니다.
+                    </p>
+                  </div>
+                )}
+                {envConfig && !envConfig.testMode && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="font-medium text-green-900 mb-2">✅ 실제 발송 모드</p>
+                    <p className="text-green-800">
+                      현재 <code className="bg-green-100 px-1 rounded">testMode=false</code>로 설정되어 있어 <strong>실제 메시지가 발송됩니다.</strong>
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-1 text-muted-foreground">
                   <p>• SMS는 90자 이하면 SMS, 초과하면 LMS로 전송됩니다</p>
@@ -334,23 +364,34 @@ export default function NotificationTestPage() {
                 <CardTitle>환경 설정</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 text-sm font-mono">
-                  <div>
-                    <span className="text-muted-foreground">SMS_PROVIDER:</span>{' '}
-                    <code className="bg-gray-100 px-1 rounded">
-                      {process.env.NEXT_PUBLIC_SMS_PROVIDER || 'solapi'}
-                    </code>
+                {envConfig ? (
+                  <div className="space-y-2 text-sm font-mono">
+                    <div>
+                      <span className="text-muted-foreground">SMS_PROVIDER:</span>{' '}
+                      <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">solapi</code>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">NODE_ENV:</span>{' '}
+                      <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">
+                        {envConfig.NODE_ENV}
+                      </code>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">ENABLE_REAL_NOTIFICATIONS:</span>{' '}
+                      <code className={`px-1 rounded ${envConfig.ENABLE_REAL_NOTIFICATIONS === 'true' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'}`}>
+                        {envConfig.ENABLE_REAL_NOTIFICATIONS}
+                      </code>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">testMode:</span>{' '}
+                      <code className={`px-1 rounded ${!envConfig.testMode ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'}`}>
+                        {envConfig.testMode ? 'true' : 'false'}
+                      </code>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">NODE_ENV:</span>{' '}
-                    <code className="bg-gray-100 px-1 rounded">
-                      {process.env.NODE_ENV}
-                    </code>
-                  </div>
-                  <div className="pt-2 text-xs text-muted-foreground">
-                    실제 환경 설정은 서버 환경변수를 확인하세요.
-                  </div>
-                </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">환경 설정을 불러오는 중...</div>
+                )}
               </CardContent>
             </Card>
           </div>
