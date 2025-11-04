@@ -297,6 +297,15 @@ export function createSolapiProviderFromEnv(): SolapiSMSProvider {
   const apiSecret = process.env.SOLAPI_API_SECRET
   const sender = process.env.SOLAPI_SENDER_PHONE || process.env.DEFAULT_SENDER_PHONE
 
+  // 디버깅: 환경 변수 타입 확인
+  logger.info('[SOLAPI] 환경 변수 로드', {
+    apiKeyType: typeof apiKey,
+    apiKeyLength: apiKey?.length,
+    apiSecretType: typeof apiSecret,
+    apiSecretLength: apiSecret?.length,
+    senderType: typeof sender,
+  })
+
   if (!apiKey || !apiSecret || !sender) {
     throw new Error('SOLAPI 환경변수가 설정되지 않았습니다 (SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_SENDER_PHONE)')
   }
