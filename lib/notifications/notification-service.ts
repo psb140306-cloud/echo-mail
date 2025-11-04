@@ -26,6 +26,7 @@ export interface NotificationRequest {
   companyId?: string
   contactId?: string
   enableFailover?: boolean
+  tenantId?: string // 선택적 tenantId (미들웨어에서 전달)
 }
 
 export interface NotificationResult {
@@ -136,9 +137,13 @@ export class NotificationService {
       // 초기화 (최초 1회만 실행)
       this.initialize()
 
-      // 테넌트 컨텍스트에서 테넌트 ID 가져오기
-      const tenantContext = TenantContext.getInstance()
-      const tenantId = tenantContext.getTenantId()
+      // 테넌트 ID 가져오기: 파라미터 우선, 없으면 컨텍스트에서
+      let tenantId = request.tenantId
+
+      if (!tenantId) {
+        const tenantContext = TenantContext.getInstance()
+        tenantId = tenantContext.getTenantId()
+      }
 
       if (!tenantId) {
         throw new Error('테넌트 컨텍스트가 설정되지 않았습니다.')

@@ -75,6 +75,11 @@ async function handleSingleNotification(request: NextRequest) {
   if (error) return error
 
   try {
+    // 테넌트 컨텍스트에서 tenantId 가져오기
+    const { TenantContext } = await import('@/lib/db')
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
     const notificationRequest = {
       type: data.type,
       recipient: data.recipient,
@@ -85,6 +90,7 @@ async function handleSingleNotification(request: NextRequest) {
       companyId: data.companyId,
       contactId: data.contactId,
       enableFailover: data.enableFailover ?? true,
+      tenantId: tenantId || undefined,
     }
 
     let result
