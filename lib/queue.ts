@@ -62,6 +62,9 @@ export const addKakaoAlimtalkJob = async (
   data: Omit<NotificationJob, 'type'>,
   options?: Queue.JobOptions
 ) => {
+  if (!notificationQueue) {
+    throw new Error('Queue not available - Redis is not configured')
+  }
   return await notificationQueue.add(
     'send-kakao-alimtalk',
     { ...data, type: 'KAKAO_ALIMTALK' },
@@ -78,6 +81,9 @@ export const addKakaoFriendtalkJob = async (
   data: Omit<NotificationJob, 'type'>,
   options?: Queue.JobOptions
 ) => {
+  if (!notificationQueue) {
+    throw new Error('Queue not available - Redis is not configured')
+  }
   return await notificationQueue.add(
     'send-kakao-friendtalk',
     { ...data, type: 'KAKAO_FRIENDTALK' },
@@ -114,6 +120,9 @@ export interface EmailJob {
 
 // 메일 처리 작업 추가
 export const addEmailProcessJob = async (data: EmailJob, options?: Queue.JobOptions) => {
+  if (!emailQueue) {
+    throw new Error('Queue not available - Redis is not configured')
+  }
   return await emailQueue.add('process-email', data, {
     priority: 1,
     delay: options?.delay || 0,
@@ -137,6 +146,9 @@ export interface ScheduleJob {
 
 // 정리 작업 스케줄링
 export const scheduleCleanupJob = async () => {
+  if (!scheduleQueue) {
+    throw new Error('Schedule queue not available - Redis is not configured')
+  }
   return await scheduleQueue.add(
     'cleanup',
     { type: 'cleanup' },
@@ -148,6 +160,9 @@ export const scheduleCleanupJob = async () => {
 
 // 헬스체크 작업 스케줄링
 export const scheduleHealthCheckJob = async () => {
+  if (!scheduleQueue) {
+    throw new Error('Schedule queue not available - Redis is not configured')
+  }
   return await scheduleQueue.add(
     'health-check',
     { type: 'health-check' },
@@ -159,6 +174,9 @@ export const scheduleHealthCheckJob = async () => {
 
 // 일일 리포트 작업 스케줄링
 export const scheduleDailyReportJob = async () => {
+  if (!scheduleQueue) {
+    throw new Error('Schedule queue not available - Redis is not configured')
+  }
   return await scheduleQueue.add(
     'daily-report',
     { type: 'report' },
@@ -234,12 +252,20 @@ export const getQueueStats = async () => {
 
 // 실패한 작업 재시도
 export const retryFailedJobs = async (queueName: 'notification' | 'email' | 'schedule') => {
+  if (!isRedisAvailable) {
+    throw new Error('Queue not available - Redis is not configured')
+  }
+
   const queue =
     queueName === 'notification'
       ? notificationQueue
       : queueName === 'email'
         ? emailQueue
         : scheduleQueue
+
+  if (!queue) {
+    throw new Error(`Queue ${queueName} not available`)
+  }
 
   const failed = await queue.failed()
   let retried = 0
@@ -258,12 +284,20 @@ export const retryFailedJobs = async (queueName: 'notification' | 'email' | 'sch
 
 // 큐 정리
 export const cleanQueue = async (queueName: 'notification' | 'email' | 'schedule') => {
+  if (!isRedisAvailable) {
+    throw new Error('Queue not available - Redis is not configured')
+  }
+
   const queue =
     queueName === 'notification'
       ? notificationQueue
       : queueName === 'email'
         ? emailQueue
         : scheduleQueue
+
+  if (!queue) {
+    throw new Error(`Queue ${queueName} not available`)
+  }
 
   await Promise.all([
     queue.clean(24 * 60 * 60 * 1000, 'completed'), // 24시간 이상 된 완료 작업 삭제
@@ -273,6 +307,11 @@ export const cleanQueue = async (queueName: 'notification' | 'email' | 'schedule
 
 // 큐 초기화 (개발/테스트용)
 export const initializeQueues = async () => {
+  if (!isRedisAvailable) {
+    console.log('⚠️ Redis 미사용 - 큐 초기화 건너뜀')
+    return
+  }
+
   // 기본 스케줄 작업 등록
   await scheduleCleanupJob()
   await scheduleHealthCheckJob()
@@ -283,7 +322,17 @@ export const initializeQueues = async () => {
 
 // 큐 종료
 export const closeQueues = async () => {
-  await Promise.all([notificationQueue.close(), emailQueue.close(), scheduleQueue.close()])
+  if (!isRedisAvailable) {
+    console.log('⚠️ Redis 미사용 - 큐 종료 건너뜀')
+    return
+  }
+
+  const closePromises = []
+  if (notificationQueue) closePromises.push(notificationQueue.close())
+  if (emailQueue) closePromises.push(emailQueue.close())
+  if (scheduleQueue) closePromises.push(scheduleQueue.close())
+
+  await Promise.all(closePromises)
 
   console.log('✅ 큐 종료 완료')
 }
