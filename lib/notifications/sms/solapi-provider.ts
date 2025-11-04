@@ -1,5 +1,6 @@
 import { SMSProvider, SMSMessage, SMSResult } from './sms-provider'
 import { logger } from '@/lib/utils/logger'
+import { SolapiMessageService } from 'solapi'
 
 /**
  * SOLAPI SMS Provider
@@ -32,10 +33,11 @@ interface SolapiErrorResponse {
 
 export class SolapiSMSProvider implements SMSProvider {
   private config: SolapiConfig
-  private baseUrl = 'https://api.solapi.com'
+  private messageService: SolapiMessageService
 
   constructor(config: SolapiConfig) {
     this.config = config
+    this.messageService = new SolapiMessageService(config.apiKey, config.apiSecret)
   }
 
   async sendSMS(message: SMSMessage): Promise<SMSResult> {
@@ -68,65 +70,35 @@ export class SolapiSMSProvider implements SMSProvider {
       // 메시지 타입 결정 (SMS: 90자 이하, LMS: 90자 초과)
       const messageType = message.message.length <= 90 ? 'SMS' : 'LMS'
 
-      // 요청 본문
-      const requestBody = {
-        message: {
-          to: message.to.replace(/-/g, ''), // 하이픈 제거
-          from: this.config.sender.replace(/-/g, ''),
-          text: message.message,
-          type: messageType,
-          ...(message.subject && { subject: message.subject }), // LMS일 경우 제목 추가
-        },
-      }
-
-      // HMAC 인증 헤더 생성
-      const date = new Date().toISOString()
-      const signature = this.generateSignature(date, requestBody)
-
-      // API 호출
-      const response = await fetch(`${this.baseUrl}/messages/v4/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `HMAC-SHA256 apiKey=${this.config.apiKey}, date=${date}, signature=${signature}`,
-        },
-        body: JSON.stringify(requestBody),
+      // SOLAPI SDK를 사용한 메시지 발송
+      const result = await this.messageService.send({
+        to: message.to.replace(/-/g, ''),
+        from: this.config.sender.replace(/-/g, ''),
+        text: message.message,
+        type: messageType,
+        ...(message.subject && messageType === 'LMS' && { subject: message.subject }),
       })
-
-      const data = await response.json()
-
-      // 응답 처리
-      if (!response.ok) {
-        const error = data as SolapiErrorResponse
-        logger.error('[SOLAPI] SMS 전송 실패', {
-          errorCode: error.errorCode,
-          errorMessage: error.errorMessage,
-          to: message.to,
-        })
-
-        return {
-          success: false,
-          error: error.errorMessage || '전송 실패',
-        }
-      }
-
-      const result = data as SolapiSendResponse
 
       logger.info('[SOLAPI] SMS 전송 성공', {
         messageId: result.messageId,
-        to: result.to,
-        type: result.type,
+        to: message.to,
+        type: messageType,
       })
 
       return {
         success: true,
         messageId: result.messageId,
       }
-    } catch (error) {
-      logger.error('[SOLAPI] SMS 전송 오류:', error)
+    } catch (error: any) {
+      logger.error('[SOLAPI] SMS 전송 오류:', {
+        error: error.message,
+        statusCode: error.statusCode,
+        errorCode: error.errorCode,
+      })
+
       return {
         success: false,
-        error: error instanceof Error ? error.message : '알 수 없는 오류',
+        error: error.message || '알 수 없는 오류',
       }
     }
   }
@@ -180,34 +152,6 @@ export class SolapiSMSProvider implements SMSProvider {
     }
   }
 
-  /**
-   * HMAC-SHA256 서명 생성
-   */
-  private generateSignature(date: string, body?: any): string {
-    const crypto = require('crypto')
-
-    // API Secret 검증
-    if (!this.config.apiSecret || typeof this.config.apiSecret !== 'string') {
-      logger.error('[SOLAPI] Invalid API Secret', {
-        hasSecret: !!this.config.apiSecret,
-        secretType: typeof this.config.apiSecret,
-        secretLength: this.config.apiSecret?.length,
-      })
-      throw new Error('SOLAPI API Secret must be a string')
-    }
-
-    let message = date
-    if (body) {
-      message = date + JSON.stringify(body)
-    }
-
-    const signature = crypto
-      .createHmac('sha256', this.config.apiSecret)
-      .update(message)
-      .digest('hex')
-
-    return signature
-  }
 
   /**
    * 발신번호 등록 (SOLAPI API 사용)
