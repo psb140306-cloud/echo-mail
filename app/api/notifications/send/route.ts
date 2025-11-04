@@ -49,26 +49,24 @@ const orderNotificationSchema = z.object({
 
 // 개별 알림 발송
 export async function POST(request: NextRequest) {
-  // 테넌트 컨텍스트 설정
-  const tenantResponse = await withTenantContext(request)
-  if (tenantResponse) return tenantResponse
+  return withTenantContext(request, async (req) => {
+    try {
+      const { searchParams } = new URL(req.url)
+      const action = searchParams.get('action')
 
-  try {
-    const { searchParams } = new URL(request.url)
-    const action = searchParams.get('action')
-
-    switch (action) {
-      case 'order-received':
-        return handleOrderReceivedNotification(request)
-      case 'bulk':
-        return handleBulkNotification(request)
-      default:
-        return handleSingleNotification(request)
+      switch (action) {
+        case 'order-received':
+          return handleOrderReceivedNotification(req)
+        case 'bulk':
+          return handleBulkNotification(req)
+        default:
+          return handleSingleNotification(req)
+      }
+    } catch (error) {
+      logger.error('알림 발송 API 오류:', error)
+      return createErrorResponse('알림 발송에 실패했습니다.')
     }
-  } catch (error) {
-    logger.error('알림 발송 API 오류:', error)
-    return createErrorResponse('알림 발송에 실패했습니다.')
-  }
+  })
 }
 
 // 단일 알림 발송 처리
