@@ -1,5 +1,5 @@
 import Queue from 'bull'
-import { queueRedis } from './redis'
+import { queueRedis, isRedisAvailable } from './redis'
 
 // 큐 설정
 const defaultJobOptions = {
@@ -12,17 +12,20 @@ const defaultJobOptions = {
   },
 }
 
+// Redis 설정 (없으면 null)
+const redisConfig = isRedisAvailable && queueRedis ? {
+  host: queueRedis.options.host,
+  port: queueRedis.options.port,
+  password: queueRedis.options.password,
+} : undefined
+
 // =============================================================================
 // 알림 발송 큐
 // =============================================================================
-export const notificationQueue = new Queue('notification', {
-  redis: {
-    host: queueRedis.options.host,
-    port: queueRedis.options.port,
-    password: queueRedis.options.password,
-  },
+export const notificationQueue = isRedisAvailable && redisConfig ? new Queue('notification', {
+  redis: redisConfig,
   defaultJobOptions,
-})
+}) : null
 
 // 알림 발송 작업 타입
 export interface NotificationJob {
@@ -40,6 +43,9 @@ export const addSmsJob = async (
   data: Omit<NotificationJob, 'type'>,
   options?: Queue.JobOptions
 ) => {
+  if (!notificationQueue) {
+    throw new Error('Queue not available - Redis is not configured')
+  }
   return await notificationQueue.add(
     'send-sms',
     { ...data, type: 'SMS' },
@@ -86,14 +92,10 @@ export const addKakaoFriendtalkJob = async (
 // =============================================================================
 // 메일 처리 큐
 // =============================================================================
-export const emailQueue = new Queue('email', {
-  redis: {
-    host: queueRedis.options.host,
-    port: queueRedis.options.port,
-    password: queueRedis.options.password,
-  },
+export const emailQueue = isRedisAvailable && redisConfig ? new Queue('email', {
+  redis: redisConfig,
   defaultJobOptions,
-})
+}) : null
 
 // 메일 처리 작업 타입
 export interface EmailJob {
@@ -122,14 +124,10 @@ export const addEmailProcessJob = async (data: EmailJob, options?: Queue.JobOpti
 // =============================================================================
 // 스케줄 작업 큐
 // =============================================================================
-export const scheduleQueue = new Queue('schedule', {
-  redis: {
-    host: queueRedis.options.host,
-    port: queueRedis.options.port,
-    password: queueRedis.options.password,
-  },
+export const scheduleQueue = isRedisAvailable && redisConfig ? new Queue('schedule', {
+  redis: redisConfig,
   defaultJobOptions,
-})
+}) : null
 
 // 스케줄 작업 타입
 export interface ScheduleJob {
@@ -176,6 +174,15 @@ export const scheduleDailyReportJob = async () => {
 
 // 큐 상태 조회
 export const getQueueStats = async () => {
+  // Redis가 없으면 빈 통계 반환
+  if (!isRedisAvailable || !notificationQueue || !emailQueue || !scheduleQueue) {
+    return {
+      notification: { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
+      email: { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
+      schedule: { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
+    }
+  }
+
   const [notificationStats, emailStats, scheduleStats] = await Promise.all([
     {
       waiting: await notificationQueue.waiting(),
