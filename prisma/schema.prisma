@@ -371,8 +371,12 @@ model Tenant {
   subscriptionStatus SubscriptionStatus @default(TRIAL)
   trialEndsAt      DateTime
 
-  // 소유자
-  ownerId          String?
+  // 소유자 (Supabase Auth UUID)
+  ownerId          String             // auth.users.id 참조
+
+  // 소유자 정보 (중복 저장)
+  ownerEmail       String
+  ownerName        String?
 
   // 알림 발신번호 설정
   senderPhone      String?            // 발신번호 (010-1234-5678)
@@ -387,9 +391,6 @@ model Tenant {
   maxNotifications Int @default(1000)
 
   // 관계
-  users            User[]
-  tenantUsers      TenantUser[]      // 다대다 관계
-  invitations      TenantInvitation[]
   companies        Company[]
   contacts         Contact[]
   deliveryRules    DeliveryRule[]
@@ -405,6 +406,8 @@ model Tenant {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  @@index([ownerId])
+  @@index([ownerEmail])
   @@index([subdomain])
   @@index([customDomain])
   @@index([subscriptionPlan])
@@ -473,131 +476,15 @@ model Subscription {
 }
 
 // =============================================================================
-// 사용자 및 인증 (관리자용)
+// 사용자 역할 (Supabase Auth 사용, 역할은 user_metadata에 저장)
 // =============================================================================
 
-model User {
-  id       String   @id @default(cuid())
-  email    String   @unique
-  name     String?
-  password String
-  role     UserRole @default(ADMIN)
-
-  // 멀티테넌시 (nullable for super admin users)
-  tenantId String?
-  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  isActive    Boolean   @default(true)
-  lastLoginAt DateTime?
-
-  // NextAuth.js 호환
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-
-  // 테넌트 관계
-  tenantUsers       TenantUser[]
-  sentInvitations   TenantInvitation[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([email])
-  @@index([tenantId])
-  @@index([isActive])
-  @@index([lastLoginAt])
-  @@map("users")
-}
-
 enum UserRole {
-  ADMIN
-  OPERATOR
-  VIEWER
-}
-
-// 테넌트 내 사용자 역할
-enum TenantUserRole {
   OWNER       // 소유자: 결제 관리, 테넌트 삭제 가능
   ADMIN       // 관리자: 모든 설정 가능
   MANAGER     // 매니저: 업체/담당자 관리
   OPERATOR    // 운영자: 알림 발송만
   VIEWER      // 뷰어: 읽기 전용
-}
-
-// 테넌트-사용자 관계 (다대다 관계)
-model TenantUser {
-  id       String         @id @default(cuid())
-
-  // 관계
-  tenantId String
-  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  userId   String
-  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // 테넌트 내 역할
-  role     TenantUserRole @default(VIEWER)
-
-  // 초대 관련
-  invitedBy    String?
-  invitedAt    DateTime?
-  acceptedAt   DateTime?
-
-  // 상태
-  isActive     Boolean      @default(true)
-
-  // 메타데이터
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  @@unique([tenantId, userId])
-  @@index([tenantId])
-  @@index([userId])
-  @@index([tenantId, role])
-  @@index([tenantId, isActive])
-  @@map("tenant_users")
-}
-
-// 테넌트 사용자 초대
-model TenantInvitation {
-  id          String         @id @default(cuid())
-
-  // 관계
-  tenantId    String
-  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  // 초대 정보
-  email       String
-  role        TenantUserRole @default(VIEWER)
-  token       String         @unique
-
-  // 초대자
-  invitedBy   String
-  inviter     User           @relation(fields: [invitedBy], references: [id])
-
-  // 상태
-  status      InvitationStatus @default(PENDING)
-  expiresAt   DateTime
-  acceptedAt  DateTime?
-
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  @@index([tenantId])
-  @@index([email])
-  @@index([token])
-  @@index([status])
-  @@index([expiresAt])
-  @@index([invitedBy])
-  @@map("tenant_invitations")
-}
-
-enum InvitationStatus {
-  PENDING
-  ACCEPTED
-  EXPIRED
-  CANCELLED
 }
 
 // 인보이스 및 결제
@@ -659,51 +546,3 @@ enum InvoiceStatus {
   REFUNDED       // 환불됨
 }
 
-// =============================================================================
-// NextAuth.js Models
-// =============================================================================
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@index([userId])
-  @@index([provider])
-  @@map("accounts")
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expires])
-  @@map("sessions")
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-  @@index([expires])
-  @@map("verification_tokens")
-}
