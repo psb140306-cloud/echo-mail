@@ -9,6 +9,41 @@ import bcrypt from 'bcryptjs'
  */
 export async function POST(request: NextRequest) {
   try {
+    // 웹훅 비밀 키 검증
+    const webhookSecret = process.env.SUPABASE_WEBHOOK_SECRET
+    const authHeader = request.headers.get('authorization')
+
+    if (!webhookSecret) {
+      logger.error('SUPABASE_WEBHOOK_SECRET not configured')
+      return NextResponse.json(
+        { success: false, error: 'Webhook not configured' },
+        { status: 503 }
+      )
+    }
+
+    // Bearer 토큰 검증
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn('Webhook authentication failed: Missing authorization header', {
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+      })
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const providedSecret = authHeader.substring(7)
+    if (providedSecret !== webhookSecret) {
+      logger.warn('Webhook authentication failed: Invalid secret', {
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+        providedPrefix: providedSecret.substring(0, 8) + '...',
+      })
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
 
     logger.info('Auth webhook received', {
