@@ -114,6 +114,7 @@ export default function SignUpPage() {
         .replace(/^-|-$/g, '')
         .substring(0, 50)
 
+      // 1. Supabase Auth 회원가입
       const { error } = await signUp(email, password, {
         full_name: ownerName,
         company_name: companyName,
@@ -129,6 +130,31 @@ export default function SignUpPage() {
             error.message === 'User already registered'
               ? '이미 등록된 이메일입니다.'
               : error.message,
+          variant: 'destructive',
+        })
+        return
+      }
+
+      // 2. Tenant 및 User 생성 (세션 쿠키가 설정된 후)
+      await new Promise(resolve => setTimeout(resolve, 1000)) // 세션 쿠키 설정 대기
+
+      const setupResponse = await fetch('/api/auth/setup-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName,
+          ownerName,
+          subscriptionPlan,
+          subdomain: autoSubdomain,
+        }),
+      })
+
+      const setupData = await setupResponse.json()
+
+      if (!setupData.success) {
+        toast({
+          title: '계정 설정 실패',
+          description: setupData.message || '계정 설정 중 오류가 발생했습니다.',
           variant: 'destructive',
         })
         return
