@@ -44,7 +44,6 @@ export default function SignUpPage() {
 
   // Step 2: 회사 정보
   const [companyName, setCompanyName] = useState('')
-  const [subdomain, setSubdomain] = useState('')
   const [subscriptionPlan, setSubscriptionPlan] = useState('FREE_TRIAL')
   const [ownerName, setOwnerName] = useState('')
 
@@ -80,21 +79,10 @@ export default function SignUpPage() {
   }
 
   const validateStep2 = () => {
-    if (!companyName || !subdomain || !ownerName) {
+    if (!companyName || !ownerName) {
       toast({
         title: '입력 오류',
         description: '모든 필드를 입력해주세요.',
-        variant: 'destructive',
-      })
-      return false
-    }
-
-    // 서브도메인 형식 검증 (영문, 숫자, 하이픈만 허용)
-    const subdomainRegex = /^[a-zA-Z0-9-]+$/
-    if (!subdomainRegex.test(subdomain)) {
-      toast({
-        title: '서브도메인 오류',
-        description: '서브도메인은 영문, 숫자, 하이픈(-)만 사용할 수 있습니다.',
         variant: 'destructive',
       })
       return false
@@ -118,10 +106,18 @@ export default function SignUpPage() {
 
     try {
       // 회사 정보와 함께 회원가입
+      // subdomain은 회사명을 기반으로 자동 생성
+      const autoSubdomain = companyName
+        .toLowerCase()
+        .replace(/[^a-z0-9가-힣]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 50)
+
       const { error } = await signUp(email, password, {
         full_name: ownerName,
         company_name: companyName,
-        subdomain: subdomain,
+        subdomain: autoSubdomain,
         subscription_plan: subscriptionPlan,
         role: 'OWNER',
       })
@@ -303,27 +299,6 @@ export default function SignUpPage() {
                       required
                     />
                   </div>
-                </div>
-
-                {/* 서브도메인 */}
-                <div className="space-y-2">
-                  <Label htmlFor="subdomain">서브도메인</Label>
-                  <div className="flex">
-                    <Input
-                      id="subdomain"
-                      placeholder="company"
-                      value={subdomain}
-                      onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
-                      className="rounded-r-none"
-                      required
-                    />
-                    <div className="px-3 py-2 bg-gray-100 border border-l-0 rounded-r-md text-sm text-gray-600">
-                      .echomail.co.kr
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    고객이 접속할 주소입니다. 영문, 숫자, 하이픈(-) 사용 가능
-                  </p>
                 </div>
 
                 {/* 대표자명 */}
