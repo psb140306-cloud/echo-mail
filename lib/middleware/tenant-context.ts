@@ -256,7 +256,7 @@ export async function withTenantContext<T>(
 
         if (authUser) {
           // Supabase Auth UUID로 tenant 조회
-          const userTenant = await prisma.tenant.findFirst({
+          let userTenant = await prisma.tenant.findFirst({
             where: { ownerId: authUser.id },
           })
 
@@ -265,6 +265,51 @@ export async function withTenantContext<T>(
             foundTenant: !!userTenant,
             tenantId: userTenant?.id,
           })
+
+          // Tenant가 없으면 자동 생성
+          if (!userTenant && authUser.email) {
+            logger.info('No tenant found, creating new tenant', {
+              userId: authUser.id,
+              email: authUser.email,
+            })
+
+            const metadata = authUser.user_metadata || {}
+            const companyName = metadata.company_name || '내 회사'
+            const subdomain = metadata.subdomain || authUser.email.split('@')[0].replace(/[^a-zA-Z0-9-]/g, '')
+            const subscriptionPlan = metadata.subscription_plan || 'FREE_TRIAL'
+            const ownerName = metadata.full_name || authUser.email.split('@')[0]
+
+            try {
+              userTenant = await prisma.tenant.create({
+                data: {
+                  name: companyName,
+                  subdomain,
+                  ownerId: authUser.id,
+                  ownerEmail: authUser.email,
+                  ownerName,
+                  subscriptionPlan,
+                  subscriptionStatus: subscriptionPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
+                  trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14일
+                  maxCompanies: subscriptionPlan === 'FREE_TRIAL' ? 10 : 50,
+                  maxContacts: subscriptionPlan === 'FREE_TRIAL' ? 50 : 300,
+                  maxEmails: subscriptionPlan === 'FREE_TRIAL' ? 100 : 5000,
+                  maxNotifications: subscriptionPlan === 'FREE_TRIAL' ? 100 : 10000,
+                },
+              })
+
+              logger.info('✅ Tenant created automatically on first login', {
+                tenantId: userTenant.id,
+                ownerId: authUser.id,
+                email: authUser.email,
+              })
+            } catch (error) {
+              logger.error('Failed to create tenant automatically', {
+                userId: authUser.id,
+                email: authUser.email,
+                error: error instanceof Error ? error.message : 'Unknown error',
+              })
+            }
+          }
 
           if (userTenant) {
             tenant = {

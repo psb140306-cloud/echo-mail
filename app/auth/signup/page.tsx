@@ -136,18 +136,7 @@ export default function SignUpPage() {
       }
 
       // 회원가입 성공! 이메일 인증 안내
-      // 참고: Tenant는 이메일 인증 후 첫 로그인 시 자동으로 생성됩니다
-
-      // localStorage에 회사 정보 저장 (tenant 생성용)
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('pendingTenantSetup', JSON.stringify({
-          email,
-          companyName,
-          ownerName,
-          subscriptionPlan,
-          subdomain: autoSubdomain,
-        }))
-      }
+      // 참고: Tenant는 이메일 인증 후 첫 API 호출 시 자동으로 생성됩니다
 
       toast({
         title: '회원가입 성공',

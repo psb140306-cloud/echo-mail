@@ -34,7 +34,8 @@
       "Bash(cat:*)",
       "Bash(curl:*)",
       "Bash(python -m json.tool:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []
