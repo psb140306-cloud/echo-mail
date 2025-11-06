@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
-import { createClient } from '@/lib/supabase/server'
 
 /**
  * 회원가입 후 Tenant 생성
@@ -9,15 +8,33 @@ import { createClient } from '@/lib/supabase/server'
  */
 export async function POST(request: NextRequest) {
   try {
-    // Supabase 세션 확인
-    const supabase = await createClient()
+    // API Route에서 Supabase 클라이언트 생성 (request.cookies 사용)
+    const { createServerClient } = await import('@supabase/ssr')
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set() {},
+          remove() {},
+        },
+      }
+    )
+
     const {
       data: { user: authUser },
       error: authError,
     } = await supabase.auth.getUser()
 
     if (authError || !authUser) {
-      logger.error('Unauthorized setup account attempt', { error: authError?.message })
+      logger.error('Unauthorized setup account attempt', {
+        error: authError?.message,
+        cookieCount: request.cookies.getAll().length
+      })
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     }
 
