@@ -219,13 +219,22 @@ export async function withTenantContext<T>(
         // API Route에서 Supabase 클라이언트 생성
         const { createServerClient } = await import('@supabase/ssr')
 
+        // 모든 쿠키 확인 (디버깅)
+        const allCookies = request.cookies.getAll()
+        logger.info('All cookies in request', {
+          cookieCount: allCookies.length,
+          cookieNames: allCookies.map((c) => c.name),
+        })
+
         const supabase = createServerClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
           {
             cookies: {
               get(name: string) {
-                return request.cookies.get(name)?.value
+                const value = request.cookies.get(name)?.value
+                logger.debug('Cookie get', { name, hasValue: !!value })
+                return value
               },
               set() {},
               remove() {},
@@ -235,12 +244,26 @@ export async function withTenantContext<T>(
 
         const {
           data: { user: authUser },
+          error: authError,
         } = await supabase.auth.getUser()
+
+        logger.info('Supabase auth.getUser result', {
+          hasUser: !!authUser,
+          userId: authUser?.id,
+          userEmail: authUser?.email,
+          error: authError?.message,
+        })
 
         if (authUser) {
           // Supabase Auth UUID로 tenant 조회
           const userTenant = await prisma.tenant.findFirst({
             where: { ownerId: authUser.id },
+          })
+
+          logger.info('Tenant lookup by ownerId', {
+            ownerId: authUser.id,
+            foundTenant: !!userTenant,
+            tenantId: userTenant?.id,
           })
 
           if (userTenant) {
@@ -251,7 +274,7 @@ export async function withTenantContext<T>(
               customDomain: userTenant.customDomain || undefined,
               subscriptionPlan: userTenant.subscriptionPlan,
             }
-            logger.debug('Tenant found from Supabase Auth session', {
+            logger.info('✅ Tenant found from Supabase Auth session', {
               userId: authUser.id,
               userEmail: authUser.email,
               tenantId: tenant.id,
