@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ServerMetrics } from '@/components/super-admin/server-metrics';
 import { ApiUsageStats } from '@/components/super-admin/api-usage-stats';

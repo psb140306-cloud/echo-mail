@@ -22,6 +22,9 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
 
+  // 빌드 최적화
+  output: 'standalone',
+
   // 환경변수 설정
   env: {
     APP_VERSION: process.env.npm_package_version || '1.0.0',

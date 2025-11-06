@@ -7,6 +7,10 @@ import { AuthProvider } from '@/components/providers/auth-provider'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// Force dynamic rendering for all pages
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 export const metadata: Metadata = {
   title: 'Echo Mail - 발주 확인 자동 알림 시스템',
   description:

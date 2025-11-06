@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getSystemHealth } from '@/lib/monitoring/health-check';
 import { HealthStatusCard } from '@/components/super-admin/health-status-card';
 import { SystemMetrics } from '@/components/super-admin/system-metrics';

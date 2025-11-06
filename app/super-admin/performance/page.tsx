@@ -1,10 +1,20 @@
 'use client';
 
-import { PerformanceCharts } from '@/components/super-admin/performance-charts';
-import { DatabasePerformance } from '@/components/super-admin/database-performance';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
 import { Activity, Clock, Zap, TrendingDown, TrendingUp } from 'lucide-react';
+
+// Recharts를 사용하는 컴포넌트는 dynamic import로 처리
+const PerformanceCharts = dynamic(
+  () => import('@/components/super-admin/performance-charts').then((mod) => ({ default: mod.PerformanceCharts })),
+  { ssr: false }
+);
+
+const DatabasePerformance = dynamic(
+  () => import('@/components/super-admin/database-performance').then((mod) => ({ default: mod.DatabasePerformance })),
+  { ssr: false }
+);
 
 interface PerformanceSummary {
   avgResponseTime: number;
