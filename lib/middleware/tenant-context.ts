@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { prisma } from '@/lib/db'
-import { createClient } from '@/lib/supabase/server'
 
 const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID ?? 'dev-tenant-id'
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? 'Development Tenant'
@@ -217,7 +216,23 @@ export async function withTenantContext<T>(
     // 도메인에서 tenant를 찾지 못한 경우, Supabase Auth 세션에서 가져오기
     if (!tenant) {
       try {
-        const supabase = await createClient()
+        // API Route에서 Supabase 클라이언트 생성
+        const { createServerClient } = await import('@supabase/ssr')
+
+        const supabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            cookies: {
+              get(name: string) {
+                return request.cookies.get(name)?.value
+              },
+              set() {},
+              remove() {},
+            },
+          }
+        )
+
         const {
           data: { user: authUser },
         } = await supabase.auth.getUser()
