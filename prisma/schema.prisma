@@ -402,6 +402,8 @@ model Tenant {
   systemConfigs    SystemConfig[]
   subscriptions    Subscription[]
   invoices         Invoice[]
+  members          TenantMember[] // 팀원 관리
+  invitations      TenantInvitation[] // 초대 관리
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -415,6 +417,94 @@ model Tenant {
   @@index([trialEndsAt])
   @@index([createdAt])
   @@map("tenants")
+}
+
+// 테넌트 멤버십 (Supabase Auth 사용자와 테넌트 연결)
+model TenantMember {
+  id        String   @id @default(cuid())
+
+  // Supabase Auth UUID
+  userId    String   // auth.users.id 참조
+  userEmail String   // 중복 저장 (성능)
+  userName  String?  // 중복 저장 (성능)
+
+  // 테넌트
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // 역할
+  role      TenantRole @default(MEMBER)
+
+  // 상태
+  status    MemberStatus @default(ACTIVE)
+
+  // 초대 정보
+  invitedBy    String?   // 초대한 사용자 ID
+  invitedAt    DateTime  @default(now())
+  acceptedAt   DateTime? // 초대 수락 시간
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 한 사용자는 하나의 테넌트에 한 번만 속할 수 있음
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([userEmail])
+  @@map("tenant_members")
+}
+
+// 테넌트 초대
+model TenantInvitation {
+  id        String   @id @default(cuid())
+
+  // 초대 정보
+  email     String
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  role      TenantRole @default(MEMBER)
+  token     String   @unique // 초대 토큰
+
+  // 상태
+  status    InvitationStatus @default(PENDING)
+
+  // 메타데이터
+  invitedBy String   // 초대한 사용자 ID
+  invitedAt DateTime @default(now())
+  expiresAt DateTime // 만료 시간 (7일)
+  acceptedAt DateTime?
+  acceptedBy String?  // 수락한 사용자 ID (Supabase UUID)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([token])
+  @@index([email])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([expiresAt])
+  @@map("tenant_invitations")
+}
+
+enum TenantRole {
+  OWNER   // 소유자 (모든 권한)
+  ADMIN   // 관리자 (팀원 관리 제외 모든 권한)
+  MEMBER  // 멤버 (기본 권한)
+}
+
+enum MemberStatus {
+  ACTIVE    // 활성
+  SUSPENDED // 정지
+  INACTIVE  // 비활성
+}
+
+enum InvitationStatus {
+  PENDING   // 대기중
+  ACCEPTED  // 수락됨
+  EXPIRED   // 만료됨
+  CANCELLED // 취소됨
 }
 
 enum SubscriptionPlan {

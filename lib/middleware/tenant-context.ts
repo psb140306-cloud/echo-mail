@@ -255,15 +255,25 @@ export async function withTenantContext<T>(
         })
 
         if (authUser) {
-          // Supabase Auth UUID로 tenant 조회
-          let userTenant = await prisma.tenant.findFirst({
-            where: { ownerId: authUser.id },
+          // Supabase Auth UUID로 tenant 조회 (멤버십을 통해)
+          const memberShip = await prisma.tenantMember.findFirst({
+            where: {
+              userId: authUser.id,
+              status: 'ACTIVE',
+            },
+            include: {
+              tenant: true,
+            },
           })
 
-          logger.info('Tenant lookup by ownerId', {
-            ownerId: authUser.id,
+          let userTenant = memberShip?.tenant
+
+          logger.info('Tenant lookup by tenantMember', {
+            userId: authUser.id,
+            foundMembership: !!memberShip,
             foundTenant: !!userTenant,
             tenantId: userTenant?.id,
+            memberRole: memberShip?.role,
           })
 
           // Tenant가 없으면 자동 생성
@@ -280,6 +290,7 @@ export async function withTenantContext<T>(
             const ownerName = metadata.full_name || authUser.email.split('@')[0]
 
             try {
+              // 트랜잭션으로 Tenant와 TenantMember를 함께 생성
               userTenant = await prisma.tenant.create({
                 data: {
                   name: companyName,
@@ -294,10 +305,21 @@ export async function withTenantContext<T>(
                   maxContacts: subscriptionPlan === 'FREE_TRIAL' ? 50 : 300,
                   maxEmails: subscriptionPlan === 'FREE_TRIAL' ? 100 : 5000,
                   maxNotifications: subscriptionPlan === 'FREE_TRIAL' ? 100 : 10000,
+                  // 동시에 OWNER 멤버십 생성
+                  members: {
+                    create: {
+                      userId: authUser.id,
+                      userEmail: authUser.email,
+                      userName: ownerName,
+                      role: 'OWNER',
+                      status: 'ACTIVE',
+                      acceptedAt: new Date(),
+                    },
+                  },
                 },
               })
 
-              logger.info('✅ Tenant created automatically on first login', {
+              logger.info('✅ Tenant and Owner membership created automatically on first login', {
                 tenantId: userTenant.id,
                 ownerId: authUser.id,
                 email: authUser.email,

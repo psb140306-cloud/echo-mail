@@ -1,5 +1,4 @@
-import { PrismaClient, NotificationType } from '@prisma/client'
-import bcrypt from 'bcryptjs'
+import { PrismaClient } from '@prisma/client'
 import dotenv from 'dotenv'
 
 // Load environment variables
@@ -13,12 +12,22 @@ async function main() {
   // =============================================================================
   // 테스트 테넌트 생성
   // =============================================================================
+
+  // Supabase Auth에서 생성된 테스트 사용자 ID
+  // 실제로는 Supabase Dashboard에서 생성하거나 회원가입을 통해 생성된 UUID를 사용
+  const TEST_USER_ID = '00000000-0000-0000-0000-000000000001' // 예시 UUID
+  const TEST_USER_EMAIL = 'test@echomail.com'
+  const TEST_USER_NAME = '테스트 사용자'
+
   const testTenant = await prisma.tenant.upsert({
     where: { subdomain: 'test' },
     update: {},
     create: {
       name: '테스트 회사',
       subdomain: 'test',
+      ownerId: TEST_USER_ID,
+      ownerEmail: TEST_USER_EMAIL,
+      ownerName: TEST_USER_NAME,
       subscriptionPlan: 'PROFESSIONAL',
       subscriptionStatus: 'ACTIVE',
       trialEndsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1년 후
@@ -31,400 +40,174 @@ async function main() {
 
   console.log('✅ 테스트 테넌트 생성:', testTenant.subdomain)
 
-  // =============================================================================
-  // 테스트 계정 생성 (이메일 인증 완료)
-  // =============================================================================
-  const testHashedPassword = await bcrypt.hash('test123!', 12)
-
-  const testUser = await prisma.user.upsert({
-    where: { email: 'test@echomail.com' },
-    update: {},
-    create: {
-      email: 'test@echomail.com',
-      name: '테스트 사용자',
-      password: testHashedPassword,
-      role: 'ADMIN',
-      emailVerified: new Date(), // 이메일 인증 완료
-      tenantId: testTenant.id,
-    },
-  })
-
-  console.log('✅ 테스트 계정 생성:', testUser.email, '(이메일 인증 완료)')
-
-  // 테넌트-사용자 관계 설정 (OWNER 역할)
-  await prisma.tenantUser.upsert({
+  // 테넌트 멤버 생성 (OWNER)
+  await prisma.tenantMember.upsert({
     where: {
       tenantId_userId: {
         tenantId: testTenant.id,
-        userId: testUser.id,
+        userId: TEST_USER_ID,
       },
     },
     update: {},
     create: {
       tenantId: testTenant.id,
-      userId: testUser.id,
+      userId: TEST_USER_ID,
+      userEmail: TEST_USER_EMAIL,
+      userName: TEST_USER_NAME,
       role: 'OWNER',
+      status: 'ACTIVE',
       acceptedAt: new Date(),
     },
   })
 
-  // 테넌트 소유자 설정
-  await prisma.tenant.update({
-    where: { id: testTenant.id },
-    data: { ownerId: testUser.id },
-  })
-
-  console.log('✅ 테넌트-사용자 관계 설정 완료')
+  console.log('✅ 테넌트 소유자 멤버십 생성 완료')
 
   // =============================================================================
-  // 관리자 계정 생성 (슈퍼 관리자 - tenantId 없음)
+  // 샘플 데이터 생성 (업체, 담당자)
   // =============================================================================
-  const hashedPassword = await bcrypt.hash('admin123!', 12)
 
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@echomail.com' },
-    update: {},
-    create: {
-      email: 'admin@echomail.com',
-      name: '시스템 관리자',
-      password: hashedPassword,
-      role: 'ADMIN',
-      emailVerified: new Date(), // 이메일 인증 완료
-      // tenantId 없음 (슈퍼 관리자)
-    },
-  })
-
-  console.log('✅ 슈퍼 관리자 계정 생성:', admin.email)
-
-  // =============================================================================
-  // 실제 사용자 테넌트 생성 (별도 독립 테넌트)
-  // =============================================================================
-  const realTenant = await prisma.tenant.upsert({
-    where: { subdomain: 'echomail' },
-    update: {},
-    create: {
-      name: '에코메일',
-      subdomain: 'echomail',
-      subscriptionPlan: 'FREE_TRIAL',
-      subscriptionStatus: 'TRIAL',
-      trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30일 후
-      maxCompanies: 10,
-      maxContacts: 50,
-      maxEmails: 100,
-      maxNotifications: 100,
-    },
-  })
-
-  console.log('✅ 실제 사용자 테넌트 생성:', realTenant.subdomain)
-
-  // 실제 사용자 관리자 계정 (별도 tenant 사용)
-  const realAdminPassword = await bcrypt.hash('echomail2025!', 12)
-
-  const realAdmin = await prisma.user.upsert({
-    where: { email: 'seah0623@naver.com' },
-    update: {},
-    create: {
-      email: 'seah0623@naver.com',
-      name: '에코메일 관리자',
-      password: realAdminPassword,
-      role: 'ADMIN',
-      emailVerified: new Date(),
-      tenantId: realTenant.id, // 별도 테넌트 사용
-    },
-  })
-
-  console.log('✅ 실제 관리자 계정 생성:', realAdmin.email)
-
-  // 테넌트-사용자 관계 설정 (OWNER 역할)
-  await prisma.tenantUser.upsert({
-    where: {
-      tenantId_userId: {
-        tenantId: realTenant.id,
-        userId: realAdmin.id,
-      },
-    },
-    update: {},
-    create: {
-      tenantId: realTenant.id,
-      userId: realAdmin.id,
-      role: 'OWNER',
-      acceptedAt: new Date(),
-    },
-  })
-
-  // 테넌트 소유자 설정
-  await prisma.tenant.update({
-    where: { id: realTenant.id },
-    data: { ownerId: realAdmin.id },
-  })
-
-  console.log('✅ 실제 관리자 테넌트 연결 완료')
-
-  // =============================================================================
-  // 시스템 설정
-  // =============================================================================
-  const systemConfigs = [
-    {
-      key: 'MAIL_CHECK_INTERVAL',
-      value: '30000',
-      description: '메일 체크 간격 (밀리초)',
-      category: 'mail',
-    },
-    {
-      key: 'SMS_RATE_LIMIT',
-      value: '100',
-      description: '분당 SMS 발송 제한',
-      category: 'notification',
-    },
-    {
-      key: 'KAKAO_RATE_LIMIT',
-      value: '200',
-      description: '분당 카카오톡 발송 제한',
-      category: 'notification',
-    },
-    {
-      key: 'DEFAULT_RETRY_COUNT',
-      value: '3',
-      description: '기본 재시도 횟수',
-      category: 'notification',
-    },
-  ]
-
-  for (const config of systemConfigs) {
-    await prisma.systemConfig.upsert({
-      where: {
-        tenantId_key: {
-          tenantId: testTenant.id,
-          key: config.key,
-        },
-      },
-      update: config,
-      create: {
-        ...config,
-        tenantId: testTenant.id,
-      },
-    })
-  }
-
-  console.log('✅ 시스템 설정 생성 완료')
-
-  // =============================================================================
-  // 메시지 템플릿
-  // =============================================================================
-  const messageTemplates = [
-    {
-      name: 'ORDER_RECEIVED_SMS',
-      type: NotificationType.SMS,
-      content:
-        '[발주 접수 알림]\n{{companyName}}님의 발주가 접수되었습니다.\n납품 예정일: {{deliveryDate}} {{deliveryTime}}\n감사합니다.',
-      variables: ['companyName', 'deliveryDate', 'deliveryTime'],
-      isDefault: true,
-    },
-    {
-      name: 'ORDER_RECEIVED_KAKAO',
-      type: NotificationType.KAKAO_ALIMTALK,
-      subject: '발주 접수 확인',
-      content:
-        '{{companyName}}님의 발주가 정상적으로 접수되었습니다.\n\n📦 납품 예정일: {{deliveryDate}} {{deliveryTime}}\n\n문의사항이 있으시면 언제든 연락 주세요.\n감사합니다.',
-      variables: ['companyName', 'deliveryDate', 'deliveryTime'],
-      isDefault: true,
-    },
-  ]
-
-  for (const template of messageTemplates) {
-    await prisma.messageTemplate.upsert({
-      where: {
-        tenantId_name: {
-          tenantId: testTenant.id,
-          name: template.name,
-        },
-      },
-      update: template,
-      create: {
-        ...template,
-        tenantId: testTenant.id,
-      },
-    })
-  }
-
-  console.log('✅ 메시지 템플릿 생성 완료')
-
-  // =============================================================================
-  // 테스트용 업체 데이터
-  // =============================================================================
-  const testCompanies = [
-    {
-      name: '대한상사',
-      email: 'order@daehan.co.kr',
+  // 샘플 업체 1
+  const company1 = await prisma.company.create({
+    data: {
+      name: '서울 철강',
+      email: 'seoul-steel@example.com',
       region: '서울',
-      contacts: [
-        {
-          name: '김대리',
-          phone: '010-1234-5678',
-          email: 'kim@daehan.co.kr',
-          position: '구매담당',
-        },
-      ],
+      tenantId: testTenant.id,
+      isActive: true,
     },
-    {
-      name: '부산물산',
-      email: 'purchase@busan.co.kr',
+  })
+
+  // 샘플 담당자 1-1
+  await prisma.contact.create({
+    data: {
+      name: '김철수',
+      phone: '010-1234-5678',
+      email: 'kim@seoul-steel.com',
+      position: '구매 담당',
+      companyId: company1.id,
+      tenantId: testTenant.id,
+      isActive: true,
+      smsEnabled: true,
+      kakaoEnabled: false,
+    },
+  })
+
+  // 샘플 담당자 1-2
+  await prisma.contact.create({
+    data: {
+      name: '이영희',
+      phone: '010-2345-6789',
+      email: 'lee@seoul-steel.com',
+      position: '부장',
+      companyId: company1.id,
+      tenantId: testTenant.id,
+      isActive: true,
+      smsEnabled: true,
+      kakaoEnabled: true,
+    },
+  })
+
+  console.log('✅ 샘플 업체 1 생성:', company1.name)
+
+  // 샘플 업체 2
+  const company2 = await prisma.company.create({
+    data: {
+      name: '부산 건설',
+      email: 'busan-construction@example.com',
       region: '부산',
-      contacts: [
-        {
-          name: '이과장',
-          phone: '010-2345-6789',
-          email: 'lee@busan.co.kr',
-          position: '구매과장',
-        },
-      ],
+      tenantId: testTenant.id,
+      isActive: true,
     },
-  ]
+  })
 
-  for (const companyData of testCompanies) {
-    const { contacts, ...company } = companyData
+  // 샘플 담당자 2-1
+  await prisma.contact.create({
+    data: {
+      name: '박민수',
+      phone: '010-3456-7890',
+      email: 'park@busan-construction.com',
+      position: '자재 담당',
+      companyId: company2.id,
+      tenantId: testTenant.id,
+      isActive: true,
+      smsEnabled: true,
+      kakaoEnabled: false,
+    },
+  })
 
-    const createdCompany = await prisma.company.upsert({
-      where: {
-        tenantId_email: {
-          tenantId: testTenant.id,
-          email: company.email,
-        },
-      },
-      update: company,
-      create: {
-        ...company,
-        tenantId: testTenant.id,
-      },
-    })
-
-    // 담당자 생성
-    for (const contact of contacts) {
-      await prisma.contact.upsert({
-        where: {
-          id: `${testTenant.id}-${createdCompany.id}-${contact.phone}`,
-        },
-        update: contact,
-        create: {
-          ...contact,
-          companyId: createdCompany.id,
-          tenantId: testTenant.id,
-        },
-      })
-    }
-  }
-
-  console.log('✅ 테스트 업체 데이터 생성 완료')
+  console.log('✅ 샘플 업체 2 생성:', company2.name)
 
   // =============================================================================
-  // 기본 납품 규칙
+  // 납품 규칙 생성
   // =============================================================================
-  const deliveryRules = [
-    {
+
+  await prisma.deliveryRule.create({
+    data: {
       region: '서울',
-      morningCutoff: '12:00',
-      afternoonCutoff: '18:00',
-      morningDeliveryDays: 1,
-      afternoonDeliveryDays: 1,
-    },
-    {
-      region: '부산',
-      morningCutoff: '11:00',
-      afternoonCutoff: '17:00',
+      morningCutoff: '09:00',
+      afternoonCutoff: '14:00',
       morningDeliveryDays: 1,
       afternoonDeliveryDays: 2,
+      excludeWeekends: true,
+      excludeHolidays: true,
+      tenantId: testTenant.id,
+      isActive: true,
     },
-    {
-      region: '대구',
-      morningCutoff: '11:30',
-      afternoonCutoff: '17:30',
-      morningDeliveryDays: 1,
-      afternoonDeliveryDays: 2,
-    },
-  ]
+  })
 
-  for (const rule of deliveryRules) {
-    await prisma.deliveryRule.upsert({
-      where: {
-        tenantId_region: {
-          tenantId: testTenant.id,
-          region: rule.region,
-        },
-      },
-      update: rule,
-      create: {
-        ...rule,
-        tenantId: testTenant.id,
-      },
-    })
-  }
+  await prisma.deliveryRule.create({
+    data: {
+      region: '부산',
+      morningCutoff: '10:00',
+      afternoonCutoff: '15:00',
+      morningDeliveryDays: 2,
+      afternoonDeliveryDays: 3,
+      excludeWeekends: true,
+      excludeHolidays: true,
+      tenantId: testTenant.id,
+      isActive: true,
+    },
+  })
 
   console.log('✅ 납품 규칙 생성 완료')
 
   // =============================================================================
-  // 공휴일 데이터 (2025년 기준)
+  // 공휴일 생성
   // =============================================================================
+
+  const currentYear = new Date().getFullYear()
+
   const holidays = [
-    { date: new Date('2025-01-01'), name: '신정', isRecurring: true },
-    { date: new Date('2025-01-28'), name: '설날 연휴', isRecurring: false },
-    { date: new Date('2025-01-29'), name: '설날', isRecurring: false },
-    { date: new Date('2025-01-30'), name: '설날 연휴', isRecurring: false },
-    { date: new Date('2025-03-01'), name: '삼일절', isRecurring: true },
-    { date: new Date('2025-05-05'), name: '어린이날', isRecurring: true },
-    { date: new Date('2025-05-06'), name: '석가탄신일', isRecurring: false },
-    { date: new Date('2025-06-06'), name: '현충일', isRecurring: true },
-    { date: new Date('2025-08-15'), name: '광복절', isRecurring: true },
-    { date: new Date('2025-10-03'), name: '개천절', isRecurring: true },
-    { date: new Date('2025-10-06'), name: '추석 연휴', isRecurring: false },
-    { date: new Date('2025-10-07'), name: '추석', isRecurring: false },
-    { date: new Date('2025-10-08'), name: '추석 연휴', isRecurring: false },
-    { date: new Date('2025-10-09'), name: '한글날', isRecurring: true },
-    { date: new Date('2025-12-25'), name: '크리스마스', isRecurring: true },
+    { date: new Date(`${currentYear}-01-01`), name: '신정' },
+    { date: new Date(`${currentYear}-03-01`), name: '삼일절' },
+    { date: new Date(`${currentYear}-05-05`), name: '어린이날' },
+    { date: new Date(`${currentYear}-06-06`), name: '현충일' },
+    { date: new Date(`${currentYear}-08-15`), name: '광복절' },
+    { date: new Date(`${currentYear}-10-03`), name: '개천절' },
+    { date: new Date(`${currentYear}-10-09`), name: '한글날' },
+    { date: new Date(`${currentYear}-12-25`), name: '크리스마스' },
   ]
 
   for (const holiday of holidays) {
-    await prisma.holiday.upsert({
-      where: {
-        tenantId_date: {
-          tenantId: testTenant.id,
-          date: holiday.date,
-        },
-      },
-      update: holiday,
-      create: {
-        ...holiday,
+    await prisma.holiday.create({
+      data: {
+        date: holiday.date,
+        name: holiday.name,
         tenantId: testTenant.id,
       },
     })
   }
 
-  console.log('✅ 공휴일 데이터 생성 완료')
+  console.log('✅ 공휴일 생성 완료')
 
-  console.log('\n🎉 데이터베이스 시드 데이터 생성 완료!')
-  console.log('\n📝 테스트 계정 정보:')
-  console.log('  - 이메일: test@echomail.com')
-  console.log('  - 비밀번호: test123!')
-  console.log('  - 테넌트: test (독립)')
-  console.log('  - 플랜: PROFESSIONAL')
-  console.log('  - 이메일 인증: 완료')
-  console.log('\n📝 슈퍼 관리자 계정:')
-  console.log('  - 이메일: admin@echomail.com')
-  console.log('  - 비밀번호: admin123!')
-  console.log('  - 역할: 슈퍼 관리자 (모든 테넌트 접근)')
-  console.log('\n📝 실제 관리자 계정:')
-  console.log('  - 이메일: seah0623@naver.com')
-  console.log('  - 비밀번호: echomail2025!')
-  console.log('  - 테넌트: echomail (독립)')
-  console.log('  - 플랜: FREE_TRIAL')
-  console.log('  - 역할: OWNER (테넌트 관리자)')
+  console.log('🎉 시드 데이터 생성 완료!')
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect()
-  })
-  .catch(async (e) => {
+  .catch((e) => {
     console.error('❌ 시드 데이터 생성 실패:', e)
-    await prisma.$disconnect()
     process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
   })

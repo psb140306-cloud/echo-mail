@@ -370,20 +370,19 @@ export class UsageTracker {
       await redis.setex(alertKey, 3600, '1') // 1시간
 
       // 테넌트 관리자 정보 조회
-      const tenantUsers = await prisma.tenantUser.findMany({
+      const tenantMembers = await prisma.tenantMember.findMany({
         where: {
           tenantId,
           role: { in: ['OWNER', 'ADMIN'] },
-          isActive: true,
+          status: 'ACTIVE',
         },
-        include: {
-          user: {
-            select: { email: true, name: true },
-          },
+        select: {
+          userEmail: true,
+          userName: true,
         },
       })
 
-      if (tenantUsers.length === 0) {
+      if (tenantMembers.length === 0) {
         return
       }
 
@@ -404,7 +403,7 @@ export class UsageTracker {
         `플랜 업그레이드를 통해 더 많은 사용량을 확보할 수 있습니다.`
 
       // TODO: 실제 알림 발송 구현
-      // await notificationService.sendAdminNotification(tenantUsers, message)
+      // await notificationService.sendAdminNotification(tenantMembers, message)
 
       logger.info('사용량 알림 발송', {
         tenantId,
@@ -412,7 +411,7 @@ export class UsageTracker {
         usagePercentage,
         currentUsage,
         limit,
-        recipientCount: tenantUsers.length,
+        recipientCount: tenantMembers.length,
       })
     } catch (error) {
       logger.error('사용량 알림 발송 실패', {

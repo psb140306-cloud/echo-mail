@@ -505,10 +505,10 @@ export class SubscriptionService {
     const newLimits = PLAN_LIMITS[newPlan]
 
     // 현재 사용량 조회
-    const [companyCount, contactCount, userCount] = await Promise.all([
+    const [companyCount, contactCount, memberCount] = await Promise.all([
       prisma.company.count({ where: { tenantId } }),
       prisma.contact.count({ where: { tenantId } }),
-      prisma.tenantUser.count({ where: { tenantId, isActive: true } }),
+      prisma.tenantMember.count({ where: { tenantId, status: 'ACTIVE' } }),
     ])
 
     // 월간 사용량 조회
@@ -540,7 +540,7 @@ export class SubscriptionService {
       }
     }
 
-    if (newLimits.maxUsers !== -1 && userCount > newLimits.maxUsers) {
+    if (newLimits.maxUsers !== -1 && memberCount > newLimits.maxUsers) {
       return { eligible: false, reason: `사용자 수가 제한(${newLimits.maxUsers}명)을 초과합니다.` }
     }
 
