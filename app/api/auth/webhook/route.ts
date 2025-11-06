@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
-import bcrypt from 'bcryptjs'
 
 /**
  * Supabase Auth Webhook
@@ -69,78 +68,63 @@ export async function POST(request: NextRequest) {
     const subdomain = metadata.subdomain || email.split('@')[0].replace(/[^a-zA-Z0-9-]/g, '')
     const subscriptionPlan = metadata.subscription_plan || 'FREE_TRIAL'
     const ownerName = metadata.full_name || email.split('@')[0]
-    const role = metadata.role || 'OWNER'
 
     logger.info('Creating tenant for new user', {
+      userId: id,
       email,
       companyName,
       subdomain,
       subscriptionPlan,
     })
 
-    // 트랜잭션으로 Tenant와 User 생성
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Tenant 생성
-      const tenant = await tx.tenant.create({
-        data: {
-          name: companyName,
-          subdomain,
-          subscriptionPlan,
-          subscriptionStatus: subscriptionPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
-          trialEndsAt: subscriptionPlan === 'FREE_TRIAL'
-            ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14일
-            : null,
-          maxCompanies: subscriptionPlan === 'FREE_TRIAL' ? 10 : 50,
-          maxContacts: subscriptionPlan === 'FREE_TRIAL' ? 50 : 300,
-          maxEmails: subscriptionPlan === 'FREE_TRIAL' ? 100 : 5000,
-          maxNotifications: subscriptionPlan === 'FREE_TRIAL' ? 100 : 10000,
-        },
-      })
-
-      // 2. User 생성 (Supabase ID와 연결)
-      const hashedPassword = await bcrypt.hash(Math.random().toString(36), 12) // 임시 비밀번호
-      const user = await tx.user.create({
-        data: {
-          id, // Supabase Auth ID 사용
-          email,
-          name: ownerName,
-          password: hashedPassword,
-          role: 'ADMIN',
-          emailVerified: null, // 이메일 인증 대기
-          tenantId: tenant.id,
-        },
-      })
-
-      // 3. TenantUser 관계 설정
-      await tx.tenantUser.create({
-        data: {
-          tenantId: tenant.id,
-          userId: user.id,
-          role: role as any,
-          acceptedAt: new Date(),
-        },
-      })
-
-      // 4. Tenant의 소유자 설정
-      await tx.tenant.update({
-        where: { id: tenant.id },
-        data: { ownerId: user.id },
-      })
-
-      return { tenant, user }
+    // 이미 Tenant가 있는지 확인 (중복 방지)
+    const existingTenant = await prisma.tenant.findFirst({
+      where: { ownerId: id },
     })
 
-    logger.info('Tenant and user created successfully', {
-      tenantId: result.tenant.id,
-      userId: result.user.id,
+    if (existingTenant) {
+      logger.info('Tenant already exists for user', {
+        userId: id,
+        email,
+        tenantId: existingTenant.id,
+      })
+      return NextResponse.json({
+        success: true,
+        data: {
+          tenantId: existingTenant.id,
+          message: 'Tenant already exists',
+        },
+      })
+    }
+
+    // Tenant 생성
+    const tenant = await prisma.tenant.create({
+      data: {
+        name: companyName,
+        subdomain,
+        ownerId: id, // Supabase Auth UUID
+        ownerEmail: email,
+        ownerName,
+        subscriptionPlan,
+        subscriptionStatus: subscriptionPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14일
+        maxCompanies: subscriptionPlan === 'FREE_TRIAL' ? 10 : 50,
+        maxContacts: subscriptionPlan === 'FREE_TRIAL' ? 50 : 300,
+        maxEmails: subscriptionPlan === 'FREE_TRIAL' ? 100 : 5000,
+        maxNotifications: subscriptionPlan === 'FREE_TRIAL' ? 100 : 10000,
+      },
+    })
+
+    logger.info('Tenant created successfully via webhook', {
+      tenantId: tenant.id,
+      ownerId: id,
       email,
     })
 
     return NextResponse.json({
       success: true,
       data: {
-        tenantId: result.tenant.id,
-        userId: result.user.id,
+        tenantId: tenant.id,
       },
     })
   } catch (error) {
