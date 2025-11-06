@@ -151,6 +151,7 @@ async function createCompany(request: NextRequest) {
 
     const existingCompany = await prisma.company.findFirst({
       where: {
+        tenantId, // 같은 tenant 내에서만 중복 체크
         OR: [{ name: validatedData.name }, { email: validatedData.email }],
       },
     })
