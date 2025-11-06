@@ -344,7 +344,20 @@ export default function CompaniesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{company._count.contacts}명</Badge>
+                          {company.contacts.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-medium">
+                                {company.contacts[0].name}
+                              </span>
+                              {company.contacts.length > 1 && (
+                                <span className="text-xs text-muted-foreground">
+                                  외 {company.contacts.length - 1}명
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">담당자 없음</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={company.isActive ? 'default' : 'secondary'}>
