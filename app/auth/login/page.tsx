@@ -48,6 +48,34 @@ export default function LoginPage() {
         return
       }
 
+      // 로그인 성공! tenant 생성 확인
+      // URL에서 회원가입 정보 가져오기 (있으면)
+      const params = new URLSearchParams(window.location.search)
+      const companyName = params.get('companyName')
+      const ownerName = params.get('ownerName')
+      const subscriptionPlan = params.get('subscriptionPlan')
+      const subdomain = params.get('subdomain')
+
+      // 회원가입 정보가 있으면 tenant 생성 시도
+      if (companyName && ownerName && subscriptionPlan && subdomain) {
+        try {
+          await fetch('/api/auth/setup-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              companyName,
+              ownerName,
+              subscriptionPlan,
+              subdomain,
+            }),
+          })
+          // 성공/실패 무관하게 진행 (tenant는 이미 있을 수도 있음)
+        } catch (e) {
+          // 에러 무시
+        }
+      }
+
       toast({
         title: '로그인 성공',
         description: 'Echo Mail에 오신 것을 환영합니다!',

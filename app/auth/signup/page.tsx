@@ -135,51 +135,19 @@ export default function SignUpPage() {
         return
       }
 
-      // 2. Tenant 및 User 생성 (세션 쿠키가 설정된 후)
-      // 세션 쿠키가 완전히 설정될 때까지 대기 (최대 5초)
-      let retries = 0
-      const maxRetries = 10
-      while (retries < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 500))
-        const cookies = document.cookie
-        // Supabase auth 쿠키가 2개 모두 있는지 확인
-        const authCookieCount = (cookies.match(/sb-.*-auth-token/g) || []).length
-        if (authCookieCount >= 2) {
-          break
-        }
-        retries++
-      }
-
-      const setupResponse = await fetch('/api/auth/setup-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // 쿠키 포함
-        body: JSON.stringify({
-          companyName,
-          ownerName,
-          subscriptionPlan,
-          subdomain: autoSubdomain,
-        }),
-      })
-
-      const setupData = await setupResponse.json()
-
-      if (!setupData.success) {
-        toast({
-          title: '계정 설정 실패',
-          description: setupData.message || '계정 설정 중 오류가 발생했습니다.',
-          variant: 'destructive',
-        })
-        return
-      }
-
+      // 회원가입 성공! 이메일 인증 안내
+      // 참고: Tenant는 이메일 인증 후 첫 로그인 시 자동으로 생성됩니다
       toast({
         title: '회원가입 성공',
-        description: '이메일을 확인해서 인증을 완료해주세요.',
+        description: '이메일을 확인하여 인증을 완료해주세요.',
       })
 
       // 이메일 인증 안내 페이지로 리다이렉트
-      router.push('/auth/verify-email?email=' + encodeURIComponent(email))
+      router.push('/auth/verify-email?email=' + encodeURIComponent(email) +
+                  '&companyName=' + encodeURIComponent(companyName) +
+                  '&ownerName=' + encodeURIComponent(ownerName) +
+                  '&subscriptionPlan=' + encodeURIComponent(subscriptionPlan) +
+                  '&subdomain=' + encodeURIComponent(autoSubdomain))
     } catch (error) {
       toast({
         title: '오류 발생',

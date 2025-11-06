@@ -13,6 +13,10 @@ import { Mail, CheckCircle, RefreshCw, ArrowLeft } from 'lucide-react'
 export default function VerifyEmailPage() {
   const [resending, setResending] = useState(false)
   const [email, setEmail] = useState('')
+  const [companyName, setCompanyName] = useState('')
+  const [ownerName, setOwnerName] = useState('')
+  const [subscriptionPlan, setSubscriptionPlan] = useState('')
+  const [subdomain, setSubdomain] = useState('')
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const router = useRouter()
@@ -22,6 +26,17 @@ export default function VerifyEmailPage() {
     if (emailParam) {
       setEmail(decodeURIComponent(emailParam))
     }
+
+    // 회원가입 정보 저장
+    const companyNameParam = searchParams.get('companyName')
+    const ownerNameParam = searchParams.get('ownerName')
+    const subscriptionPlanParam = searchParams.get('subscriptionPlan')
+    const subdomainParam = searchParams.get('subdomain')
+
+    if (companyNameParam) setCompanyName(companyNameParam)
+    if (ownerNameParam) setOwnerName(ownerNameParam)
+    if (subscriptionPlanParam) setSubscriptionPlan(subscriptionPlanParam)
+    if (subdomainParam) setSubdomain(subdomainParam)
   }, [searchParams])
 
   const handleResendVerification = async () => {
@@ -134,7 +149,7 @@ export default function VerifyEmailPage() {
         {/* 하단 링크 */}
         <div className="text-center mt-6 space-y-4">
           <Link
-            href="/auth/login"
+            href={`/auth/login${companyName ? `?companyName=${encodeURIComponent(companyName)}&ownerName=${encodeURIComponent(ownerName)}&subscriptionPlan=${encodeURIComponent(subscriptionPlan)}&subdomain=${encodeURIComponent(subdomain)}` : ''}`}
             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 hover:underline"
           >
             <ArrowLeft className="mr-1 h-4 w-4" />
