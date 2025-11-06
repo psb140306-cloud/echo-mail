@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, TenantContext } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
@@ -9,6 +9,7 @@ import {
   createPaginatedResponse,
   parseAndValidate,
 } from '@/lib/utils/validation'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 공휴일 생성 스키마
 const createHolidaySchema = z.object({
@@ -18,7 +19,7 @@ const createHolidaySchema = z.object({
 })
 
 // 공휴일 목록 조회
-export async function GET(request: NextRequest) {
+async function getHolidays(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -29,8 +30,18 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit
 
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return createErrorResponse('Tenant context not found', 401)
+    }
+
     // 검색 조건 구성
-    const where: Prisma.HolidayWhereInput = {}
+    const where: Prisma.HolidayWhereInput = {
+      tenantId, // CRITICAL: Filter by tenantId for security
+    }
 
     if (year) {
       const yearNum = parseInt(year)
@@ -86,10 +97,18 @@ export async function GET(request: NextRequest) {
 }
 
 // 공휴일 생성
-export async function POST(request: NextRequest) {
+async function createHoliday(request: NextRequest) {
   try {
     const { data, error } = await parseAndValidate(request, createHolidaySchema)
     if (error) return error
+
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return createErrorResponse('Tenant context not found', 401)
+    }
 
     // 날짜 파싱 및 검증
     const holidayDate = new Date(data.date + 'T00:00:00.000Z')
@@ -97,9 +116,12 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('올바른 날짜가 아닙니다.', 400)
     }
 
-    // 중복 날짜 확인
-    const existingHoliday = await prisma.holiday.findUnique({
-      where: { date: holidayDate },
+    // 중복 날짜 확인 (같은 tenant 내에서)
+    const existingHoliday = await prisma.holiday.findFirst({
+      where: {
+        date: holidayDate,
+        tenantId, // CRITICAL: Check within tenant only
+      },
     })
 
     if (existingHoliday) {
@@ -112,6 +134,7 @@ export async function POST(request: NextRequest) {
         date: holidayDate,
         name: data.name,
         isRecurring: data.isRecurring ?? false,
+        tenantId, // CRITICAL: Add tenantId for security
       },
     })
 
@@ -129,12 +152,20 @@ export async function POST(request: NextRequest) {
 }
 
 // 여러 공휴일 일괄 생성
-export async function PUT(request: NextRequest) {
+async function bulkCreateHolidays(request: NextRequest) {
   try {
     const body = await request.json()
 
     if (!Array.isArray(body.holidays)) {
       return createErrorResponse('holidays 배열이 필요합니다.', 400)
+    }
+
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return createErrorResponse('Tenant context not found', 401)
     }
 
     const holidaysSchema = z.array(createHolidaySchema).min(1, '최소 1개의 공휴일이 필요합니다')
@@ -147,13 +178,14 @@ export async function PUT(request: NextRequest) {
       return createErrorResponse('중복된 날짜가 있습니다.', 400)
     }
 
-    // 기존 공휴일과의 중복 확인
+    // 기존 공휴일과의 중복 확인 (같은 tenant 내에서)
     const holidayDates = holidays.map((h) => new Date(h.date + 'T00:00:00.000Z'))
     const existingHolidays = await prisma.holiday.findMany({
       where: {
         date: {
           in: holidayDates,
         },
+        tenantId, // CRITICAL: Check within tenant only
       },
     })
 
@@ -171,6 +203,7 @@ export async function PUT(request: NextRequest) {
         date: new Date(h.date + 'T00:00:00.000Z'),
         name: h.name,
         isRecurring: h.isRecurring ?? false,
+        tenantId, // CRITICAL: Add tenantId for security
       })),
     })
 
@@ -193,4 +226,17 @@ export async function PUT(request: NextRequest) {
 
     return createErrorResponse('공휴일 일괄 생성에 실패했습니다.')
   }
+}
+
+// Export GET/POST/PUT with tenant context middleware
+export async function GET(request: NextRequest) {
+  return withTenantContext(request, getHolidays)
+}
+
+export async function POST(request: NextRequest) {
+  return withTenantContext(request, createHoliday)
+}
+
+export async function PUT(request: NextRequest) {
+  return withTenantContext(request, bulkCreateHolidays)
 }

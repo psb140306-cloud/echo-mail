@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, TenantContext } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 업체 수정 스키마
 const updateCompanySchema = z.object({
@@ -23,7 +24,7 @@ interface RouteParams {
 }
 
 // 업체 상세 조회
-export async function GET(request: NextRequest, { params }: RouteParams) {
+async function getCompanyById(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -31,9 +32,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ success: false, error: '업체 ID가 필요합니다.' }, { status: 400 })
     }
 
-    // 업체 조회 (담당자 정보 포함)
-    const company = await prisma.company.findUnique({
-      where: { id },
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: 'Tenant context not found' }, { status: 401 })
+    }
+
+    // 업체 조회 (담당자 정보 포함) - CRITICAL: Filter by tenantId
+    const company = await prisma.company.findFirst({
+      where: {
+        id,
+        tenantId, // CRITICAL: Ensure company belongs to current tenant
+      },
       include: {
         contacts: {
           where: { isActive: true },
@@ -75,7 +87,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // 업체 수정
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+async function updateCompanyById(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
     const body = await request.json()
@@ -84,12 +96,23 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ success: false, error: '업체 ID가 필요합니다.' }, { status: 400 })
     }
 
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: 'Tenant context not found' }, { status: 401 })
+    }
+
     // 입력값 검증
     const validatedData = updateCompanySchema.parse(body)
 
-    // 업체 존재 확인
-    const existingCompany = await prisma.company.findUnique({
-      where: { id },
+    // 업체 존재 확인 - CRITICAL: Check tenant ownership
+    const existingCompany = await prisma.company.findFirst({
+      where: {
+        id,
+        tenantId, // CRITICAL: Ensure company belongs to current tenant
+      },
     })
 
     if (!existingCompany) {
@@ -115,6 +138,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const duplicateWhere: Prisma.CompanyWhereInput = {
           AND: [
             { id: { not: id } }, // 현재 업체 제외
+            { tenantId }, // CRITICAL: Check within tenant only
             { OR: orConditions },
           ],
         }
@@ -193,7 +217,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // 업체 삭제
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+async function deleteCompanyById(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
 
@@ -201,9 +225,20 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ success: false, error: '업체 ID가 필요합니다.' }, { status: 400 })
     }
 
-    // 업체 존재 확인
-    const existingCompany = await prisma.company.findUnique({
-      where: { id },
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: 'Tenant context not found' }, { status: 401 })
+    }
+
+    // 업체 존재 확인 - CRITICAL: Check tenant ownership
+    const existingCompany = await prisma.company.findFirst({
+      where: {
+        id,
+        tenantId, // CRITICAL: Ensure company belongs to current tenant
+      },
       include: {
         _count: {
           select: {
@@ -250,4 +285,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     )
   }
+}
+
+// Export GET/PUT/DELETE with tenant context middleware
+export async function GET(request: NextRequest, context: RouteParams) {
+  return withTenantContext(request, (req) => getCompanyById(req, context))
+}
+
+export async function PUT(request: NextRequest, context: RouteParams) {
+  return withTenantContext(request, (req) => updateCompanyById(req, context))
+}
+
+export async function DELETE(request: NextRequest, context: RouteParams) {
+  return withTenantContext(request, (req) => deleteCompanyById(req, context))
 }

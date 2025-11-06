@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, TenantContext } from '@/lib/db'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 담당자 수정 스키마
 const updateContactSchema = z.object({
@@ -28,8 +29,18 @@ interface RouteParams {
 }
 
 // 담당자 상세 조회
-export async function GET(request: NextRequest, { params }: RouteParams) {
+async function getContact(request: NextRequest, { params }: RouteParams) {
   try {
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant context not found' },
+        { status: 401 }
+      )
+    }
+
     const { id } = params
 
     if (!id) {
@@ -39,9 +50,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // 담당자 조회 (업체 정보 포함)
-    const contact = await prisma.contact.findUnique({
-      where: { id },
+    // 담당자 조회 (업체 정보 포함) - tenantId 필터링
+    const contact = await prisma.contact.findFirst({
+      where: {
+        id,
+        tenantId
+      },
       include: {
         company: {
           select: {
@@ -86,8 +100,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // 담당자 수정
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+async function updateContact(request: NextRequest, { params }: RouteParams) {
   try {
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant context not found' },
+        { status: 401 }
+      )
+    }
+
     const { id } = params
     const body = await request.json()
 
@@ -101,9 +125,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // 입력값 검증
     const validatedData = updateContactSchema.parse(body)
 
-    // 담당자 존재 확인
-    const existingContact = await prisma.contact.findUnique({
-      where: { id },
+    // 담당자 존재 확인 - tenantId 필터링
+    const existingContact = await prisma.contact.findFirst({
+      where: {
+        id,
+        tenantId
+      },
       include: {
         company: true,
       },
@@ -116,7 +143,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // 전화번호 중복 확인 (전화번호가 변경된 경우)
+    // 전화번호 중복 확인 (전화번호가 변경된 경우) - tenantId 필터링
     if (validatedData.phone && validatedData.phone !== existingContact.phone) {
       const duplicateContact = await prisma.contact.findFirst({
         where: {
@@ -124,6 +151,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             { id: { not: id } }, // 현재 담당자 제외
             { companyId: existingContact.companyId }, // 같은 업체 내에서
             { phone: validatedData.phone },
+            { tenantId }, // 같은 테넌트 내에서
           ],
         },
       })
@@ -140,9 +168,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // 담당자 수정
+    // 담당자 수정 - tenantId로 검증된 후 업데이트
     const updatedContact = await prisma.contact.update({
-      where: { id },
+      where: {
+        id,
+        tenantId
+      },
       data: validatedData,
       include: {
         company: {
@@ -197,8 +228,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // 담당자 삭제
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+async function deleteContact(request: NextRequest, { params }: RouteParams) {
   try {
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant context not found' },
+        { status: 401 }
+      )
+    }
+
     const { id } = params
 
     if (!id) {
@@ -208,9 +249,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // 담당자 존재 확인
-    const existingContact = await prisma.contact.findUnique({
-      where: { id },
+    // 담당자 존재 확인 - tenantId 필터링
+    const existingContact = await prisma.contact.findFirst({
+      where: {
+        id,
+        tenantId
+      },
       include: {
         company: {
           select: {
@@ -227,9 +271,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // 담당자 삭제
+    // 담당자 삭제 - tenantId로 검증된 후 삭제
     await prisma.contact.delete({
-      where: { id },
+      where: {
+        id,
+        tenantId
+      },
     })
 
     logger.info(`담당자 삭제 완료: ${existingContact.name}`, {
@@ -257,4 +304,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     )
   }
+}
+
+// Export GET/PUT/DELETE with tenant context middleware
+export async function GET(request: NextRequest, context: RouteParams) {
+  return withTenantContext(request, (req) => getContact(req, context))
+}
+
+export async function PUT(request: NextRequest, context: RouteParams) {
+  return withTenantContext(request, (req) => updateContact(req, context))
+}
+
+export async function DELETE(request: NextRequest, context: RouteParams) {
+  return withTenantContext(request, (req) => deleteContact(req, context))
 }

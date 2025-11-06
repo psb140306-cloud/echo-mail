@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, TenantContext } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 담당자 생성 스키마
 const createContactSchema = z.object({
@@ -17,7 +18,7 @@ const createContactSchema = z.object({
 })
 
 // 담당자 목록 조회
-export async function GET(request: NextRequest) {
+async function getContacts(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -28,8 +29,24 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit
 
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Tenant context not found',
+        },
+        { status: 401 }
+      )
+    }
+
     // 검색 조건 구성
-    const where: Prisma.ContactWhereInput = {}
+    const where: Prisma.ContactWhereInput = {
+      tenantId, // CRITICAL: Filter by tenantId for security
+    }
 
     if (search) {
       where.OR = [
@@ -106,12 +123,26 @@ export async function GET(request: NextRequest) {
 }
 
 // 담당자 생성
-export async function POST(request: NextRequest) {
+async function createContact(request: NextRequest) {
   try {
     const body = await request.json()
 
     // 입력값 검증
     const validatedData = createContactSchema.parse(body)
+
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Tenant context not found',
+        },
+        { status: 401 }
+      )
+    }
 
     // 업체 존재 확인
     const company = await prisma.company.findUnique({
@@ -156,6 +187,7 @@ export async function POST(request: NextRequest) {
         email: validatedData.email,
         position: validatedData.position,
         companyId: validatedData.companyId,
+        tenantId, // CRITICAL: Add tenantId for security
         isActive: validatedData.isActive ?? true,
         smsEnabled: validatedData.smsEnabled ?? true,
         kakaoEnabled: validatedData.kakaoEnabled ?? false,
@@ -213,4 +245,13 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Export GET/POST with tenant context middleware
+export async function GET(request: NextRequest) {
+  return withTenantContext(request, getContacts)
+}
+
+export async function POST(request: NextRequest) {
+  return withTenantContext(request, createContact)
 }

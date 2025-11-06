@@ -34,7 +34,23 @@ async function getCompanies(request: NextRequest) {
 
     const skip = (page - 1) * limit
 
-    const where: Prisma.CompanyWhereInput = {}
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Tenant context not found',
+        },
+        { status: 401 }
+      )
+    }
+
+    const where: Prisma.CompanyWhereInput = {
+      tenantId, // CRITICAL: Filter by tenantId for security
+    }
 
     if (search) {
       where.OR = [
