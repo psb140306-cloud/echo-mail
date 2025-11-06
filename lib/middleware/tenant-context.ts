@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { prisma } from '@/lib/db'
+import { createClient } from '@/lib/supabase/server'
 
 const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID ?? 'dev-tenant-id'
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? 'Development Tenant'
@@ -213,40 +214,37 @@ export async function withTenantContext<T>(
     // 테넌트 식별
     let tenant = await identifyTenant(request)
 
-    // 도메인에서 tenant를 찾지 못한 경우, 사용자 세션에서 가져오기
+    // 도메인에서 tenant를 찾지 못한 경우, Supabase Auth 세션에서 가져오기
     if (!tenant) {
-      const sessionCookie = request.cookies.get('next-auth.session-token') || request.cookies.get('__Secure-next-auth.session-token')
+      try {
+        const supabase = await createClient()
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser()
 
-      if (sessionCookie) {
-        // 세션에서 사용자 정보 조회
-        const user = await prisma.user.findFirst({
-          where: {
-            sessions: {
-              some: {
-                sessionToken: sessionCookie.value,
-                expires: { gt: new Date() },
-              },
-            },
-          },
-          include: {
-            tenant: true,
-          },
-        })
-
-        if (user?.tenant) {
-          tenant = {
-            id: user.tenant.id,
-            name: user.tenant.name,
-            subdomain: user.tenant.subdomain,
-            customDomain: user.tenant.customDomain || undefined,
-            subscriptionPlan: user.tenant.subscriptionPlan,
-          }
-          logger.debug('Tenant found from user session', {
-            userId: user.id,
-            userEmail: user.email,
-            tenantId: tenant.id,
+        if (authUser) {
+          // Supabase Auth UUID로 tenant 조회
+          const userTenant = await prisma.tenant.findFirst({
+            where: { ownerId: authUser.id },
           })
+
+          if (userTenant) {
+            tenant = {
+              id: userTenant.id,
+              name: userTenant.name,
+              subdomain: userTenant.subdomain,
+              customDomain: userTenant.customDomain || undefined,
+              subscriptionPlan: userTenant.subscriptionPlan,
+            }
+            logger.debug('Tenant found from Supabase Auth session', {
+              userId: authUser.id,
+              userEmail: authUser.email,
+              tenantId: tenant.id,
+            })
+          }
         }
+      } catch (error) {
+        logger.error('Failed to get tenant from Supabase session', { error })
       }
     }
 
