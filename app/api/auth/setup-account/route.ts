@@ -48,20 +48,23 @@ export async function POST(request: NextRequest) {
       subscriptionPlan,
     })
 
-    // 이미 Tenant가 있는지 확인
+    // 이미 Tenant가 있는지 확인 (Idempotent)
     const existingTenant = await prisma.tenant.findFirst({
       where: { ownerId: authUser.id },
     })
 
     if (existingTenant) {
-      logger.info('User already has a tenant', {
+      logger.info('User already has a tenant - returning existing', {
         userId: authUser.id,
+        email: authUser.email,
         tenantId: existingTenant.id,
+        tenantName: existingTenant.name,
       })
       return NextResponse.json({
         success: true,
         data: {
           tenantId: existingTenant.id,
+          message: 'Tenant already exists',
         },
       })
     }

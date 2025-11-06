@@ -137,17 +137,25 @@ export default function SignUpPage() {
 
       // 회원가입 성공! 이메일 인증 안내
       // 참고: Tenant는 이메일 인증 후 첫 로그인 시 자동으로 생성됩니다
+
+      // localStorage에 회사 정보 저장 (tenant 생성용)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingTenantSetup', JSON.stringify({
+          email,
+          companyName,
+          ownerName,
+          subscriptionPlan,
+          subdomain: autoSubdomain,
+        }))
+      }
+
       toast({
         title: '회원가입 성공',
         description: '이메일을 확인하여 인증을 완료해주세요.',
       })
 
       // 이메일 인증 안내 페이지로 리다이렉트
-      router.push('/auth/verify-email?email=' + encodeURIComponent(email) +
-                  '&companyName=' + encodeURIComponent(companyName) +
-                  '&ownerName=' + encodeURIComponent(ownerName) +
-                  '&subscriptionPlan=' + encodeURIComponent(subscriptionPlan) +
-                  '&subdomain=' + encodeURIComponent(autoSubdomain))
+      router.push('/auth/verify-email?email=' + encodeURIComponent(email))
     } catch (error) {
       toast({
         title: '오류 발생',
