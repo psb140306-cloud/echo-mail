@@ -136,11 +136,24 @@ export default function SignUpPage() {
       }
 
       // 2. Tenant 및 User 생성 (세션 쿠키가 설정된 후)
-      await new Promise(resolve => setTimeout(resolve, 1000)) // 세션 쿠키 설정 대기
+      // 세션 쿠키가 완전히 설정될 때까지 대기 (최대 5초)
+      let retries = 0
+      const maxRetries = 10
+      while (retries < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const cookies = document.cookie
+        // Supabase auth 쿠키가 2개 모두 있는지 확인
+        const authCookieCount = (cookies.match(/sb-.*-auth-token/g) || []).length
+        if (authCookieCount >= 2) {
+          break
+        }
+        retries++
+      }
 
       const setupResponse = await fetch('/api/auth/setup-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // 쿠키 포함
         body: JSON.stringify({
           companyName,
           ownerName,
