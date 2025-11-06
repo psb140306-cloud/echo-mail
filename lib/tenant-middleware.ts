@@ -37,21 +37,21 @@ export class TenantContext {
   }
 }
 
-// 멀티테넌트 지원 모델 목록
+// 멀티테넌트 지원 모델 목록 (Prisma는 PascalCase를 사용함)
 const TENANT_MODELS = [
-  'company',
-  'contact',
-  'deliveryRule',
-  'holiday',
-  'emailLog',
-  'notificationLog',
-  'systemConfig',
-  'messageTemplate',
-  'subscription',
+  'Company',
+  'Contact',
+  'DeliveryRule',
+  'Holiday',
+  'EmailLog',
+  'NotificationLog',
+  'SystemConfig',
+  'MessageTemplate',
+  'Subscription',
 ] as const
 
-// Super Admin 모델 (테넌트 격리 없음)
-const SUPER_ADMIN_MODELS = ['tenant', 'user', 'account', 'session', 'verificationToken'] as const
+// Super Admin 모델 (테넌트 격리 없음) (Prisma는 PascalCase를 사용함)
+const SUPER_ADMIN_MODELS = ['Tenant', 'User', 'Account', 'Session', 'VerificationToken'] as const
 
 /**
  * Prisma 멀티테넌트 미들웨어

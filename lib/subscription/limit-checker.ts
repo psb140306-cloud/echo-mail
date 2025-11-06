@@ -20,7 +20,6 @@ export interface UsageStats {
   contacts: number
   emailsThisMonth: number
   notificationsThisMonth: number
-  users: number
 }
 
 export interface LimitCheckResult {
@@ -81,47 +80,39 @@ export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
     startOfMonth.setDate(1)
     startOfMonth.setHours(0, 0, 0, 0)
 
-    const [companies, contacts, emailsThisMonth, notificationsThisMonth, users] = await Promise.all(
-      [
-        // 업체 수
-        prisma.company.count({
-          where: { tenantId },
-        }),
+    const [companies, contacts, emailsThisMonth, notificationsThisMonth] = await Promise.all([
+      // 업체 수
+      prisma.company.count({
+        where: { tenantId },
+      }),
 
-        // 담당자 수
-        prisma.contact.count({
-          where: { tenantId },
-        }),
+      // 담당자 수
+      prisma.contact.count({
+        where: { tenantId },
+      }),
 
-        // 이번 달 이메일 처리량
-        prisma.emailLog.count({
-          where: {
-            tenantId,
-            createdAt: { gte: startOfMonth },
-          },
-        }),
+      // 이번 달 이메일 처리량
+      prisma.emailLog.count({
+        where: {
+          tenantId,
+          createdAt: { gte: startOfMonth },
+        },
+      }),
 
-        // 이번 달 알림 발송량
-        prisma.notificationLog.count({
-          where: {
-            tenantId,
-            createdAt: { gte: startOfMonth },
-          },
-        }),
-
-        // 사용자 수
-        prisma.user.count({
-          where: { tenantId },
-        }),
-      ]
-    )
+      // 이번 달 알림 발송량
+      prisma.notificationLog.count({
+        where: {
+          tenantId,
+          createdAt: { gte: startOfMonth },
+        },
+      }),
+    ])
 
     return {
       companies,
       contacts,
       emailsThisMonth,
       notificationsThisMonth,
-      users,
     }
   } catch (error) {
     logger.error('Failed to get tenant usage', { tenantId, error })
@@ -366,13 +357,6 @@ export async function getTenantUsageReport(tenantId: string) {
           percentage: isUnlimited(limits.maxNotificationsPerMonth)
             ? 0
             : Math.round((usage.notificationsThisMonth / limits.maxNotificationsPerMonth) * 100),
-        },
-        users: {
-          current: usage.users,
-          limit: limits.maxUsers,
-          percentage: isUnlimited(limits.maxUsers)
-            ? 0
-            : Math.round((usage.users / limits.maxUsers) * 100),
         },
       },
       features: limits.features,
