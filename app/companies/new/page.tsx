@@ -8,15 +8,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+
+// 기본 지역 목록 (배송 규칙과 동일)
+const DEFAULT_REGIONS = [
+  '서울',
+  '부산',
+  '대구',
+  '인천',
+  '광주',
+  '대전',
+  '울산',
+  '세종',
+  '경기',
+  '강원',
+  '충북',
+  '충남',
+  '전북',
+  '전남',
+  '경북',
+  '경남',
+  '제주',
+] as const
 
 export default function NewCompanyPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
-  const [availableRegions, setAvailableRegions] = useState<string[]>([])
-  const [loadingRegions, setLoadingRegions] = useState(true)
+  const [isCustomRegion, setIsCustomRegion] = useState(false) // 커스텀 지역 입력 여부
   const [formData, setFormData] = useState({
     // 업체 정보
     name: '',
@@ -44,33 +71,6 @@ export default function NewCompanyPage() {
       [name]: checked,
     })
   }
-
-  // 배송 가능 지역 조회
-  useEffect(() => {
-    const fetchAvailableRegions = async () => {
-      try {
-        setLoadingRegions(true)
-        const response = await fetch('/api/delivery-rules/regions')
-        const data = await response.json()
-
-        if (data.success) {
-          setAvailableRegions(data.data)
-        } else {
-          toast({
-            title: '알림',
-            description: '배송 가능 지역을 불러오지 못했습니다. 배송 규칙을 먼저 등록해주세요.',
-            variant: 'default',
-          })
-        }
-      } catch (error) {
-        console.error('Failed to fetch regions:', error)
-      } finally {
-        setLoadingRegions(false)
-      }
-    }
-
-    fetchAvailableRegions()
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -193,41 +193,50 @@ export default function NewCompanyPage() {
                 <Label htmlFor="region">
                   지역 <span className="text-red-500">*</span>
                 </Label>
-                {loadingRegions ? (
-                  <div className="flex items-center gap-2 px-3 py-2 border border-input bg-muted rounded-md text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    배송 가능 지역 불러오는 중...
-                  </div>
-                ) : availableRegions.length === 0 ? (
-                  <div className="space-y-2">
-                    <div className="px-3 py-2 border border-yellow-200 bg-yellow-50 rounded-md text-sm text-yellow-800">
-                      ⚠️ 배송 가능한 지역이 없습니다. 먼저 배송 규칙을 등록해주세요.
-                    </div>
+                {!isCustomRegion ? (
+                  <Select
+                    value={formData.region || undefined}
+                    onValueChange={(value) => {
+                      if (value === '__custom__') {
+                        setIsCustomRegion(true)
+                        setFormData({ ...formData, region: '' })
+                      } else {
+                        setFormData({ ...formData, region: value })
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="지역 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEFAULT_REGIONS.map((region) => (
+                        <SelectItem key={region} value={region}>
+                          {region}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="__custom__">🔧 직접 입력...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      id="region"
+                      value={formData.region}
+                      onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                      placeholder="예: 송도, 판교, 분당"
+                    />
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push('/delivery-rules')}
+                      onClick={() => {
+                        setIsCustomRegion(false)
+                        setFormData({ ...formData, region: '' })
+                      }}
                     >
-                      배송 규칙 등록하러 가기
+                      취소
                     </Button>
                   </div>
-                ) : (
-                  <select
-                    id="region"
-                    name="region"
-                    value={formData.region}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                    required
-                  >
-                    <option value="">지역 선택</option>
-                    {availableRegions.map((region) => (
-                      <option key={region} value={region}>
-                        {region}
-                      </option>
-                    ))}
-                  </select>
                 )}
               </div>
 
