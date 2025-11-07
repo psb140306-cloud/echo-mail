@@ -75,42 +75,17 @@ async function handleSingleNotification(request: NextRequest) {
   if (error) return error
 
   try {
-    // 세션에서 tenantId 가져오기
-    const { prisma } = await import('@/lib/db')
-    const sessionCookie = request.cookies.get('next-auth.session-token') || request.cookies.get('__Secure-next-auth.session-token')
-
-    let tenantId: string | null = null
-
-    if (sessionCookie) {
-      const user = await prisma.user.findFirst({
-        where: {
-          sessions: {
-            some: {
-              sessionToken: sessionCookie.value,
-              expires: { gt: new Date() },
-            },
-          },
-        },
-        select: {
-          tenantId: true,
-          email: true,
-        },
-      })
-      tenantId = user?.tenantId || null
-
-      logger.info('세션에서 tenantId 조회', {
-        hasSessionCookie: !!sessionCookie,
-        userFound: !!user,
-        userEmail: user?.email,
-        tenantId,
-      })
-    }
+    // TenantContext에서 tenantId 가져오기
+    const { TenantContext } = await import('@/lib/db')
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
 
     if (!tenantId) {
-      logger.error('tenantId를 찾을 수 없습니다', {
-        hasSessionCookie: !!sessionCookie,
-      })
+      logger.error('tenantId를 찾을 수 없습니다')
+      return createErrorResponse('인증 정보를 찾을 수 없습니다.', 401)
     }
+
+    logger.debug('TenantContext에서 tenantId 조회', { tenantId })
 
     const notificationRequest = {
       type: data.type,

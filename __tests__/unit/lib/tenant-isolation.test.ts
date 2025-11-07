@@ -296,11 +296,11 @@ describe('테넌트 데이터 격리 검증', () => {
       expect(tenantIds).toContain(TENANT_B_ID)
     })
 
-    test('User 모델은 테넌트 격리 없이 접근 가능', async () => {
+    test('TenantMember 모델은 테넌트 격리 없이 접근 가능', async () => {
       tenantContext.clear()
 
-      // Super Admin은 모든 사용자 조회 가능
-      await expect(prisma.user.findMany()).resolves.toBeDefined()
+      // Super Admin은 모든 TenantMember 조회 가능 (Supabase Auth 사용)
+      await expect(prisma.tenantMember.findMany()).resolves.toBeDefined()
     })
   })
 

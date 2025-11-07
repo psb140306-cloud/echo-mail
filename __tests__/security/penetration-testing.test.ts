@@ -28,14 +28,16 @@ jest.mock('@/lib/db', () => ({
     company: {
       findMany: jest.fn(),
       create: jest.fn(),
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
     },
     contact: {
       findMany: jest.fn(),
       create: jest.fn(),
     },
-    user: {
-      findUnique: jest.fn(),
+    tenantMember: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
     },
   },
@@ -384,25 +386,29 @@ describe('보안 침투 테스트', () => {
       }
     })
 
-    test('사용자 로그인 SQL Injection 방어', async () => {
+    test('사용자 로그인 SQL Injection 방어 (Supabase Auth)', async () => {
       const { prisma } = require('@/lib/db')
       const sqlPayloads = securityTester.generateSQLInjectionPayloads()
 
       for (const payload of sqlPayloads) {
-        prisma.user.findUnique.mockImplementation((query) => {
-          const email = query.where.email
+        prisma.tenantMember.findFirst.mockImplementation((query) => {
+          const email = query.where?.userEmail
 
           // SQL Injection 패턴 감지
-          if (securityTester.containsSQLInjectionPattern(email)) {
+          if (userEmail && securityTester.containsSQLInjectionPattern(userEmail)) {
             throw new Error('Invalid input detected')
           }
 
           // 정상적인 경우에만 사용자 반환
-          if (email === 'test@example.com') {
+          if (userEmail === 'test@example.com') {
             return Promise.resolve({
-              id: 1,
-              email: 'test@example.com',
-              passwordHash: 'hashed_password',
+              id: 'member-1',
+              userId: 'auth-user-1',
+              tenantId: 'tenant-1',
+              userEmail: 'test@example.com',
+              userName: 'Test User',
+              role: 'MEMBER',
+              status: 'ACTIVE',
             })
           }
 
@@ -410,8 +416,8 @@ describe('보안 침투 테스트', () => {
         })
 
         try {
-          const result = await prisma.user.findUnique({
-            where: { email: payload },
+          const result = await prisma.tenantMember.findFirst({
+            where: { userEmail: payload },
           })
 
           // SQL Injection이 성공하지 않았다면 null 또는 정상 결과

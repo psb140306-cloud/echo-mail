@@ -6,14 +6,20 @@ async function checkUsers() {
   try {
     console.log('🔍 데이터베이스 연결 중...\n')
 
-    // User 테이블 조회
-    const users = await prisma.user.findMany({
+    // TenantMember 조회 (Supabase Auth 사용)
+    const members = await prisma.tenantMember.findMany({
       select: {
         id: true,
-        email: true,
-        name: true,
+        userId: true,
+        userEmail: true,
+        userName: true,
         role: true,
-        emailVerified: true,
+        status: true,
+        tenant: {
+          select: {
+            name: true,
+          },
+        },
         createdAt: true,
       },
       orderBy: {
@@ -22,18 +28,19 @@ async function checkUsers() {
       take: 20,
     })
 
-    console.log(`📊 총 사용자 수: ${users.length}명\n`)
+    console.log(`📊 총 멤버 수: ${members.length}명\n`)
 
-    if (users.length === 0) {
-      console.log('❌ 등록된 사용자가 없습니다.\n')
+    if (members.length === 0) {
+      console.log('❌ 등록된 멤버가 없습니다.\n')
     } else {
-      console.log('👥 사용자 목록:\n')
-      users.forEach((user, index) => {
-        console.log(`${index + 1}. ${user.email}`)
-        console.log(`   이름: ${user.name || '(미설정)'}`)
-        console.log(`   역할: ${user.role}`)
-        console.log(`   이메일 인증: ${user.emailVerified ? '✅ 완료' : '❌ 미완료'}`)
-        console.log(`   가입일: ${user.createdAt.toLocaleString('ko-KR')}`)
+      console.log('👥 멤버 목록:\n')
+      members.forEach((member, index) => {
+        console.log(`${index + 1}. ${member.userEmail}`)
+        console.log(`   이름: ${member.userName || '(미설정)'}`)
+        console.log(`   역할: ${member.role}`)
+        console.log(`   상태: ${member.status}`)
+        console.log(`   테넌트: ${member.tenant.name}`)
+        console.log(`   가입일: ${member.createdAt.toLocaleString('ko-KR')}`)
         console.log('')
       })
     }
