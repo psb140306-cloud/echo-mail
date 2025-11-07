@@ -296,6 +296,10 @@ export async function PUT(request: NextRequest, context: RouteParams) {
   return withTenantContext(request, (req) => updateCompanyById(req, context))
 }
 
+export async function PATCH(request: NextRequest, context: RouteParams) {
+  return withTenantContext(request, (req) => updateCompanyById(req, context))
+}
+
 export async function DELETE(request: NextRequest, context: RouteParams) {
   return withTenantContext(request, (req) => deleteCompanyById(req, context))
 }
