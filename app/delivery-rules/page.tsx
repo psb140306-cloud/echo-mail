@@ -8,6 +8,13 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -81,6 +88,27 @@ interface DeliveryCalculation {
   orderDateTime: string
 }
 
+// 기본 지역 목록
+const DEFAULT_REGIONS = [
+  '서울',
+  '부산',
+  '대구',
+  '인천',
+  '광주',
+  '대전',
+  '울산',
+  '세종',
+  '경기',
+  '강원',
+  '충북',
+  '충남',
+  '전북',
+  '전남',
+  '경북',
+  '경남',
+  '제주',
+] as const
+
 export default function DeliveryRulesPage() {
   const [deliveryRules, setDeliveryRules] = useState<DeliveryRule[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,6 +119,7 @@ export default function DeliveryRulesPage() {
   const [editingRule, setEditingRule] = useState<DeliveryRule | null>(null)
   const [calculationResult, setCalculationResult] = useState<any>(null)
   const [generatingSampleData, setGeneratingSampleData] = useState(false)
+  const [isCustomRegion, setIsCustomRegion] = useState(false) // 커스텀 지역 입력 여부
   const { toast } = useToast()
 
   // 폼 상태
@@ -257,6 +286,7 @@ export default function DeliveryRulesPage() {
       afternoonDeliveryDays: 1,
       isActive: true,
     })
+    setIsCustomRegion(false) // 커스텀 입력 모드 해제
   }
 
   const openEditDialog = (rule: DeliveryRule) => {
@@ -269,6 +299,9 @@ export default function DeliveryRulesPage() {
       afternoonDeliveryDays: rule.afternoonDeliveryDays,
       isActive: rule.isActive,
     })
+    // 수정 시에는 기존 지역이 기본 목록에 없으면 커스텀으로 간주
+    const isCustom = !DEFAULT_REGIONS.includes(rule.region as any)
+    setIsCustomRegion(isCustom)
     setShowCreateDialog(true)
   }
 
@@ -626,13 +659,54 @@ export default function DeliveryRulesPage() {
               <Label htmlFor="region" className="text-right">
                 지역
               </Label>
-              <Input
-                id="region"
-                value={formData.region}
-                onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                className="col-span-3"
-                placeholder="예: 서울"
-              />
+              <div className="col-span-3 space-y-2">
+                {!isCustomRegion ? (
+                  <Select
+                    value={formData.region}
+                    onValueChange={(value) => {
+                      if (value === '__custom__') {
+                        setIsCustomRegion(true)
+                        setFormData({ ...formData, region: '' })
+                      } else {
+                        setFormData({ ...formData, region: value })
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="지역 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">지역 선택</SelectItem>
+                      {DEFAULT_REGIONS.map((region) => (
+                        <SelectItem key={region} value={region}>
+                          {region}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="__custom__">🔧 직접 입력...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      id="region"
+                      value={formData.region}
+                      onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                      placeholder="예: 송도, 판교, 분당"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsCustomRegion(false)
+                        setFormData({ ...formData, region: '' })
+                      }}
+                    >
+                      취소
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="morningCutoff" className="text-right">

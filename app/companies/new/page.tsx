@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,8 @@ export default function NewCompanyPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [availableRegions, setAvailableRegions] = useState<string[]>([])
+  const [loadingRegions, setLoadingRegions] = useState(true)
   const [formData, setFormData] = useState({
     // 업체 정보
     name: '',
@@ -42,6 +44,33 @@ export default function NewCompanyPage() {
       [name]: checked,
     })
   }
+
+  // 배송 가능 지역 조회
+  useEffect(() => {
+    const fetchAvailableRegions = async () => {
+      try {
+        setLoadingRegions(true)
+        const response = await fetch('/api/delivery-rules/regions')
+        const data = await response.json()
+
+        if (data.success) {
+          setAvailableRegions(data.data)
+        } else {
+          toast({
+            title: '알림',
+            description: '배송 가능 지역을 불러오지 못했습니다. 배송 규칙을 먼저 등록해주세요.',
+            variant: 'default',
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch regions:', error)
+      } finally {
+        setLoadingRegions(false)
+      }
+    }
+
+    fetchAvailableRegions()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,26 +130,6 @@ export default function NewCompanyPage() {
       setLoading(false)
     }
   }
-
-  const regions = [
-    '서울',
-    '부산',
-    '대구',
-    '인천',
-    '광주',
-    '대전',
-    '울산',
-    '세종',
-    '경기',
-    '강원',
-    '충북',
-    '충남',
-    '전북',
-    '전남',
-    '경북',
-    '경남',
-    '제주',
-  ]
 
   return (
     <div className="min-h-screen bg-gray-50/40">
@@ -184,21 +193,42 @@ export default function NewCompanyPage() {
                 <Label htmlFor="region">
                   지역 <span className="text-red-500">*</span>
                 </Label>
-                <select
-                  id="region"
-                  name="region"
-                  value={formData.region}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                  required
-                >
-                  <option value="">지역 선택</option>
-                  {regions.map((region) => (
-                    <option key={region} value={region}>
-                      {region}
-                    </option>
-                  ))}
-                </select>
+                {loadingRegions ? (
+                  <div className="flex items-center gap-2 px-3 py-2 border border-input bg-muted rounded-md text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    배송 가능 지역 불러오는 중...
+                  </div>
+                ) : availableRegions.length === 0 ? (
+                  <div className="space-y-2">
+                    <div className="px-3 py-2 border border-yellow-200 bg-yellow-50 rounded-md text-sm text-yellow-800">
+                      ⚠️ 배송 가능한 지역이 없습니다. 먼저 배송 규칙을 등록해주세요.
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push('/delivery-rules')}
+                    >
+                      배송 규칙 등록하러 가기
+                    </Button>
+                  </div>
+                ) : (
+                  <select
+                    id="region"
+                    name="region"
+                    value={formData.region}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                    required
+                  >
+                    <option value="">지역 선택</option>
+                    {availableRegions.map((region) => (
+                      <option key={region} value={region}>
+                        {region}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* 구분선 */}
