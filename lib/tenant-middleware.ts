@@ -66,6 +66,7 @@ export class TenantContext {
 
 // 멀티테넌트 지원 모델 목록 (Prisma는 PascalCase를 사용함)
 // ⚠️ CRITICAL: schema.prisma에서 tenantId를 가진 모든 모델을 포함해야 함!
+// ⚠️ EXCEPTION: TenantMember, TenantInvitation은 제외 (테넌트 컨텍스트 설정 전에 조회 필요)
 const TENANT_MODELS = [
   'Company',
   'Contact',
@@ -78,12 +79,19 @@ const TENANT_MODELS = [
   'MessageTemplate',
   'Subscription',
   'Invoice',           // ✅ 추가됨
-  'TenantMember',      // ✅ 추가됨
-  'TenantInvitation',  // ✅ 추가됨
 ] as const
 
 // Super Admin 모델 (테넌트 격리 없음) (Prisma는 PascalCase를 사용함)
-const SUPER_ADMIN_MODELS = ['Tenant', 'User', 'Account', 'Session', 'VerificationToken'] as const
+// TenantMember, TenantInvitation도 여기에 포함 (테넌트 컨텍스트 설정 전 조회 가능해야 함)
+const SUPER_ADMIN_MODELS = [
+  'Tenant',
+  'User',
+  'Account',
+  'Session',
+  'VerificationToken',
+  'TenantMember',      // ✅ 테넌트 컨텍스트 설정에 사용됨
+  'TenantInvitation',  // ✅ 테넌트 컨텍스트 설정에 사용됨
+] as const
 
 /**
  * Prisma 멀티테넌트 미들웨어
