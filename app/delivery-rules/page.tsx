@@ -854,22 +854,24 @@ export default function DeliveryRulesPage() {
                 </div>
 
                 {calculationResult && (
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <h4 className="font-semibold mb-2">계산 결과</h4>
-                    <div className="space-y-1 text-sm">
-                      <p>
-                        <span className="font-medium">납품일:</span> {calculationResult.deliveryDateKR}
+                  <div className="mt-4 p-5 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                    <h4 className="font-semibold mb-3 text-blue-900 text-base">계산 결과</h4>
+                    <div className="space-y-2 text-sm">
+                      <p className="text-gray-900">
+                        <span className="font-semibold text-blue-800">납품일:</span>{' '}
+                        <span className="font-medium">{calculationResult.deliveryDateKR}</span>
                       </p>
-                      <p>
-                        <span className="font-medium">배송시간:</span>{' '}
-                        {calculationResult.deliveryTimeKR}
+                      <p className="text-gray-900">
+                        <span className="font-semibold text-blue-800">배송시간:</span>{' '}
+                        <span className="font-medium">{calculationResult.deliveryTimeKR}</span>
                       </p>
-                      <p>
-                        <span className="font-medium">소요일:</span>{' '}
-                        {calculationResult.businessDaysUsed}영업일
+                      <p className="text-gray-900">
+                        <span className="font-semibold text-blue-800">소요일:</span>{' '}
+                        <span className="font-medium">{calculationResult.businessDaysUsed}영업일</span>
                       </p>
-                      <p>
-                        <span className="font-medium">지역:</span> {calculationResult.rule.region}
+                      <p className="text-gray-900">
+                        <span className="font-semibold text-blue-800">지역:</span>{' '}
+                        <span className="font-medium">{calculationResult.rule.region}</span>
                       </p>
                     </div>
                   </div>
