@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, TenantContext } from '@/lib/db'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
 import {
@@ -7,7 +7,7 @@ import {
   createSuccessResponse,
   parseAndValidate,
 } from '@/lib/utils/validation'
-import { getTenantIdFromAuthUser } from '@/lib/auth/get-tenant-from-user'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 설정 스키마
 const settingsSchema = z.object({
@@ -100,91 +100,107 @@ const defaultSettings = {
 
 // 설정 조회
 export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromAuthUser()
+  return withTenantContext(request, async () => {
+    try {
+      const tenantContext = TenantContext.getInstance()
+      const tenantId = tenantContext.getTenantId()
 
-    // SystemConfig에서 설정 가져오기
-    const configs = await prisma.systemConfig.findMany({
-      where: { tenantId },
-    })
-
-    // 설정을 구조화된 형태로 변환
-    const settings = { ...defaultSettings }
-
-    configs.forEach((config) => {
-      const [category, key] = config.key.split('.')
-      if (category && key && settings[category as keyof typeof settings]) {
-        const categorySettings = settings[category as keyof typeof settings] as any
-        try {
-          // JSON 파싱 시도 (boolean, number 등)
-          categorySettings[key] = JSON.parse(config.value)
-        } catch {
-          // 파싱 실패시 문자열 그대로 사용
-          categorySettings[key] = config.value
-        }
+      if (!tenantId) {
+        logger.error('Tenant context not available in settings GET')
+        return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
       }
-    })
 
-    logger.info('설정 조회 완료', { tenantId, configCount: configs.length })
+      // SystemConfig에서 설정 가져오기
+      const configs = await prisma.systemConfig.findMany({
+        where: { tenantId },
+      })
 
-    return createSuccessResponse(settings)
-  } catch (error) {
-    logger.error('설정 조회 실패:', error)
-    return createErrorResponse('설정을 불러오는데 실패했습니다.')
-  }
+      // 설정을 구조화된 형태로 변환
+      const settings = { ...defaultSettings }
+
+      configs.forEach((config) => {
+        const [category, key] = config.key.split('.')
+        if (category && key && settings[category as keyof typeof settings]) {
+          const categorySettings = settings[category as keyof typeof settings] as any
+          try {
+            // JSON 파싱 시도 (boolean, number 등)
+            categorySettings[key] = JSON.parse(config.value)
+          } catch {
+            // 파싱 실패시 문자열 그대로 사용
+            categorySettings[key] = config.value
+          }
+        }
+      })
+
+      logger.info('설정 조회 완료', { tenantId, configCount: configs.length })
+
+      return createSuccessResponse(settings)
+    } catch (error) {
+      logger.error('설정 조회 실패:', error)
+      return createErrorResponse('설정을 불러오는데 실패했습니다.')
+    }
+  })
 }
 
 // 설정 업데이트
 export async function PUT(request: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromAuthUser()
+  return withTenantContext(request, async () => {
+    try {
+      const tenantContext = TenantContext.getInstance()
+      const tenantId = tenantContext.getTenantId()
 
-    const { data, error } = await parseAndValidate(request, settingsSchema)
-    if (error) return error
-
-    // 각 설정 카테고리를 SystemConfig에 저장
-    const updates: Array<{ key: string; value: string; category: string }> = []
-
-    Object.entries(data).forEach(([category, categoryData]) => {
-      if (categoryData && typeof categoryData === 'object') {
-        Object.entries(categoryData).forEach(([key, value]) => {
-          updates.push({
-            key: `${category}.${key}`,
-            value: JSON.stringify(value),
-            category,
-          })
-        })
+      if (!tenantId) {
+        logger.error('Tenant context not available in settings PUT')
+        return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
       }
-    })
 
-    // 트랜잭션으로 모든 설정 업데이트
-    await prisma.$transaction(
-      updates.map((update) =>
-        prisma.systemConfig.upsert({
-          where: {
-            tenantId_key: {
+      const { data, error } = await parseAndValidate(request, settingsSchema)
+      if (error) return error
+
+      // 각 설정 카테고리를 SystemConfig에 저장
+      const updates: Array<{ key: string; value: string; category: string }> = []
+
+      Object.entries(data).forEach(([category, categoryData]) => {
+        if (categoryData && typeof categoryData === 'object') {
+          Object.entries(categoryData).forEach(([key, value]) => {
+            updates.push({
+              key: `${category}.${key}`,
+              value: JSON.stringify(value),
+              category,
+            })
+          })
+        }
+      })
+
+      // 트랜잭션으로 모든 설정 업데이트
+      await prisma.$transaction(
+        updates.map((update) =>
+          prisma.systemConfig.upsert({
+            where: {
+              tenantId_key: {
+                tenantId,
+                key: update.key,
+              },
+            },
+            create: {
               tenantId,
               key: update.key,
+              value: update.value,
+              category: update.category,
             },
-          },
-          create: {
-            tenantId,
-            key: update.key,
-            value: update.value,
-            category: update.category,
-          },
-          update: {
-            value: update.value,
-          },
-        })
+            update: {
+              value: update.value,
+            },
+          })
+        )
       )
-    )
 
-    logger.info('설정 업데이트 완료', { tenantId, updateCount: updates.length })
+      logger.info('설정 업데이트 완료', { tenantId, updateCount: updates.length })
 
-    return createSuccessResponse(data, '설정이 저장되었습니다.')
-  } catch (error) {
-    logger.error('설정 업데이트 실패:', error)
-    return createErrorResponse('설정 저장에 실패했습니다.')
-  }
+      return createSuccessResponse(data, '설정이 저장되었습니다.')
+    } catch (error) {
+      logger.error('설정 업데이트 실패:', error)
+      return createErrorResponse('설정 저장에 실패했습니다.')
+    }
+  })
 }
