@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server'
-import { prisma } from '@/lib/db'
+import { prisma, TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import {
   createErrorResponse,
   createSuccessResponse,
 } from '@/lib/utils/validation'
-import { getTenantIdFromAuthUser } from '@/lib/auth/get-tenant-from-user'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 샘플 배송 규칙 데이터
 const sampleDeliveryRules = [
@@ -149,39 +149,47 @@ const sampleDeliveryRules = [
 
 // 샘플 데이터 생성
 export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromAuthUser()
+  return withTenantContext(request, async () => {
+    try {
+      const tenantContext = TenantContext.getInstance()
+      const tenantId = tenantContext.getTenantId()
 
-    // 이미 배송 규칙이 있는지 확인
-    const existingRulesCount = await prisma.deliveryRule.count({
-      where: { tenantId },
-    })
+      if (!tenantId) {
+        logger.error('Tenant context not available in delivery-rules seed POST')
+        return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
+      }
 
-    if (existingRulesCount > 0) {
-      return createErrorResponse(
-        '이미 배송 규칙이 존재합니다. 샘플 데이터는 빈 상태에서만 생성할 수 있습니다.'
-      )
-    }
+      // 이미 배송 규칙이 있는지 확인
+      const existingRulesCount = await prisma.deliveryRule.count({
+        where: { tenantId },
+      })
 
-    // 샘플 데이터 생성
-    const createdRules = await prisma.deliveryRule.createMany({
-      data: sampleDeliveryRules.map((rule) => ({
-        ...rule,
+      if (existingRulesCount > 0) {
+        return createErrorResponse(
+          '이미 배송 규칙이 존재합니다. 샘플 데이터는 빈 상태에서만 생성할 수 있습니다.'
+        )
+      }
+
+      // 샘플 데이터 생성
+      const createdRules = await prisma.deliveryRule.createMany({
+        data: sampleDeliveryRules.map((rule) => ({
+          ...rule,
+          tenantId,
+        })),
+      })
+
+      logger.info('샘플 배송 규칙 생성 완료', {
         tenantId,
-      })),
-    })
+        count: createdRules.count,
+      })
 
-    logger.info('샘플 배송 규칙 생성 완료', {
-      tenantId,
-      count: createdRules.count,
-    })
-
-    return createSuccessResponse(
-      { count: createdRules.count },
-      `${createdRules.count}개의 샘플 배송 규칙이 생성되었습니다.`
-    )
-  } catch (error) {
-    logger.error('샘플 배송 규칙 생성 실패:', error)
-    return createErrorResponse('샘플 데이터 생성에 실패했습니다.')
-  }
+      return createSuccessResponse(
+        { count: createdRules.count },
+        `${createdRules.count}개의 샘플 배송 규칙이 생성되었습니다.`
+      )
+    } catch (error) {
+      logger.error('샘플 배송 규칙 생성 실패:', error)
+      return createErrorResponse('샘플 데이터 생성에 실패했습니다.')
+    }
+  })
 }

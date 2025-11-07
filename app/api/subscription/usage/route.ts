@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getTenantUsageReport } from '@/lib/subscription/limit-checker'
-import { getTenantIdFromAuthUser } from '@/lib/auth/get-tenant-from-user'
+import { TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 async function getUsage(request: NextRequest) {
   try {
-    // 인증된 사용자의 테넌트 ID 조회
-    const tenantId = await getTenantIdFromAuthUser()
+    // TenantContext에서 tenantId 가져오기
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      logger.error('Tenant context not available in usage GET')
+      return NextResponse.json(
+        {
+          success: false,
+          error: '테넌트 정보를 찾을 수 없습니다.',
+        },
+        { status: 401 }
+      )
+    }
 
     // 사용량 리포트 조회
     const usageReport = await getTenantUsageReport(tenantId)
@@ -37,5 +50,5 @@ async function getUsage(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  return getUsage(request)
+  return withTenantContext(request, async () => getUsage(request))
 }

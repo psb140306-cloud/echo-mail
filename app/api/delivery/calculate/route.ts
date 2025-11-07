@@ -11,7 +11,8 @@ import {
   getNextBusinessDay,
   getBusinessDaysBetween,
 } from '@/lib/utils/delivery-calculator'
-import { getTenantIdFromAuthUser } from '@/lib/auth/get-tenant-from-user'
+import { TenantContext } from '@/lib/db'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 // 납품일 계산 요청 스키마
 const calculateDeliverySchema = z.object({
   region: z.string().min(1, '지역은 필수입니다'),
@@ -25,47 +26,55 @@ const calculateDeliverySchema = z.object({
 // 영업일 간격 계산 요청 스키마
 // 납품일 계산
 export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromAuthUser()
+  return withTenantContext(request, async () => {
+    try {
+      const tenantContext = TenantContext.getInstance()
+      const tenantId = tenantContext.getTenantId()
 
-    const { data, error } = await parseAndValidate(request, calculateDeliverySchema)
-    if (error) return error
-    // 날짜 파싱
-    const orderDateTime = new Date(data.orderDateTime)
-    const customHolidays = data.customHolidays?.map((dateStr) => new Date(dateStr))
-    // 납품일 계산
-    const result = await calculateDeliveryDate({
-      region: data.region,
-      orderDateTime,
-      tenantId,
-      excludeWeekends: data.excludeWeekends,
-      customHolidays,
-    })
-    logger.info('납품일 계산 API 호출 성공', {
-      region: data.region,
-      orderDateTime: data.orderDateTime,
-      deliveryDate: result.deliveryDate.toISOString(),
-    })
-    // 응답 데이터 구성
-    const response = {
-      ...result,
-      deliveryDate: result.deliveryDate.toISOString(),
-      orderDateTime: orderDateTime.toISOString(),
-      deliveryDateKR: result.deliveryDate.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        weekday: 'long',
-      }),
-      deliveryTimeKR: result.deliveryTime === 'morning' ? '오전' : '오후',
+      if (!tenantId) {
+        logger.error('Tenant context not available in delivery calculate POST')
+        return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
+      }
+
+      const { data, error } = await parseAndValidate(request, calculateDeliverySchema)
+      if (error) return error
+      // 날짜 파싱
+      const orderDateTime = new Date(data.orderDateTime)
+      const customHolidays = data.customHolidays?.map((dateStr) => new Date(dateStr))
+      // 납품일 계산
+      const result = await calculateDeliveryDate({
+        region: data.region,
+        orderDateTime,
+        tenantId,
+        excludeWeekends: data.excludeWeekends,
+        customHolidays,
+      })
+      logger.info('납품일 계산 API 호출 성공', {
+        region: data.region,
+        orderDateTime: data.orderDateTime,
+        deliveryDate: result.deliveryDate.toISOString(),
+      })
+      // 응답 데이터 구성
+      const response = {
+        ...result,
+        deliveryDate: result.deliveryDate.toISOString(),
+        orderDateTime: orderDateTime.toISOString(),
+        deliveryDateKR: result.deliveryDate.toLocaleDateString('ko-KR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          weekday: 'long',
+        }),
+        deliveryTimeKR: result.deliveryTime === 'morning' ? '오전' : '오후',
+      }
+      return createSuccessResponse(response)
+    } catch (error) {
+      logger.error('납품일 계산 API 실패:', error)
+      return createErrorResponse(
+        error instanceof Error ? error.message : '납품일 계산에 실패했습니다.'
+      )
     }
-    return createSuccessResponse(response)
-  } catch (error) {
-    logger.error('납품일 계산 API 실패:', error)
-    return createErrorResponse(
-      error instanceof Error ? error.message : '납품일 계산에 실패했습니다.'
-    )
-  }
+  })
 }
 // 영업일 관련 유틸리티
 export async function GET(request: NextRequest) {
