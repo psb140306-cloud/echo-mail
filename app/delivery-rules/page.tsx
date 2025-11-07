@@ -662,7 +662,7 @@ export default function DeliveryRulesPage() {
               <div className="col-span-3 space-y-2">
                 {!isCustomRegion ? (
                   <Select
-                    value={formData.region}
+                    value={formData.region || undefined}
                     onValueChange={(value) => {
                       if (value === '__custom__') {
                         setIsCustomRegion(true)
@@ -676,7 +676,6 @@ export default function DeliveryRulesPage() {
                       <SelectValue placeholder="지역 선택" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">지역 선택</SelectItem>
                       {DEFAULT_REGIONS.map((region) => (
                         <SelectItem key={region} value={region}>
                           {region}
