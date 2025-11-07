@@ -87,8 +87,12 @@ export async function PUT(
       }
 
       // 멤버 정보 업데이트
+      // ⚠️ SECURITY: tenantId 조건 명시로 크로스 테넌트 수정 방지
       const updatedMember = await prisma.teamMember.update({
-        where: { id: memberId },
+        where: {
+          id: memberId,
+          tenantId, // CRITICAL: 반드시 포함
+        },
         data: updateData,
         include: {
           user: {
@@ -195,8 +199,12 @@ export async function DELETE(
       }
 
       // 멤버 제거
-      await prisma.teamMember.delete({
-        where: { id: memberId },
+      // ⚠️ SECURITY: tenantId 조건 명시로 크로스 테넌트 삭제 방지
+      await prisma.teamMember.deleteMany({
+        where: {
+          id: memberId,
+          tenantId, // CRITICAL: 반드시 포함
+        },
       })
 
       logger.info('Team member removed', {

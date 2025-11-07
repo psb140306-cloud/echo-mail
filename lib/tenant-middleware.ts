@@ -1,11 +1,18 @@
 import { PrismaClient } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
+import { AsyncLocalStorage } from 'async_hooks'
 
-// 테넌트 컨텍스트 저장소
+// 요청별 테넌트 컨텍스트 저장소 (Race Condition 방지)
+interface TenantContextData {
+  tenantId: string
+  userId?: string
+}
+
+const asyncLocalStorage = new AsyncLocalStorage<TenantContextData>()
+
+// 테넌트 컨텍스트 관리
 export class TenantContext {
   private static instance: TenantContext
-  private tenantId: string | null = null
-  private userId: string | null = null
 
   private constructor() {}
 
@@ -16,38 +23,63 @@ export class TenantContext {
     return TenantContext.instance
   }
 
+  /**
+   * 새로운 요청 컨텍스트를 생성하고 콜백을 실행
+   * AsyncLocalStorage를 사용하여 요청별 격리 보장
+   */
+  run<T>(tenantId: string, userId: string | undefined, callback: () => T): T {
+    const context: TenantContextData = { tenantId, userId }
+    logger.debug('Tenant context run', { tenantId, userId })
+    return asyncLocalStorage.run(context, callback)
+  }
+
   setTenant(tenantId: string, userId?: string): void {
-    this.tenantId = tenantId
-    this.userId = userId || null
-    logger.debug('Tenant context set', { tenantId, userId })
+    const store = asyncLocalStorage.getStore()
+    if (store) {
+      store.tenantId = tenantId
+      store.userId = userId
+      logger.debug('Tenant context updated', { tenantId, userId })
+    } else {
+      logger.warn('Attempted to set tenant outside of async context')
+    }
   }
 
   getTenantId(): string | null {
-    return this.tenantId
+    const store = asyncLocalStorage.getStore()
+    return store?.tenantId || null
   }
 
   getUserId(): string | null {
-    return this.userId
+    const store = asyncLocalStorage.getStore()
+    return store?.userId || null
   }
 
   clear(): void {
-    this.tenantId = null
-    this.userId = null
-    logger.debug('Tenant context cleared')
+    const store = asyncLocalStorage.getStore()
+    if (store) {
+      store.tenantId = ''
+      store.userId = undefined
+      logger.debug('Tenant context cleared')
+    }
   }
 }
 
 // 멀티테넌트 지원 모델 목록 (Prisma는 PascalCase를 사용함)
+// ⚠️ CRITICAL: schema.prisma에서 tenantId를 가진 모든 모델을 포함해야 함!
 const TENANT_MODELS = [
   'Company',
   'Contact',
   'DeliveryRule',
   'Holiday',
   'EmailLog',
+  'EmailAccount',      // ✅ 추가됨
   'NotificationLog',
   'SystemConfig',
   'MessageTemplate',
   'Subscription',
+  'Invoice',           // ✅ 추가됨
+  'TenantMember',      // ✅ 추가됨
+  'TenantInvitation',  // ✅ 추가됨
 ] as const
 
 // Super Admin 모델 (테넌트 격리 없음) (Prisma는 PascalCase를 사용함)

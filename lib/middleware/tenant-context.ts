@@ -202,6 +202,7 @@ function extractSubdomain(host: string): string | null {
 
 /**
  * API 라우트용 테넌트 컨텍스트 미들웨어
+ * ⚠️ SECURITY: 반드시 사용자의 멤버십을 검증하여 크로스 테넌트 접근 방지
  */
 export async function withTenantContext<T>(
   request: NextRequest,
@@ -210,174 +211,128 @@ export async function withTenantContext<T>(
   const tenantContext = TenantContext.getInstance()
 
   try {
-    // 테넌트 식별
+    // 1. Supabase Auth 세션 먼저 확인
+    let authUser: any = null
+    let userTenantId: string | null = null
+
+    try {
+      const { createServerClient } = await import('@supabase/ssr')
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) {
+              return request.cookies.get(name)?.value
+            },
+            set() {},
+            remove() {},
+          },
+        }
+      )
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+
+      if (user) {
+        authUser = user
+
+        // 사용자의 멤버십에서 tenantId 가져오기
+        const membership = await prisma.tenantMember.findFirst({
+          where: {
+            userId: user.id,
+            status: 'ACTIVE',
+          },
+          include: {
+            tenant: true,
+          },
+        })
+
+        if (membership) {
+          userTenantId = membership.tenantId
+          logger.debug('User membership found', {
+            userId: user.id,
+            tenantId: userTenantId,
+            role: membership.role,
+          })
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to get user session', { error })
+    }
+
+    // 2. 호스트에서 테넌트 식별
     let tenant = await identifyTenant(request)
 
-    // 도메인에서 tenant를 찾지 못한 경우, Supabase Auth 세션에서 가져오기
-    if (!tenant) {
-      try {
-        // API Route에서 Supabase 클라이언트 생성
-        const { createServerClient } = await import('@supabase/ssr')
-
-        // 모든 쿠키 확인 (디버깅)
-        const allCookies = request.cookies.getAll()
-        logger.info('All cookies in request', {
-          cookieCount: allCookies.length,
-          cookieNames: allCookies.map((c) => c.name),
+    // 3. CRITICAL: 호스트에서 식별된 테넌트와 사용자 멤버십 일치 검증
+    if (tenant && authUser && userTenantId) {
+      if (tenant.id !== userTenantId) {
+        logger.error('🚨 SECURITY: Tenant mismatch detected!', {
+          hostTenantId: tenant.id,
+          userTenantId,
+          userId: authUser.id,
+          host: request.headers.get('host'),
         })
 
-        const supabase = createServerClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          {
-            cookies: {
-              get(name: string) {
-                const value = request.cookies.get(name)?.value
-                logger.debug('Cookie get', { name, hasValue: !!value })
-                return value
-              },
-              set() {},
-              remove() {},
-            },
-          }
-        )
+        // 멤버십 없는 테넌트 접근 시도 차단
+        throw new Error('Unauthorized: You are not a member of this tenant')
+      }
+    }
 
-        const {
-          data: { user: authUser },
-          error: authError,
-        } = await supabase.auth.getUser()
+    // 4. 도메인에서 tenant를 찾지 못했지만 사용자에게 멤버십이 있는 경우
+    if (!tenant && userTenantId && authUser) {
+      // 멤버십에서 테넌트 조회
+      const membership = await prisma.tenantMember.findFirst({
+        where: {
+          userId: authUser.id,
+          tenantId: userTenantId,
+          status: 'ACTIVE',
+        },
+        include: {
+          tenant: true,
+        },
+      })
 
-        logger.info('Supabase auth.getUser result', {
-          hasUser: !!authUser,
-          userId: authUser?.id,
-          userEmail: authUser?.email,
-          error: authError?.message,
-        })
-
-        if (authUser) {
-          // Supabase Auth UUID로 tenant 조회 (멤버십을 통해)
-          const memberShip = await prisma.tenantMember.findFirst({
-            where: {
-              userId: authUser.id,
-              status: 'ACTIVE',
-            },
-            include: {
-              tenant: true,
-            },
-          })
-
-          let userTenant = memberShip?.tenant
-
-          logger.info('Tenant lookup by tenantMember', {
-            userId: authUser.id,
-            foundMembership: !!memberShip,
-            foundTenant: !!userTenant,
-            tenantId: userTenant?.id,
-            memberRole: memberShip?.role,
-          })
-
-          // Tenant가 없으면 자동 생성
-          if (!userTenant && authUser.email) {
-            logger.info('No tenant found, creating new tenant', {
-              userId: authUser.id,
-              email: authUser.email,
-            })
-
-            const metadata = authUser.user_metadata || {}
-            const companyName = metadata.company_name || '내 회사'
-            const subdomain = metadata.subdomain || authUser.email.split('@')[0].replace(/[^a-zA-Z0-9-]/g, '')
-            const subscriptionPlan = metadata.subscription_plan || 'FREE_TRIAL'
-            const ownerName = metadata.full_name || authUser.email.split('@')[0]
-
-            try {
-              // 트랜잭션으로 Tenant와 TenantMember를 함께 생성
-              userTenant = await prisma.tenant.create({
-                data: {
-                  name: companyName,
-                  subdomain,
-                  ownerId: authUser.id,
-                  ownerEmail: authUser.email,
-                  ownerName,
-                  subscriptionPlan,
-                  subscriptionStatus: subscriptionPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
-                  trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14일
-                  maxCompanies: subscriptionPlan === 'FREE_TRIAL' ? 10 : 50,
-                  maxContacts: subscriptionPlan === 'FREE_TRIAL' ? 50 : 300,
-                  maxEmails: subscriptionPlan === 'FREE_TRIAL' ? 100 : 5000,
-                  maxNotifications: subscriptionPlan === 'FREE_TRIAL' ? 100 : 10000,
-                  // 동시에 OWNER 멤버십 생성
-                  members: {
-                    create: {
-                      userId: authUser.id,
-                      userEmail: authUser.email,
-                      userName: ownerName,
-                      role: 'OWNER',
-                      status: 'ACTIVE',
-                      acceptedAt: new Date(),
-                    },
-                  },
-                },
-              })
-
-              logger.info('✅ Tenant and Owner membership created automatically on first login', {
-                tenantId: userTenant.id,
-                ownerId: authUser.id,
-                email: authUser.email,
-              })
-            } catch (error) {
-              logger.error('Failed to create tenant automatically', {
-                userId: authUser.id,
-                email: authUser.email,
-                error: error instanceof Error ? error.message : 'Unknown error',
-              })
-            }
-          }
-
-          if (userTenant) {
-            tenant = {
-              id: userTenant.id,
-              name: userTenant.name,
-              subdomain: userTenant.subdomain,
-              customDomain: userTenant.customDomain || undefined,
-              subscriptionPlan: userTenant.subscriptionPlan,
-            }
-            logger.info('✅ Tenant found from Supabase Auth session', {
-              userId: authUser.id,
-              userEmail: authUser.email,
-              tenantId: tenant.id,
-            })
-          }
+      if (membership?.tenant) {
+        tenant = {
+          id: membership.tenant.id,
+          name: membership.tenant.name,
+          subdomain: membership.tenant.subdomain,
+          customDomain: membership.tenant.customDomain || undefined,
+          subscriptionPlan: membership.tenant.subscriptionPlan,
         }
-      } catch (error) {
-        logger.error('Failed to get tenant from Supabase session', { error })
+        logger.info('✅ Tenant found from user membership', {
+          userId: authUser.id,
+          tenantId: tenant.id,
+        })
       }
     }
 
     if (tenant) {
-      // 테넌트 컨텍스트 설정
-      tenantContext.setTenant(tenant.id)
-      logger.debug('Tenant context set', {
-        tenantId: tenant.id,
-        tenantName: tenant.name,
-        subdomain: tenant.subdomain,
+      // AsyncLocalStorage를 사용하여 요청별 격리된 컨텍스트에서 실행
+      return tenantContext.run(tenant.id, authUser?.id, async () => {
+        logger.debug('Tenant context set in AsyncLocalStorage', {
+          tenantId: tenant.id,
+          tenantName: tenant.name,
+          userId: authUser?.id,
+        })
+        return await handler(request)
       })
     } else {
-      // Super Admin이나 공용 API의 경우 컨텍스트 클리어
-      tenantContext.clear()
-      logger.debug('Tenant context cleared - no tenant identified')
+      // 인증되지 않은 요청이거나 Super Admin API
+      logger.debug('No tenant context - unauthenticated or super admin')
+      return await handler(request)
     }
-
-    // 핸들러 실행
-    return await handler(request)
   } catch (error) {
     logger.error('Tenant context middleware error', {
       error: error instanceof Error ? error.message : 'Unknown error',
     })
     throw error
-  } finally {
-    // 요청 처리 후 컨텍스트 정리
-    tenantContext.clear()
   }
+  // ⚠️ AsyncLocalStorage 사용으로 finally 블록 제거
+  // 컨텍스트는 자동으로 정리됨
 }
 
 /**
