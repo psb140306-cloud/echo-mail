@@ -259,7 +259,7 @@ export async function GET(request: NextRequest) {
     return rateLimitResponse
   }
 
-  return withTenantContext(request, getCompanies)
+  return withTenantContext(request, async () => getCompanies(request))
 }
 
 export async function POST(request: NextRequest) {
@@ -269,5 +269,5 @@ export async function POST(request: NextRequest) {
     return rateLimitResponse
   }
 
-  return withTenantContext(request, createCompany)
+  return withTenantContext(request, async () => createCompany(request))
 }
