@@ -110,6 +110,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)
   const [testResults, setTestResults] = useState<Record<string, boolean>>({})
+  const [mailboxInfo, setMailboxInfo] = useState<{
+    exists: number
+    messages: number
+    path: string
+  } | null>(null)
   const { toast } = useToast()
 
   // 설정 데이터 로드
@@ -198,11 +203,21 @@ export default function SettingsPage() {
       }))
 
       if (data.success) {
+        // 메일 서버 연결 성공 시 메일함 정보 저장
+        if (type === 'mail' && data.data?.mailbox) {
+          setMailboxInfo(data.data.mailbox)
+        }
+
         toast({
           title: '연결 성공',
           description: `${type === 'mail' ? '메일 서버' : type === 'sms' ? 'SMS API' : '카카오톡 API'} 연결이 성공했습니다.`,
         })
       } else {
+        // 연결 실패 시 메일함 정보 초기화
+        if (type === 'mail') {
+          setMailboxInfo(null)
+        }
+
         toast({
           title: '연결 실패',
           description: data.error || '연결 테스트에 실패했습니다.',
@@ -435,6 +450,33 @@ export default function SettingsPage() {
                     />
                   </div>
                 </div>
+
+                {/* 메일함 정보 표시 */}
+                {mailboxInfo && testResults.mail && (
+                  <>
+                    <Separator />
+                    <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800 p-4">
+                      <h4 className="text-sm font-semibold text-green-900 dark:text-green-100 mb-3 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        연결된 메일함 정보
+                      </h4>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <div className="text-green-600 dark:text-green-400 font-medium mb-1">메일함</div>
+                          <div className="text-green-900 dark:text-green-100">{mailboxInfo.path}</div>
+                        </div>
+                        <div>
+                          <div className="text-green-600 dark:text-green-400 font-medium mb-1">전체 메일 수</div>
+                          <div className="text-green-900 dark:text-green-100">{mailboxInfo.messages.toLocaleString()}개</div>
+                        </div>
+                        <div>
+                          <div className="text-green-600 dark:text-green-400 font-medium mb-1">현재 메일 수</div>
+                          <div className="text-green-900 dark:text-green-100">{mailboxInfo.exists.toLocaleString()}개</div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
