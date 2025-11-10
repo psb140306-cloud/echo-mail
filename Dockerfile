@@ -20,8 +20,9 @@ RUN corepack enable
 FROM base AS deps
 WORKDIR /app
 
-# 패키지 파일 복사
+# 패키지 파일 및 Prisma 스키마 복사
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+COPY prisma ./prisma/
 
 # 의존성 설치
 RUN \
