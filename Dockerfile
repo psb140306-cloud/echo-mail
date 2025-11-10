@@ -5,8 +5,8 @@
 # Node.js 베이스 이미지
 FROM node:18-alpine AS base
 
-# 필요한 패키지 설치
-RUN apk add --no-cache libc6-compat
+# 필요한 패키지 설치 (Prisma를 위한 OpenSSL 1.1 포함)
+RUN apk add --no-cache libc6-compat openssl1.1-compat
 WORKDIR /app
 
 # 패키지 관리자 설정
