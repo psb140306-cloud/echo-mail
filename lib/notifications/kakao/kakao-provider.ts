@@ -318,8 +318,7 @@ export function createKakaoProviderFromEnv(): KakaoProvider {
     apiKey: process.env.KAKAO_API_KEY || '',
     apiSecret: process.env.KAKAO_API_SECRET || '',
     senderKey: process.env.KAKAO_SENDER_KEY || '',
-    testMode:
-      process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true',
+    testMode: process.env.ENABLE_REAL_NOTIFICATIONS !== 'true',
   }
 
   if (!config.apiKey || !config.senderKey) {

@@ -403,7 +403,7 @@ export function createSMSProvider(config: SMSConfig): SMSProvider {
 // 환경변수에서 SMS 설정 로드
 export function createSMSProviderFromEnv(): SMSProvider {
   const provider = (process.env.SMS_PROVIDER || 'solapi') as SMSConfig['provider']
-  const testMode = process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
+  const testMode = process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
 
   let config: SMSConfig
 

@@ -102,7 +102,7 @@ export class NotificationService {
 
     // 테넌트 발신번호로 SMS Provider 생성
     const provider = (process.env.SMS_PROVIDER || 'aligo') as 'aligo' | 'ncp' | 'solapi'
-    const testMode = process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
+    const testMode = process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
 
     if (provider === 'ncp') {
       const { NCPSMSProvider } = await import('./sms/sms-provider')

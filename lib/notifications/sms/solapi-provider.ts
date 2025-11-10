@@ -254,7 +254,14 @@ export function createSolapiProviderFromEnv(): SolapiSMSProvider {
     throw new Error('SOLAPI 환경변수가 설정되지 않았습니다 (SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_SENDER_PHONE)')
   }
 
-  const testMode = process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
+  // ENABLE_REAL_NOTIFICATIONS가 명시적으로 true면 실제 발송
+  const testMode = process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
+
+  logger.info('[SOLAPI] Provider 생성', {
+    NODE_ENV: process.env.NODE_ENV,
+    ENABLE_REAL_NOTIFICATIONS: process.env.ENABLE_REAL_NOTIFICATIONS,
+    testMode,
+  })
 
   return new SolapiSMSProvider({
     apiKey,

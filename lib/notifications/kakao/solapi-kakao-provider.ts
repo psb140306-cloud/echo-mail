@@ -336,7 +336,7 @@ export function createSolapiKakaoProviderFromEnv(): SolapiKakaoProvider {
     throw new Error('SOLAPI 카카오 환경변수가 설정되지 않았습니다 (SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_KAKAO_PFID)')
   }
 
-  const testMode = process.env.NODE_ENV !== 'production' || process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
+  const testMode = process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
 
   return new SolapiKakaoProvider({
     apiKey,
