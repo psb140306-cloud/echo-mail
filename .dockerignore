@@ -1,0 +1,103 @@
+# =============================================================================
+# Docker 빌드 시 제외할 파일 및 디렉토리
+# =============================================================================
+
+# 의존성 디렉토리
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js 빌드 결과물
+.next/
+out/
+
+# 프로덕션 빌드
+/build
+
+# 환경변수 파일
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 로그 파일
+logs
+*.log
+
+# Runtime 데이터
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage 디렉토리
+lib-cov
+coverage
+*.lcov
+.nyc_output
+
+# 임시 디렉토리
+.tmp
+.temp
+
+# IDE 설정
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS 생성 파일
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git 디렉토리
+.git
+.gitignore
+
+# Docker 관련
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# 문서 파일
+README.md
+CHANGELOG.md
+LICENSE
+*.md
+
+# 테스트 파일
+__tests__
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+
+# 설정 파일
+.eslintrc*
+.prettierrc*
+jest.config*
+.babelrc*
+# tsconfig.json은 빌드에 필요하므로 주석 처리
+# tsconfig.json
+
+# 업로드된 파일
+uploads/
+tmp/
+
+# 데이터베이스 파일
+*.sqlite
+*.db
+
+# 백업 파일
+*.bak
+*.backup
