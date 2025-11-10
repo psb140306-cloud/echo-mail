@@ -10,14 +10,14 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 # 패키지 파일 복사
-COPY worker/package.json ./
-COPY package.json ./root-package.json
+COPY worker/package.json ./package.json
 
 # Prisma 스키마 복사
 COPY prisma ./prisma/
 
-# 의존성 설치
+# 의존성 설치 (prisma CLI 포함)
 RUN npm install
+RUN npm install -D prisma
 
 # Prisma Client 생성
 RUN npx prisma generate
