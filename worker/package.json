@@ -1,0 +1,21 @@
+{
+  "name": "echo-mail-worker",
+  "version": "1.0.0",
+  "description": "Echo Mail 스케줄러 워커",
+  "main": "scheduler.ts",
+  "scripts": {
+    "start": "tsx scheduler.ts",
+    "build": "tsc",
+    "dev": "tsx watch scheduler.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

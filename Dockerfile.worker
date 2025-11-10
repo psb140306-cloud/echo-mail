@@ -1,51 +1,37 @@
 # =============================================================================
-# Echo Mail Worker Service Dockerfile
-# 백그라운드 작업을 처리하는 워커 서비스용
+# Echo Mail 스케줄러 워커 Dockerfile
 # =============================================================================
 
-FROM node:18-alpine AS base
+FROM node:18-alpine3.19
 
-# 작업 디렉토리 설정
+# 필요한 패키지 설치
+RUN apk add --no-cache libc6-compat openssl
+
 WORKDIR /app
 
-# 시스템 의존성 설치
-RUN apk add --no-cache \
-    libc6-compat \
-    openssl \
-    bash \
-    curl
-
-# pnpm 설치
-RUN npm install -g pnpm
-
-# =============================================================================
-# Dependencies Stage
-# =============================================================================
-FROM base AS deps
-
 # 패키지 파일 복사
-COPY package.json pnpm-lock.yaml* ./
+COPY worker/package.json ./
+COPY package.json ./root-package.json
+
+# Prisma 스키마 복사
+COPY prisma ./prisma/
 
 # 의존성 설치
-RUN pnpm install --frozen-lockfile --production
+RUN npm install
 
-# =============================================================================
-# Worker Runtime
-# =============================================================================
-FROM base AS worker
+# Prisma Client 생성
+RUN npx prisma generate
 
-# 프로덕션 의존성 복사
-COPY --from=deps /app/node_modules ./node_modules
+# 필요한 소스 코드 복사
+COPY worker ./worker/
+COPY lib ./lib/
+COPY tsconfig.json ./
 
-# 필요한 소스 파일들 복사
-COPY workers/ ./workers/
-COPY lib/ ./lib/
-COPY types/ ./types/
-COPY prisma/ ./prisma/
-COPY package.json ./
+# TypeScript 런타임 설치
+RUN npm install -g tsx
 
-# 환경 변수 설정
+# 환경변수
 ENV NODE_ENV=production
 
-# 워커 실행 (기본적으로 notification worker)
-CMD ["node", "workers/notification.worker.js"]
+# 워커 실행
+CMD ["npm", "start"]
