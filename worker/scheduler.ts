@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { MailScheduler } from '../lib/scheduler/mail-scheduler'
+import { mailScheduler } from '../lib/scheduler/mail-scheduler'
 import { logger } from '../lib/utils/logger'
 
 const prisma = new PrismaClient()
@@ -8,22 +8,21 @@ async function main() {
   logger.info('[Worker] 메일 스케줄러 워커 시작')
 
   // 스케줄러 초기화
-  const scheduler = MailScheduler.getInstance()
-  await scheduler.reloadAllSchedules()
+  await mailScheduler.reloadAllSchedules()
 
   logger.info('[Worker] 스케줄러 초기화 완료')
 
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     logger.info('[Worker] SIGTERM 수신, 종료 중...')
-    scheduler.stopAll()
+    mailScheduler.stopAll()
     await prisma.$disconnect()
     process.exit(0)
   })
 
   process.on('SIGINT', async () => {
     logger.info('[Worker] SIGINT 수신, 종료 중...')
-    scheduler.stopAll()
+    mailScheduler.stopAll()
     await prisma.$disconnect()
     process.exit(0)
   })
