@@ -105,46 +105,111 @@ npm run dev
 ### 환경변수
 
 ```env
-# 데이터베이스
-DATABASE_URL="postgresql://username:password@localhost:5432/echomail"
+# 애플리케이션
+NODE_ENV=production
+APP_NAME="Echo Mail"
+APP_URL=https://echo-mail-production.up.railway.app
+
+# 데이터베이스 (Supabase PostgreSQL)
+DATABASE_URL="postgresql://postgres.xxx:password@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&statement_cache_size=0"
+DATABASE_URL_DIRECT="postgresql://postgres:password@db.xxx.supabase.co:5432/postgres"
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL="https://xxx.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
 
 # SMS API (SOLAPI)
 SMS_PROVIDER="solapi"
 SOLAPI_API_KEY="your-solapi-api-key"
 SOLAPI_API_SECRET="your-solapi-api-secret"
-SOLAPI_SENDER_PHONE="010-0000-0000"  # 등록된 발신번호
+SOLAPI_SENDER_PHONE="010-0000-0000"
 SOLAPI_KAKAO_PFID=""  # 카카오 비즈니스 채널 pfId (선택)
 
 # 실제 알림 발송 활성화
-ENABLE_REAL_NOTIFICATIONS=true  # false면 테스트 모드 (실제 발송 안됨)
+ENABLE_REAL_NOTIFICATIONS=true  # false면 테스트 모드
 
-# Vercel Cron Job 인증
-CRON_SECRET="your-random-secret-key"  # Cron 엔드포인트 보호용
-
-# Clerk 인증 (프로덕션)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="your-clerk-publishable-key"
-CLERK_SECRET_KEY="your-clerk-secret-key"
+# Redis (선택사항 - 캐싱 기능)
+REDIS_URL="redis://localhost:6379"
 
 # MCP 서버 설정 (선택)
 GITHUB_TOKEN="your-github-token"
-SUPABASE_URL="your-supabase-url"
 VERCEL_TOKEN="your-vercel-token"
 ```
 
 #### 주요 환경변수 설명
 
-- **ENABLE_REAL_NOTIFICATIONS**: `true`로 설정하면 실제 SMS/카카오톡 발송, `false`면 테스트 모드
-- **CRON_SECRET**: Vercel Cron Job 인증용 시크릿 키 (랜덤 문자열)
+- **NODE_ENV**: 환경 모드 (`development`, `production`)
+- **DATABASE_URL**: Supabase pooling connection (세션 모드)
+- **DATABASE_URL_DIRECT**: Supabase direct connection (마이그레이션용)
+- **ENABLE_REAL_NOTIFICATIONS**: `true`로 설정하면 실제 SMS/카카오톡 발송
+- **REDIS_URL**: (선택) Redis 캐싱 활성화
 - **SMS_PROVIDER**: 사용할 SMS 프로바이더 (`solapi`, `aligo`, `ncp` 중 선택)
 
-#### Vercel 환경변수 설정
+## 🚢 배포
 
-Vercel 대시보드에서 다음 환경변수를 추가해야 합니다:
-1. `DATABASE_URL`
-2. `ENABLE_REAL_NOTIFICATIONS=true`
-3. `CRON_SECRET` (랜덤 생성)
-4. SMS API 키들 (`SOLAPI_*`)
-5. Clerk 인증 키들 (`NEXT_PUBLIC_CLERK_*`, `CLERK_SECRET_KEY`)
+### Railway 배포 (프로덕션)
+
+Echo Mail은 Railway에 Docker 컨테이너로 배포됩니다.
+
+**배포 URL**: https://echo-mail-production.up.railway.app
+
+#### Railway 환경변수 설정
+
+Railway 대시보드에서 다음 환경변수를 추가:
+
+**필수 환경변수:**
+1. `NODE_ENV=production`
+2. `DATABASE_URL` (Supabase pooling)
+3. `DATABASE_URL_DIRECT` (Supabase direct)
+4. `NEXT_PUBLIC_SUPABASE_URL`
+5. `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+6. `SUPABASE_SERVICE_ROLE_KEY`
+7. `SOLAPI_API_KEY`
+8. `SOLAPI_API_SECRET`
+9. `SOLAPI_SENDER_PHONE`
+10. `ENABLE_REAL_NOTIFICATIONS=true`
+
+**선택 환경변수:**
+- `REDIS_URL` (Redis 플러그인 추가 시 자동 설정)
+
+#### 배포 프로세스
+
+1. **GitHub Push**: 코드를 main 브랜치에 푸시
+2. **자동 빌드**: Railway가 Dockerfile을 감지하고 자동 빌드
+3. **Docker 이미지**: Alpine Linux 3.19 + Node.js 18 + Prisma
+4. **배포 완료**: 약 2분 소요
+5. **스케줄러 시작**: node-cron이 자동으로 초기화됨
+
+#### 기술 스택 (Railway)
+
+- **Base Image**: node:18-alpine3.19
+- **Build Tool**: Docker multi-stage build
+- **Database**: Supabase PostgreSQL
+- **Scheduler**: node-cron (내부 스케줄러)
+- **Port**: 8080
+
+#### Railway 설정
+
+**Networking:**
+- Public Domain: `echo-mail-production.up.railway.app`
+- Private Network: `echo-mail.railway.internal`
+
+**Build:**
+- Dockerfile 자동 감지
+- Standalone Next.js output
+- Prisma Client 자동 생성
+
+### Vercel 배포 (개발/스테이징)
+
+개발 및 스테이징 환경은 Vercel에 배포됩니다.
+
+**Vercel 환경변수:**
+위의 필수 환경변수와 동일하게 설정
+
+**주의사항:**
+- Vercel Cron은 제한적이므로 Railway를 프로덕션으로 사용
+- 메일 스케줄러는 Railway에서만 완전히 작동
 
 ## 🔧 MCP 서버 설정
 
