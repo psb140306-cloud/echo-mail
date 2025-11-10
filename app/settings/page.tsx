@@ -442,12 +442,15 @@ export default function SettingsPage() {
                       id="mail-interval"
                       type="number"
                       min="1"
-                      max="60"
+                      max="5"
                       value={settings.mailServer.checkInterval}
                       onChange={(e) =>
                         updateSetting('mailServer', 'checkInterval', parseInt(e.target.value))
                       }
                     />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      1~5분 사이로 설정 가능합니다. (권장: 5분)
+                    </p>
                   </div>
                 </div>
 

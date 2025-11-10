@@ -39,10 +39,6 @@
     {
       "path": "/api/cron/daily-tasks",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/check-mail",
-      "schedule": "*/5 * * * *"
     }
   ]
 }

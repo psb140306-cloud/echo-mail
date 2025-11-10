@@ -8,6 +8,7 @@ import {
   parseAndValidate,
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
+import { mailScheduler } from '@/lib/scheduler/mail-scheduler'
 
 // 설정 스키마
 const settingsSchema = z.object({
@@ -202,6 +203,18 @@ export async function PUT(request: NextRequest) {
       }
 
       logger.info('설정 업데이트 완료', { tenantId, updateCount: updates.length })
+
+      // 메일 서버 설정이 변경된 경우 스케줄러 재로드
+      if (data.mailServer) {
+        try {
+          logger.info('메일 서버 설정 변경 감지, 스케줄러 재로드 시작')
+          await mailScheduler.reloadAllSchedules()
+          logger.info('스케줄러 재로드 완료')
+        } catch (schedulerError) {
+          logger.error('스케줄러 재로드 실패:', schedulerError)
+          // 스케줄러 재로드 실패해도 설정 저장은 성공으로 처리
+        }
+      }
 
       return createSuccessResponse(data, '설정이 저장되었습니다.')
     } catch (error) {

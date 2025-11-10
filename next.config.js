@@ -20,6 +20,7 @@ const nextConfig = {
   // 실험적 기능
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
+    instrumentationHook: true, // 스케줄러 초기화를 위한 instrumentation 활성화
   },
 
   // 빌드 최적화
