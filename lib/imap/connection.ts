@@ -68,6 +68,9 @@ export async function testImapConnection(
     let mailboxInfo: MailboxInfo
 
     try {
+      // ImapFlow의 mailbox 객체 전체 로깅
+      logger.debug('IMAP mailbox 객체:', client.mailbox)
+
       mailboxInfo = {
         exists: client.mailbox?.exists || 0,
         messages: client.mailbox?.messages || 0,
@@ -80,7 +83,7 @@ export async function testImapConnection(
     logger.info('IMAP 서버 연결 성공', {
       host,
       username,
-      inboxMessages: mailboxInfo.messages,
+      mailboxInfo,
     })
 
     return {

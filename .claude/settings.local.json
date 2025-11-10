@@ -3,7 +3,15 @@
     "allow": [
       "Bash(powershell:*)",
       "Bash(npm uninstall:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout:*)",
+      "Bash(cd:*)",
+      "Bash(mkdir:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 메일 서버 연결 테스트 API 구현\n\n- /api/settings/test/mail POST 엔드포인트 추가\n- IMAP 연결 유틸리티 함수 구현\n- 연결 타임아웃 및 에러 처리 추가\n- 메일함 정보 조회 기능 포함\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: 메일 서버 연결 성공 시 메일함 정보 표시\n\n- 연결 성공 시 메일함 이름, 전체 메일 수, 현재 메일 수 표시\n- 연결 정보를 시각적으로 구분된 녹색 패널로 표시\n- 다크모드 지원\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

@@ -460,17 +460,13 @@ export default function SettingsPage() {
                         <CheckCircle className="h-4 w-4" />
                         연결된 메일함 정보
                       </h4>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <div className="text-green-600 dark:text-green-400 font-medium mb-1">메일함</div>
                           <div className="text-green-900 dark:text-green-100">{mailboxInfo.path}</div>
                         </div>
                         <div>
-                          <div className="text-green-600 dark:text-green-400 font-medium mb-1">전체 메일 수</div>
-                          <div className="text-green-900 dark:text-green-100">{mailboxInfo.messages.toLocaleString()}개</div>
-                        </div>
-                        <div>
-                          <div className="text-green-600 dark:text-green-400 font-medium mb-1">현재 메일 수</div>
+                          <div className="text-green-600 dark:text-green-400 font-medium mb-1">메일 개수</div>
                           <div className="text-green-900 dark:text-green-100">{mailboxInfo.exists.toLocaleString()}개</div>
                         </div>
                       </div>
