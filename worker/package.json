@@ -4,9 +4,9 @@
   "description": "Echo Mail 스케줄러 워커",
   "main": "scheduler.ts",
   "scripts": {
-    "start": "tsx scheduler.ts",
+    "start": "tsx worker/scheduler.ts",
     "build": "tsc",
-    "dev": "tsx watch scheduler.ts"
+    "dev": "tsx watch worker/scheduler.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
