@@ -108,28 +108,43 @@ npm run dev
 # 데이터베이스
 DATABASE_URL="postgresql://username:password@localhost:5432/echomail"
 
-# Redis
-REDIS_URL="redis://localhost:6379"
+# SMS API (SOLAPI)
+SMS_PROVIDER="solapi"
+SOLAPI_API_KEY="your-solapi-api-key"
+SOLAPI_API_SECRET="your-solapi-api-secret"
+SOLAPI_SENDER_PHONE="010-0000-0000"  # 등록된 발신번호
+SOLAPI_KAKAO_PFID=""  # 카카오 비즈니스 채널 pfId (선택)
 
-# 메일 서버
-MAIL_HOST="imap.example.com"
-MAIL_PORT=993
-MAIL_USER="your-email@example.com"
-MAIL_PASSWORD="your-password"
+# 실제 알림 발송 활성화
+ENABLE_REAL_NOTIFICATIONS=true  # false면 테스트 모드 (실제 발송 안됨)
 
-# SMS API
-SMS_API_KEY="your-sms-api-key"
-SMS_API_SECRET="your-sms-api-secret"
+# Vercel Cron Job 인증
+CRON_SECRET="your-random-secret-key"  # Cron 엔드포인트 보호용
 
-# 카카오톡 API
-KAKAO_API_KEY="your-kakao-api-key"
-KAKAO_TEMPLATE_ID="your-template-id"
+# Clerk 인증 (프로덕션)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="your-clerk-publishable-key"
+CLERK_SECRET_KEY="your-clerk-secret-key"
 
-# MCP 서버 설정
+# MCP 서버 설정 (선택)
 GITHUB_TOKEN="your-github-token"
 SUPABASE_URL="your-supabase-url"
 VERCEL_TOKEN="your-vercel-token"
 ```
+
+#### 주요 환경변수 설명
+
+- **ENABLE_REAL_NOTIFICATIONS**: `true`로 설정하면 실제 SMS/카카오톡 발송, `false`면 테스트 모드
+- **CRON_SECRET**: Vercel Cron Job 인증용 시크릿 키 (랜덤 문자열)
+- **SMS_PROVIDER**: 사용할 SMS 프로바이더 (`solapi`, `aligo`, `ncp` 중 선택)
+
+#### Vercel 환경변수 설정
+
+Vercel 대시보드에서 다음 환경변수를 추가해야 합니다:
+1. `DATABASE_URL`
+2. `ENABLE_REAL_NOTIFICATIONS=true`
+3. `CRON_SECRET` (랜덤 생성)
+4. SMS API 키들 (`SOLAPI_*`)
+5. Clerk 인증 키들 (`NEXT_PUBLIC_CLERK_*`, `CLERK_SECRET_KEY`)
 
 ## 🔧 MCP 서버 설정
 
