@@ -2,11 +2,11 @@
 # Echo Mail Next.js Application Dockerfile
 # =============================================================================
 
-# Node.js 베이스 이미지
-FROM node:18-alpine AS base
+# Node.js 베이스 이미지 (Alpine 3.19 - Prisma 호환성)
+FROM node:18-alpine3.19 AS base
 
-# 필요한 패키지 설치 (Prisma를 위한 OpenSSL 1.1 포함)
-RUN apk add --no-cache libc6-compat openssl1.1-compat
+# 필요한 패키지 설치
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 # 패키지 관리자 설정
