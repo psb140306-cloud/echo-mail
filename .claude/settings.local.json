@@ -24,7 +24,8 @@
       "Bash(curl:*)",
       "Bash(git log:*)",
       "Bash(node -e:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx prisma migrate:*)"
     ],
     "deny": [],
     "ask": []

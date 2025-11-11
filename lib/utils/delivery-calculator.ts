@@ -13,16 +13,14 @@ export interface DeliveryCalculationOptions {
 
 export interface DeliveryResult {
   deliveryDate: Date
-  deliveryTime: 'morning' | 'afternoon'
   businessDaysUsed: number
   isHoliday: boolean
   isWeekend: boolean
   rule: {
     region: string
-    morningCutoff: string
-    afternoonCutoff: string
-    morningDeliveryDays: number
-    afternoonDeliveryDays: number
+    cutoffTime: string
+    beforeCutoffDays: number
+    afterCutoffDays: number
   }
 }
 
@@ -43,39 +41,13 @@ export class DeliveryCalculator {
         throw new Error(`'${options.region}' 지역의 납품 규칙을 찾을 수 없습니다.`)
       }
 
-      // 주문 시간 분석
-      let orderTime = this.getTimeInMinutes(options.orderDateTime)
-      const morningCutoffTime = this.parseTime(rule.morningCutoff)
-      const afternoonCutoffTime = this.parseTime(rule.afternoonCutoff)
+      // 주문 시간 분석 (자정 기준 당일 처리)
+      const orderTime = this.getTimeInMinutes(options.orderDateTime)
+      const cutoffTime = this.parseTime(rule.cutoffTime)
 
-      // 자정 이후(00:00 ~ 오전) 수신된 메일은 정오(12:00) 수신으로 처리
-      const noonTime = 12 * 60 // 12:00 = 720분
-      if (orderTime < morningCutoffTime) {
-        logger.info('[DeliveryCalculator] 자정 이후 수신 메일 -> 정오 수신으로 처리', {
-          originalTime: options.orderDateTime.toISOString(),
-          originalMinutes: orderTime,
-          adjustedMinutes: noonTime,
-        })
-        orderTime = noonTime
-      }
-
-      // 배송 시간대 및 배송일 결정
-      let deliveryTime: 'morning' | 'afternoon'
-      let deliveryDays: number
-
-      if (orderTime <= morningCutoffTime) {
-        // 오전 마감시간 이전 주문 -> 오전 배송
-        deliveryTime = 'morning'
-        deliveryDays = rule.morningDeliveryDays
-      } else if (orderTime <= afternoonCutoffTime) {
-        // 오전 마감 후, 오후 마감시간 이전 주문 -> 오후 배송
-        deliveryTime = 'afternoon'
-        deliveryDays = rule.afternoonDeliveryDays
-      } else {
-        // 오후 마감시간 이후 주문 -> 다음날 오전 배송
-        deliveryTime = 'morning'
-        deliveryDays = rule.morningDeliveryDays + 1
-      }
+      // 마감 전/후 판단
+      const isBeforeCutoff = orderTime <= cutoffTime
+      const deliveryDays = isBeforeCutoff ? rule.beforeCutoffDays : rule.afterCutoffDays
 
       // 영업일 기준으로 배송일 계산
       const deliveryDate = await this.calculateBusinessDate(
@@ -87,24 +59,25 @@ export class DeliveryCalculator {
 
       const result: DeliveryResult = {
         deliveryDate,
-        deliveryTime,
         businessDaysUsed: deliveryDays,
         isHoliday: await this.isHoliday(deliveryDate, options.customHolidays),
         isWeekend: this.isWeekend(deliveryDate),
         rule: {
           region: rule.region,
-          morningCutoff: rule.morningCutoff,
-          afternoonCutoff: rule.afternoonCutoff,
-          morningDeliveryDays: rule.morningDeliveryDays,
-          afternoonDeliveryDays: rule.afternoonDeliveryDays,
+          cutoffTime: rule.cutoffTime,
+          beforeCutoffDays: rule.beforeCutoffDays,
+          afterCutoffDays: rule.afterCutoffDays,
         },
       }
 
       logger.info('납품일 계산 완료', {
         region: options.region,
         orderTime: options.orderDateTime.toISOString(),
+        orderMinutes: orderTime,
+        cutoffTime: rule.cutoffTime,
+        cutoffMinutes: cutoffTime,
+        isBeforeCutoff,
         deliveryDate: result.deliveryDate.toISOString(),
-        deliveryTime: result.deliveryTime,
         businessDaysUsed: result.businessDaysUsed,
       })
 

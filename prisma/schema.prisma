@@ -85,13 +85,12 @@ model DeliveryRule {
   id     String @id @default(cuid())
   region String
 
-  // 납품 규칙
-  morningCutoff   String // 오전 마감 시간 (HH:mm)
-  afternoonCutoff String // 오후 마감 시간 (HH:mm)
+  // 납품 규칙 (단순화)
+  cutoffTime String // 마감 시간 (HH:mm)
 
   // 납기일 계산
-  morningDeliveryDays   Int @default(1) // 오전 주문 -> N일 후
-  afternoonDeliveryDays Int @default(2) // 오후 주문 -> N일 후
+  beforeCutoffDays Int @default(1) // 마감 전 주문 -> N일 후
+  afterCutoffDays  Int @default(2) // 마감 후 주문 -> N일 후
 
   // 영업일 설정
   excludeWeekends Boolean @default(true)

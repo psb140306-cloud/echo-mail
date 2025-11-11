@@ -494,7 +494,6 @@ export class NotificationService {
           day: 'numeric',
           weekday: 'long',
         }),
-        deliveryTime: deliveryResult.deliveryTime === 'morning' ? '오전' : '오후',
       }
 
       const results: NotificationResult[] = []

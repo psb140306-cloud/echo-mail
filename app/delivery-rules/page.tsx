@@ -74,10 +74,9 @@ import {
 interface DeliveryRule {
   id: string
   region: string
-  morningCutoff: string
-  afternoonCutoff: string
-  morningDeliveryDays: number
-  afternoonDeliveryDays: number
+  cutoffTime: string
+  beforeCutoffDays: number
+  afterCutoffDays: number
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -125,10 +124,9 @@ export default function DeliveryRulesPage() {
   // 폼 상태
   const [formData, setFormData] = useState({
     region: '',
-    morningCutoff: '12:00',
-    afternoonCutoff: '18:00',
-    morningDeliveryDays: 1,
-    afternoonDeliveryDays: 1,
+    cutoffTime: '12:00',
+    beforeCutoffDays: 1,
+    afterCutoffDays: 2,
     isActive: true,
   })
 
@@ -280,10 +278,9 @@ export default function DeliveryRulesPage() {
   const resetForm = () => {
     setFormData({
       region: '',
-      morningCutoff: '12:00',
-      afternoonCutoff: '18:00',
-      morningDeliveryDays: 1,
-      afternoonDeliveryDays: 1,
+      cutoffTime: '12:00',
+      beforeCutoffDays: 1,
+      afterCutoffDays: 2,
       isActive: true,
     })
     setIsCustomRegion(false) // 커스텀 입력 모드 해제
@@ -293,10 +290,9 @@ export default function DeliveryRulesPage() {
     setEditingRule(rule)
     setFormData({
       region: rule.region,
-      morningCutoff: rule.morningCutoff,
-      afternoonCutoff: rule.afternoonCutoff,
-      morningDeliveryDays: rule.morningDeliveryDays,
-      afternoonDeliveryDays: rule.afternoonDeliveryDays,
+      cutoffTime: rule.cutoffTime,
+      beforeCutoffDays: rule.beforeCutoffDays,
+      afterCutoffDays: rule.afterCutoffDays,
       isActive: rule.isActive,
     })
     // 수정 시에는 기존 지역이 기본 목록에 없으면 커스텀으로 간주
@@ -421,7 +417,7 @@ export default function DeliveryRulesPage() {
                 {deliveryRules.length > 0
                   ? Math.round(
                       (deliveryRules.reduce(
-                        (sum, r) => sum + (r.morningDeliveryDays + r.afternoonDeliveryDays) / 2,
+                        (sum, r) => sum + (r.beforeCutoffDays + r.afterCutoffDays) / 2,
                         0
                       ) /
                         deliveryRules.length) *
@@ -546,10 +542,9 @@ export default function DeliveryRulesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>지역</TableHead>
-                      <TableHead>오전 마감</TableHead>
-                      <TableHead>오후 마감</TableHead>
-                      <TableHead>오전 배송일</TableHead>
-                      <TableHead>오후 배송일</TableHead>
+                      <TableHead>마감 시간</TableHead>
+                      <TableHead>마감 전 배송</TableHead>
+                      <TableHead>마감 후 배송</TableHead>
                       <TableHead>상태</TableHead>
                       <TableHead>등록일</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
@@ -565,16 +560,13 @@ export default function DeliveryRulesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{rule.morningCutoff}</Badge>
+                          <Badge variant="outline">{rule.cutoffTime}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{rule.afternoonCutoff}</Badge>
+                          <Badge variant="secondary">{rule.beforeCutoffDays}일 후</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{rule.morningDeliveryDays}일 후</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{rule.afternoonDeliveryDays}일 후</Badge>
+                          <Badge variant="secondary">{rule.afterCutoffDays}일 후</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant={rule.isActive ? 'default' : 'secondary'}>
@@ -708,59 +700,49 @@ export default function DeliveryRulesPage() {
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="morningCutoff" className="text-right">
-                오전 마감
+              <Label htmlFor="cutoffTime" className="text-right">
+                마감 시간
               </Label>
               <Input
-                id="morningCutoff"
+                id="cutoffTime"
                 type="time"
-                value={formData.morningCutoff}
-                onChange={(e) => setFormData({ ...formData, morningCutoff: e.target.value })}
+                value={formData.cutoffTime}
+                onChange={(e) => setFormData({ ...formData, cutoffTime: e.target.value })}
                 className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="afternoonCutoff" className="text-right">
-                오후 마감
+              <Label htmlFor="beforeCutoffDays" className="text-right">
+                마감 전 배송
               </Label>
               <Input
-                id="afternoonCutoff"
-                type="time"
-                value={formData.afternoonCutoff}
-                onChange={(e) => setFormData({ ...formData, afternoonCutoff: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="morningDeliveryDays" className="text-right">
-                오전 배송일
-              </Label>
-              <Input
-                id="morningDeliveryDays"
+                id="beforeCutoffDays"
                 type="number"
                 min="0"
                 max="14"
-                value={formData.morningDeliveryDays}
+                value={formData.beforeCutoffDays}
                 onChange={(e) =>
-                  setFormData({ ...formData, morningDeliveryDays: parseInt(e.target.value) })
+                  setFormData({ ...formData, beforeCutoffDays: parseInt(e.target.value) })
                 }
                 className="col-span-3"
+                placeholder="N일 후"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="afternoonDeliveryDays" className="text-right">
-                오후 배송일
+              <Label htmlFor="afterCutoffDays" className="text-right">
+                마감 후 배송
               </Label>
               <Input
-                id="afternoonDeliveryDays"
+                id="afterCutoffDays"
                 type="number"
                 min="0"
                 max="14"
-                value={formData.afternoonDeliveryDays}
+                value={formData.afterCutoffDays}
                 onChange={(e) =>
-                  setFormData({ ...formData, afternoonDeliveryDays: parseInt(e.target.value) })
+                  setFormData({ ...formData, afterCutoffDays: parseInt(e.target.value) })
                 }
                 className="col-span-3"
+                placeholder="N일 후"
               />
             </div>
           </div>
@@ -860,10 +842,6 @@ export default function DeliveryRulesPage() {
                       <p className="text-gray-900">
                         <span className="font-semibold text-blue-800">납품일:</span>{' '}
                         <span className="font-medium">{calculationResult.deliveryDateKR}</span>
-                      </p>
-                      <p className="text-gray-900">
-                        <span className="font-semibold text-blue-800">배송시간:</span>{' '}
-                        <span className="font-medium">{calculationResult.deliveryTimeKR}</span>
                       </p>
                       <p className="text-gray-900">
                         <span className="font-semibold text-blue-800">소요일:</span>{' '}
