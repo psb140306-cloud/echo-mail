@@ -457,6 +457,30 @@ export class NotificationService {
         throw new Error('업체를 찾을 수 없습니다')
       }
 
+      // 중복 발송 체크: 최근 10분 이내 발송 이력 확인
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+      const recentLog = await prisma.notificationLog.findFirst({
+        where: {
+          companyId,
+          tenantId: company.tenantId,
+          createdAt: {
+            gte: tenMinutesAgo,
+          },
+          status: 'SUCCESS',
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
+
+      if (recentLog) {
+        logger.warn('[중복 발송 방지] 최근 발송 이력 존재', {
+          companyId,
+          lastSentAt: recentLog.createdAt,
+        })
+        return [] // 빈 배열 반환하여 중복 발송 방지
+      }
+
       // 납품일 계산 (이메일 수신 시간 또는 현재 시간 사용)
       const deliveryResult = await calculateDeliveryDate({
         region: company.region,
@@ -626,7 +650,6 @@ export class NotificationService {
     result: NotificationResult
   ): Promise<void> {
     try {
-      // 실제 구현에서는 NotificationLog 테이블에 저장
       logger.debug('알림 로그 저장', {
         type: request.type,
         recipient: request.recipient,
@@ -635,22 +658,19 @@ export class NotificationService {
         provider: result.provider,
       })
 
-      // await prisma.notificationLog.create({
-      //   data: {
-      //     type: request.type,
-      //     recipient: request.recipient,
-      //     templateName: request.templateName,
-      //     variables: JSON.stringify(request.variables),
-      //     success: result.success,
-      //     messageId: result.messageId,
-      //     error: result.error,
-      //     provider: result.provider,
-      //     failoverUsed: result.failoverUsed,
-      //     companyId: request.companyId,
-      //     contactId: request.contactId,
-      //     sentAt: new Date()
-      //   }
-      // })
+      // NotificationLog 테이블에 저장
+      await prisma.notificationLog.create({
+        data: {
+          type: request.type,
+          recipient: request.recipient,
+          content: JSON.stringify(request.variables), // 발송된 내용 저장
+          status: result.success ? 'SUCCESS' : 'FAILED',
+          errorMessage: result.error,
+          companyId: request.companyId,
+          tenantId: request.tenantId || '',
+          createdAt: new Date(),
+        },
+      })
     } catch (error) {
       logger.error('알림 로그 저장 실패:', error)
     }
