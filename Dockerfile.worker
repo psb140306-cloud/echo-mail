@@ -39,4 +39,4 @@ RUN npm install -g tsx
 ENV NODE_ENV=production
 
 # 워커 실행
-CMD ["tsx", "worker/scheduler.ts"]
+CMD ["tsx", "worker/index.ts"]
