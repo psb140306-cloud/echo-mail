@@ -213,14 +213,15 @@ export class MailScheduler {
     const activeConfigs: Array<{ tenantId: string; checkInterval: number }> = []
 
     for (const [tenantId, config] of tenantConfigMap.entries()) {
-      logger.info(`[MailScheduler] 테넌트 ${tenantId} 설정 확인`, {
-        enabled: config.enabled,
-        hasHost: !!config.host,
-        hasPort: !!config.port,
-        hasUsername: !!config.username,
-        hasPassword: !!config.password,
-        config
-      })
+      logger.info(
+        `[MailScheduler] 테넌트 ${tenantId} 설정: ` +
+        `enabled=${config.enabled}, ` +
+        `host=${config.host || 'N/A'}, ` +
+        `port=${config.port || 'N/A'}, ` +
+        `username=${config.username || 'N/A'}, ` +
+        `password=${config.password ? '***' : 'N/A'}, ` +
+        `checkInterval=${config.checkInterval || 'N/A'}`
+      )
 
       if (
         config.enabled === true &&
@@ -233,6 +234,17 @@ export class MailScheduler {
           tenantId,
           checkInterval: config.checkInterval || 5, // 기본값 5분
         })
+      } else {
+        logger.warn(
+          `[MailScheduler] 테넌트 ${tenantId} 비활성: ` +
+          `enabled=${config.enabled !== true ? 'FALSE' : 'true'}, ` +
+          `missing=${[
+            !config.host && 'host',
+            !config.port && 'port',
+            !config.username && 'username',
+            !config.password && 'password'
+          ].filter(Boolean).join(', ') || 'none'}`
+        )
       }
     }
 
