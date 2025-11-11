@@ -44,9 +44,20 @@ export class DeliveryCalculator {
       }
 
       // 주문 시간 분석
-      const orderTime = this.getTimeInMinutes(options.orderDateTime)
+      let orderTime = this.getTimeInMinutes(options.orderDateTime)
       const morningCutoffTime = this.parseTime(rule.morningCutoff)
       const afternoonCutoffTime = this.parseTime(rule.afternoonCutoff)
+
+      // 자정 이후(00:00 ~ 오전) 수신된 메일은 정오(12:00) 수신으로 처리
+      const noonTime = 12 * 60 // 12:00 = 720분
+      if (orderTime < morningCutoffTime) {
+        logger.info('[DeliveryCalculator] 자정 이후 수신 메일 -> 정오 수신으로 처리', {
+          originalTime: options.orderDateTime.toISOString(),
+          originalMinutes: orderTime,
+          adjustedMinutes: noonTime,
+        })
+        orderTime = noonTime
+      }
 
       // 배송 시간대 및 배송일 결정
       let deliveryTime: 'morning' | 'afternoon'
