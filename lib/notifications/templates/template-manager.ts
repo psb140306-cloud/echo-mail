@@ -82,7 +82,16 @@ export class TemplateManager {
   async getTemplate(name: string, type?: NotificationType, tenantId?: string): Promise<NotificationTemplate | null> {
     const cacheKey = `${tenantId || 'no-tenant'}_${name}_${type || 'any'}`
 
+    logger.info('[TemplateManager] getTemplate 호출', {
+      name,
+      type,
+      tenantId,
+      cacheKey,
+      cacheHit: this.templateCache.has(cacheKey),
+    })
+
     if (this.templateCache.has(cacheKey)) {
+      logger.info('[TemplateManager] 캐시에서 템플릿 반환')
       return this.templateCache.get(cacheKey)!
     }
 
@@ -95,9 +104,17 @@ export class TemplateManager {
         where.tenantId = tenantId
       }
 
+      logger.info('[TemplateManager] DB 쿼리 실행', { where })
+
       const template = await prisma.messageTemplate.findFirst({
         where,
         orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
+      })
+
+      logger.info('[TemplateManager] DB 쿼리 결과', {
+        found: !!template,
+        templateId: template?.id,
+        templateName: template?.name,
       })
 
       if (template) {
@@ -119,7 +136,13 @@ export class TemplateManager {
 
       return null
     } catch (error) {
-      logger.error('템플릿 조회 실패:', error)
+      logger.error('[TemplateManager] 템플릿 조회 실패', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name,
+        type,
+        tenantId,
+      })
       return null
     }
   }

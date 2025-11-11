@@ -20,7 +20,9 @@
       "Bash(git commit:*)",
       "Bash(public/.gitkeep)",
       "Bash(Dockerfile.worker)",
-      "Bash(npm run db:seed:*)"
+      "Bash(npm run db:seed:*)",
+      "Bash(curl:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []
