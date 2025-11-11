@@ -116,20 +116,41 @@ export class MailMonitorService {
       const lock = await client.getMailboxLock('INBOX')
 
       try {
-        // 마지막 확인 시간 이후의 읽지 않은 메일 검색
-        const lastCheckTime = this.lastCheckTimes.get(config.tenantId)
-        const searchCriteria = lastCheckTime
-          ? { unseen: true, since: lastCheckTime }
-          : { unseen: true }
+        // 등록된 업체 이메일 목록 가져오기
+        const registeredEmails = await this.getRegisteredCompanyEmails(config.tenantId)
 
-        // 새 메일 검색
+        if (registeredEmails.length === 0) {
+          logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 등록된 업체 없음`)
+          return {
+            success: true,
+            newMailsCount: 0,
+            processedCount: 0,
+            failedCount: 0,
+            errors: [],
+          }
+        }
+
+        logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 등록된 업체 ${registeredEmails.length}개`)
+
+        // 등록된 업체 이메일에서 온 읽지 않은 메일만 검색
         const messages = []
-        for await (const message of client.fetch(searchCriteria, {
-          envelope: true,
-          source: true,
-          uid: true,
-        })) {
-          messages.push(message)
+        for (const email of registeredEmails) {
+          try {
+            const searchCriteria = {
+              unseen: true,
+              from: email,
+            }
+
+            for await (const message of client.fetch(searchCriteria, {
+              envelope: true,
+              source: true,
+              uid: true,
+            })) {
+              messages.push(message)
+            }
+          } catch (error) {
+            logger.debug(`[MailMonitor] ${email} 검색 실패 (무시됨):`, error)
+          }
         }
 
         newMailsCount = messages.length
