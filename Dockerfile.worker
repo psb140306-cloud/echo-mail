@@ -9,18 +9,20 @@ RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-# 패키지 파일 복사
-COPY worker/package.json ./package.json
+# 패키지 파일 복사 (루트 package.json 사용)
+COPY package.json package-lock.json* ./
 
 # Prisma 스키마 복사
 COPY prisma ./prisma/
 
-# 의존성 설치 (프로덕션 + 개발 의존성 모두)
-RUN npm install --production=false
+# 의존성 설치
+RUN npm ci --omit=dev --ignore-scripts || npm install --production --ignore-scripts
+
+# Prisma 설치 (devDependencies)
 RUN npm install -D prisma
 
 # 설치된 패키지 확인 (디버깅용)
-RUN ls -la node_modules | head -20
+RUN echo "=== Installed packages ===" && ls -la node_modules | head -30
 
 # Prisma Client 생성
 RUN npx prisma generate
@@ -37,4 +39,4 @@ RUN npm install -g tsx
 ENV NODE_ENV=production
 
 # 워커 실행
-CMD ["npm", "start"]
+CMD ["tsx", "worker/scheduler.ts"]
