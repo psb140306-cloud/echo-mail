@@ -187,6 +187,10 @@ export class MailScheduler {
       },
     })
 
+    logger.info(`[MailScheduler] DB에서 메일 설정 ${mailConfigs.length}개 조회됨`, {
+      configs: mailConfigs.map(c => ({ tenantId: c.tenantId, key: c.key }))
+    })
+
     // 테넌트별로 그룹화
     const tenantConfigMap = new Map<string, Record<string, any>>()
 
@@ -209,6 +213,15 @@ export class MailScheduler {
     const activeConfigs: Array<{ tenantId: string; checkInterval: number }> = []
 
     for (const [tenantId, config] of tenantConfigMap.entries()) {
+      logger.info(`[MailScheduler] 테넌트 ${tenantId} 설정 확인`, {
+        enabled: config.enabled,
+        hasHost: !!config.host,
+        hasPort: !!config.port,
+        hasUsername: !!config.username,
+        hasPassword: !!config.password,
+        config
+      })
+
       if (
         config.enabled === true &&
         config.host &&
@@ -222,6 +235,10 @@ export class MailScheduler {
         })
       }
     }
+
+    logger.info(`[MailScheduler] 최종 활성 테넌트 ${activeConfigs.length}개`, {
+      tenants: activeConfigs.map(c => ({ tenantId: c.tenantId, interval: c.checkInterval }))
+    })
 
     return activeConfigs
   }
