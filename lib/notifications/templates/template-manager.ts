@@ -136,13 +136,14 @@ export class TemplateManager {
 
       return null
     } catch (error) {
-      logger.error('[TemplateManager] 템플릿 조회 실패', {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        name,
-        type,
-        tenantId,
-      })
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      const errorStack = error instanceof Error ? error.stack : undefined
+
+      logger.error(`[TemplateManager] 템플릿 조회 실패 - name=${name}, type=${type}, tenantId=${tenantId}`)
+      logger.error(`[TemplateManager] 에러: ${errorMsg}`)
+      if (errorStack) {
+        logger.error(`[TemplateManager] 스택: ${errorStack}`)
+      }
       return null
     }
   }
