@@ -89,6 +89,16 @@ export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
     // UTC 기준으로 9시간 빼기 (한국 시간 1일 00:00 = UTC 전날 15:00)
     startOfMonth.setHours(startOfMonth.getHours() - 9)
 
+    // 디버깅을 위한 상세 로그
+    logger.info('[getTenantUsage] 날짜 계산 디버깅', {
+      tenantId,
+      now_UTC: now.toISOString(),
+      koreaTime_UTC: koreaTime.toISOString(),
+      startOfMonth_UTC: startOfMonth.toISOString(),
+      year: koreaTime.getUTCFullYear(),
+      month: koreaTime.getUTCMonth() + 1, // 0-indexed이므로 +1
+    })
+
     const [companies, contacts, emailsThisMonth, notificationsThisMonth] = await Promise.all([
       // 업체 수
       prisma.company.count({
@@ -116,6 +126,15 @@ export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
         },
       }),
     ])
+
+    // 결과 로그
+    logger.info('[getTenantUsage] 집계 결과', {
+      tenantId,
+      companies,
+      contacts,
+      emailsThisMonth,
+      notificationsThisMonth,
+    })
 
     return {
       companies,

@@ -351,8 +351,8 @@ export class MailMonitorService {
       where: {
         tenantId,
         isActive: true,
-        email: {
-          not: null,
+        NOT: {
+          email: null,
         },
       },
       select: {
