@@ -53,6 +53,8 @@ import {
   Zap,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { TemplatesTab } from '@/components/notifications/templates-tab'
+import { LogsTab } from '@/components/notifications/logs-tab'
 
 interface NotificationStatus {
   sms: {
@@ -424,34 +426,12 @@ export default function NotificationsPage() {
 
             {/* 템플릿 관리 탭 */}
             <TabsContent value="templates" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>메시지 템플릿</CardTitle>
-                  <CardDescription>
-                    SMS/카카오톡 발송에 사용되는 템플릿을 관리하세요
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-muted-foreground">
-                    템플릿 관리 기능은 개발 중입니다.
-                  </div>
-                </CardContent>
-              </Card>
+              <TemplatesTab />
             </TabsContent>
 
             {/* 발송 내역 탭 */}
             <TabsContent value="logs" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>발송 내역</CardTitle>
-                  <CardDescription>최근 알림 발송 내역을 확인하세요</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8 text-muted-foreground">
-                    발송 내역 기능은 개발 중입니다.
-                  </div>
-                </CardContent>
-              </Card>
+              <LogsTab />
             </TabsContent>
           </Tabs>
         )}

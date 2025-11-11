@@ -458,6 +458,7 @@ export class NotificationService {
       const deliveryResult = await calculateDeliveryDate({
         region: company.region,
         orderDateTime: new Date(),
+        tenantId: company.tenantId,
       })
 
       const variables = {
