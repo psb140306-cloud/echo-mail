@@ -19,6 +19,7 @@ export interface TemplateRenderOptions {
   templateName: string
   variables: Record<string, string>
   type?: NotificationType
+  tenantId?: string
 }
 
 export interface RenderedTemplate {
@@ -37,7 +38,7 @@ export class TemplateManager {
    */
   async renderTemplate(options: TemplateRenderOptions): Promise<RenderedTemplate> {
     try {
-      const template = await this.getTemplate(options.templateName, options.type)
+      const template = await this.getTemplate(options.templateName, options.type, options.tenantId)
 
       if (!template) {
         throw new Error(`템플릿을 찾을 수 없습니다: ${options.templateName}`)
@@ -78,8 +79,8 @@ export class TemplateManager {
   /**
    * 템플릿 조회 (캐싱)
    */
-  async getTemplate(name: string, type?: NotificationType): Promise<NotificationTemplate | null> {
-    const cacheKey = `${name}_${type || 'any'}`
+  async getTemplate(name: string, type?: NotificationType, tenantId?: string): Promise<NotificationTemplate | null> {
+    const cacheKey = `${tenantId || 'no-tenant'}_${name}_${type || 'any'}`
 
     if (this.templateCache.has(cacheKey)) {
       return this.templateCache.get(cacheKey)!
@@ -89,6 +90,9 @@ export class TemplateManager {
       const where: any = { name }
       if (type) {
         where.type = type
+      }
+      if (tenantId) {
+        where.tenantId = tenantId
       }
 
       const template = await prisma.messageTemplate.findFirst({
@@ -349,14 +353,16 @@ export const templateManager = new TemplateManager()
 export async function renderNotificationTemplate(
   templateName: string,
   variables: Record<string, string>,
-  type?: NotificationType
+  type?: NotificationType,
+  tenantId?: string
 ): Promise<RenderedTemplate> {
-  return templateManager.renderTemplate({ templateName, variables, type })
+  return templateManager.renderTemplate({ templateName, variables, type, tenantId })
 }
 
 export async function getNotificationTemplate(
   name: string,
-  type?: NotificationType
+  type?: NotificationType,
+  tenantId?: string
 ): Promise<NotificationTemplate | null> {
-  return templateManager.getTemplate(name, type)
+  return templateManager.getTemplate(name, type, tenantId)
 }

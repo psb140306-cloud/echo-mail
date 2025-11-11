@@ -182,7 +182,8 @@ export class NotificationService {
       const rendered = await renderNotificationTemplate(
         request.templateName,
         request.variables,
-        request.type
+        request.type,
+        tenantId
       )
 
       // 발송 타입별 처리
