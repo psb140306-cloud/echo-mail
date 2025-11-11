@@ -116,81 +116,20 @@ export class MailMonitorService {
       const lock = await client.getMailboxLock('INBOX')
 
       try {
-        // 등록된 업체 이메일 목록 조회
-        const registeredEmails = await this.getRegisteredCompanyEmails(config.tenantId)
-
-        if (registeredEmails.length === 0) {
-          logger.warn('[MailMonitor] 등록된 업체 이메일이 없습니다', { tenantId: config.tenantId })
-          return {
-            success: true,
-            newMailsCount: 0,
-            processedCount: 0,
-            failedCount: 0,
-            errors: [],
-          }
-        }
-
-        // 새 메일 검색 (등록된 이메일에서 온 읽지 않은 메일만)
-        const messages = []
+        // 마지막 확인 시간 이후의 읽지 않은 메일 검색
         const lastCheckTime = this.lastCheckTimes.get(config.tenantId)
+        const searchCriteria = lastCheckTime
+          ? { unseen: true, since: lastCheckTime }
+          : { unseen: true }
 
-        // 최적화: 업체 수에 따라 전략 선택
-        if (registeredEmails.length <= 10) {
-          // 업체가 적으면 개별 검색 (정확도 높음)
-          logger.debug('[MailMonitor] 개별 검색 모드 (업체 10개 이하)')
-
-          for (const email of registeredEmails) {
-            try {
-              const searchCriteria: any = {
-                unseen: true,
-                from: email,
-              }
-
-              if (lastCheckTime) {
-                searchCriteria.since = lastCheckTime
-              }
-
-              for await (const message of client.fetch(searchCriteria, {
-                envelope: true,
-                source: true,
-                uid: true,
-              })) {
-                // 중복 방지 (UID 기준)
-                if (!messages.find((m) => m.uid === message.uid)) {
-                  messages.push(message)
-                }
-              }
-            } catch (error) {
-              logger.debug(`[MailMonitor] ${email}에서 메일 검색 중 오류 (무시):`, error)
-            }
-          }
-        } else {
-          // 업체가 많으면 전체 검색 후 필터링 (성능 우선)
-          logger.debug('[MailMonitor] 전체 검색 + 필터링 모드 (업체 10개 초과)')
-
-          const searchCriteria: any = { unseen: true }
-          if (lastCheckTime) {
-            searchCriteria.since = lastCheckTime
-          }
-
-          const registeredEmailSet = new Set(registeredEmails.map((e) => e.toLowerCase()))
-
-          for await (const message of client.fetch(searchCriteria, {
-            envelope: true,
-            source: true,
-            uid: true,
-          })) {
-            const from = message.envelope.from?.[0]?.address?.toLowerCase()
-
-            // 등록된 이메일에서 온 메일만 처리
-            if (from && registeredEmailSet.has(from)) {
-              messages.push(message)
-            } else {
-              // 등록되지 않은 이메일은 바로 읽음 처리
-              logger.debug('[MailMonitor] 등록되지 않은 발신자 - 읽음 처리', { from })
-              await this.safeMarkAsRead(client, message.uid)
-            }
-          }
+        // 새 메일 검색
+        const messages = []
+        for await (const message of client.fetch(searchCriteria, {
+          envelope: true,
+          source: true,
+          uid: true,
+        })) {
+          messages.push(message)
         }
 
         newMailsCount = messages.length
