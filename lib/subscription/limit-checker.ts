@@ -75,10 +75,19 @@ export async function getTenantSubscription(tenantId: string) {
  */
 export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
   try {
-    // 현재 월의 시작일 계산
-    const startOfMonth = new Date()
-    startOfMonth.setDate(1)
-    startOfMonth.setHours(0, 0, 0, 0)
+    // 현재 월의 시작일 계산 (한국 시간 기준)
+    const now = new Date()
+    const koreaOffset = 9 * 60 // UTC+9
+    const koreaTime = new Date(now.getTime() + koreaOffset * 60 * 1000)
+
+    const startOfMonth = new Date(Date.UTC(
+      koreaTime.getUTCFullYear(),
+      koreaTime.getUTCMonth(),
+      1,
+      0, 0, 0, 0
+    ))
+    // UTC 기준으로 9시간 빼기 (한국 시간 1일 00:00 = UTC 전날 15:00)
+    startOfMonth.setHours(startOfMonth.getHours() - 9)
 
     const [companies, contacts, emailsThisMonth, notificationsThisMonth] = await Promise.all([
       // 업체 수
