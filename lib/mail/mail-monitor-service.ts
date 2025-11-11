@@ -287,9 +287,10 @@ export class MailMonitorService {
    */
   private async safeMarkAsRead(client: ImapFlow, uid: number): Promise<void> {
     try {
-      await client.messageFlagsAdd(uid, ['\\Seen'])
+      await client.messageFlagsAdd({ uid: true }, String(uid), ['\\Seen'])
+      logger.info('[MailMonitor] 읽음 처리 성공', { uid })
     } catch (error) {
-      logger.debug('[MailMonitor] 읽음 처리 실패 (무시됨)', { uid, error })
+      logger.error('[MailMonitor] 읽음 처리 실패', { uid, error })
     }
   }
 
