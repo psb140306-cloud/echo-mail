@@ -242,12 +242,13 @@ export class MailMonitorService {
       logger.info('[MailMonitor] 업체 매칭 성공', {
         companyId: company.id,
         companyName: company.name,
+        emailReceivedAt: date,
       })
 
-      // 알림 발송 (재시도 로직)
+      // 알림 발송 (재시도 로직) - 이메일 수신 시간 전달
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const results = await sendOrderReceivedNotification(company.id)
+          const results = await sendOrderReceivedNotification(company.id, date)
           const successCount = results.filter((r) => r.success).length
 
           logger.info('[MailMonitor] 알림 발송 완료', {

@@ -438,7 +438,10 @@ export class NotificationService {
   /**
    * 발주 접수 알림 발송 (비즈니스 로직)
    */
-  async sendOrderReceivedNotification(companyId: string): Promise<NotificationResult[]> {
+  async sendOrderReceivedNotification(
+    companyId: string,
+    orderDateTime?: Date
+  ): Promise<NotificationResult[]> {
     try {
       // 업체 및 담당자 정보 조회
       const company = await prisma.company.findUnique({
@@ -454,10 +457,10 @@ export class NotificationService {
         throw new Error('업체를 찾을 수 없습니다')
       }
 
-      // 납품일 계산
+      // 납품일 계산 (이메일 수신 시간 또는 현재 시간 사용)
       const deliveryResult = await calculateDeliveryDate({
         region: company.region,
-        orderDateTime: new Date(),
+        orderDateTime: orderDateTime || new Date(),
         tenantId: company.tenantId,
       })
 
@@ -767,7 +770,8 @@ export async function queueNotification(request: NotificationRequest): Promise<s
 }
 
 export async function sendOrderReceivedNotification(
-  companyId: string
+  companyId: string,
+  orderDateTime?: Date
 ): Promise<NotificationResult[]> {
-  return notificationService.sendOrderReceivedNotification(companyId)
+  return notificationService.sendOrderReceivedNotification(companyId, orderDateTime)
 }
