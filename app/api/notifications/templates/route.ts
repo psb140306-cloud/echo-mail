@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { PrismaClient, NotificationType } from '@prisma/client'
-import { withTenantContext } from '@/lib/middleware/tenant-context'
+import { identifyTenant } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
 
 const prisma = new PrismaClient()
@@ -10,14 +8,14 @@ const prisma = new PrismaClient()
 // GET: 템플릿 목록 조회
 async function handleGet(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    const tenant = await identifyTenant(request)
+    if (!tenant) {
+      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
     }
 
     const templates = await prisma.messageTemplate.findMany({
       where: {
-        tenantId: session.user.tenantId,
+        tenantId: tenant.id,
       },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     })
@@ -41,9 +39,9 @@ async function handleGet(request: NextRequest) {
 // POST: 템플릿 생성
 async function handlePost(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    const tenant = await identifyTenant(request)
+    if (!tenant) {
+      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -60,7 +58,7 @@ async function handlePost(request: NextRequest) {
     // 중복 확인
     const existing = await prisma.messageTemplate.findFirst({
       where: {
-        tenantId: session.user.tenantId,
+        tenantId: tenant.id,
         name,
       },
     })
@@ -79,7 +77,7 @@ async function handlePost(request: NextRequest) {
         subject,
         content,
         variables,
-        tenantId: session.user.tenantId,
+        tenantId: tenant.id,
         isActive: true,
         isDefault: false,
       },
@@ -107,9 +105,9 @@ async function handlePost(request: NextRequest) {
 // PUT: 템플릿 수정
 async function handlePut(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    const tenant = await identifyTenant(request)
+    if (!tenant) {
+      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -122,7 +120,7 @@ async function handlePut(request: NextRequest) {
     const template = await prisma.messageTemplate.findFirst({
       where: {
         id,
-        tenantId: session.user.tenantId,
+        tenantId: tenant.id,
       },
     })
 
@@ -162,9 +160,9 @@ async function handlePut(request: NextRequest) {
 // DELETE: 템플릿 삭제
 async function handleDelete(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    const tenant = await identifyTenant(request)
+    if (!tenant) {
+      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -177,7 +175,7 @@ async function handleDelete(request: NextRequest) {
     const template = await prisma.messageTemplate.findFirst({
       where: {
         id,
-        tenantId: session.user.tenantId,
+        tenantId: tenant.id,
       },
     })
 
@@ -215,7 +213,7 @@ async function handleDelete(request: NextRequest) {
   }
 }
 
-export const GET = withTenantContext(handleGet)
-export const POST = withTenantContext(handlePost)
-export const PUT = withTenantContext(handlePut)
-export const DELETE = withTenantContext(handleDelete)
+export const GET = handleGet
+export const POST = handlePost
+export const PUT = handlePut
+export const DELETE = handleDelete
