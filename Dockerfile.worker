@@ -15,9 +15,12 @@ COPY worker/package.json ./package.json
 # Prisma 스키마 복사
 COPY prisma ./prisma/
 
-# 의존성 설치 (prisma CLI 포함)
-RUN npm install
+# 의존성 설치 (프로덕션 + 개발 의존성 모두)
+RUN npm install --production=false
 RUN npm install -D prisma
+
+# 설치된 패키지 확인 (디버깅용)
+RUN ls -la node_modules | head -20
 
 # Prisma Client 생성
 RUN npx prisma generate
