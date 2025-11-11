@@ -483,6 +483,7 @@ export class NotificationService {
             variables,
             companyId: company.id,
             contactId: contact.id,
+            tenantId: company.tenantId,
             enableFailover: contact.smsEnabled,
           })
 
@@ -503,6 +504,7 @@ export class NotificationService {
             variables,
             companyId: company.id,
             contactId: contact.id,
+            tenantId: company.tenantId,
           })
 
           results.push(smsResult)
