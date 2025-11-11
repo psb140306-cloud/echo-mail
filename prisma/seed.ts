@@ -200,6 +200,69 @@ async function main() {
 
   console.log('✅ 공휴일 생성 완료')
 
+  // =============================================================================
+  // 메시지 템플릿 생성
+  // =============================================================================
+
+  // SMS 템플릿 - 발주 접수 알림
+  await prisma.messageTemplate.upsert({
+    where: {
+      tenantId_name: {
+        tenantId: testTenant.id,
+        name: 'ORDER_RECEIVED_SMS',
+      },
+    },
+    update: {},
+    create: {
+      name: 'ORDER_RECEIVED_SMS',
+      type: 'SMS',
+      content:
+        '[발주 접수] {{companyName}}님, 발주가 접수되었습니다. 납품일: {{deliveryDate}} {{deliveryTime}}',
+      variables: {
+        companyName: '업체명',
+        deliveryDate: '납품일',
+        deliveryTime: '납품 시간대',
+      },
+      tenantId: testTenant.id,
+      isActive: true,
+      isDefault: true,
+    },
+  })
+
+  // 카카오 알림톡 템플릿 - 발주 접수 알림
+  await prisma.messageTemplate.upsert({
+    where: {
+      tenantId_name: {
+        tenantId: testTenant.id,
+        name: 'ORDER_RECEIVED_KAKAO',
+      },
+    },
+    update: {},
+    create: {
+      name: 'ORDER_RECEIVED_KAKAO',
+      type: 'KAKAO_ALIMTALK',
+      subject: '발주 접수 알림',
+      content: `안녕하세요, {{companyName}}님.
+
+발주가 접수되었습니다.
+
+납품 예정일: {{deliveryDate}}
+납품 시간대: {{deliveryTime}}
+
+감사합니다.`,
+      variables: {
+        companyName: '업체명',
+        deliveryDate: '납품일',
+        deliveryTime: '납품 시간대',
+      },
+      tenantId: testTenant.id,
+      isActive: true,
+      isDefault: true,
+    },
+  })
+
+  console.log('✅ 메시지 템플릿 생성 완료')
+
   console.log('🎉 시드 데이터 생성 완료!')
 }
 

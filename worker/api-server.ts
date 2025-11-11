@@ -85,6 +85,113 @@ app.get('/scheduler/status', async (req, res) => {
   }
 })
 
+// 템플릿 초기화 (일회성)
+app.post('/init-templates', async (req, res) => {
+  try {
+    // 인증 체크
+    const authHeader = req.headers.authorization
+    const expectedSecret = process.env.RAILWAY_WORKER_SECRET
+
+    if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      })
+    }
+
+    logger.info('[API] 템플릿 초기화 요청 수신')
+
+    const { tenantId } = req.body
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'tenantId is required'
+      })
+    }
+
+    // SMS 템플릿
+    const smsTemplate = await prisma.messageTemplate.upsert({
+      where: {
+        tenantId_name: {
+          tenantId,
+          name: 'ORDER_RECEIVED_SMS',
+        },
+      },
+      update: {},
+      create: {
+        name: 'ORDER_RECEIVED_SMS',
+        type: 'SMS',
+        content:
+          '[발주 접수] {{companyName}}님, 발주가 접수되었습니다. 납품일: {{deliveryDate}} {{deliveryTime}}',
+        variables: {
+          companyName: '업체명',
+          deliveryDate: '납품일',
+          deliveryTime: '납품 시간대',
+        },
+        tenantId,
+        isActive: true,
+        isDefault: true,
+      },
+    })
+
+    // 카카오 알림톡 템플릿
+    const kakaoTemplate = await prisma.messageTemplate.upsert({
+      where: {
+        tenantId_name: {
+          tenantId,
+          name: 'ORDER_RECEIVED_KAKAO',
+        },
+      },
+      update: {},
+      create: {
+        name: 'ORDER_RECEIVED_KAKAO',
+        type: 'KAKAO_ALIMTALK',
+        subject: '발주 접수 알림',
+        content: `안녕하세요, {{companyName}}님.
+
+발주가 접수되었습니다.
+
+납품 예정일: {{deliveryDate}}
+납품 시간대: {{deliveryTime}}
+
+감사합니다.`,
+        variables: {
+          companyName: '업체명',
+          deliveryDate: '납품일',
+          deliveryTime: '납품 시간대',
+        },
+        tenantId,
+        isActive: true,
+        isDefault: true,
+      },
+    })
+
+    logger.info('[API] 템플릿 초기화 완료', {
+      tenantId,
+      smsTemplateId: smsTemplate.id,
+      kakaoTemplateId: kakaoTemplate.id,
+    })
+
+    res.json({
+      success: true,
+      message: '템플릿 초기화 완료',
+      templates: {
+        sms: smsTemplate.id,
+        kakao: kakaoTemplate.id,
+      },
+      timestamp: new Date().toISOString()
+    })
+  } catch (error) {
+    logger.error('[API] 템플릿 초기화 실패:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : '알 수 없는 오류'
+    })
+  }
+})
+
 // 수동 메일 체크 (테스트용)
 app.post('/check-mail-now', async (req, res) => {
   try {

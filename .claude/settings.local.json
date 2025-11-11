@@ -19,7 +19,8 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Railway용 내부 스케줄러 구현 (node-cron)\n\nVercel Cron 의존성 제거하고 Railway에서 동작하는 내부 스케줄러로 전환\n\n핵심 기능:\n- 동적 간격 설정: 사용자가 1~5분 사이로 설정 가능\n- 테넌트별 독립 스케줄링\n- 앱 시작 시 자동 초기화\n- 설정 변경 시 자동 재로드\n\n구현 내용:\n1. lib/scheduler/mail-scheduler.ts\n   - node-cron 기반 스케줄러 클래스\n   - 테넌트별 독립 스케줄 관리\n   - 1~5분 범위 검증 및 자동 조정\n   - Graceful shutdown 지원\n\n2. lib/scheduler/init.ts\n   - 앱 시작 시 스케줄러 자동 초기화\n   - SIGTERM/SIGINT 핸들러\n\n3. instrumentation.ts\n   - Next.js instrumentation hook\n   - 서버 사이드에서만 실행\n\n4. app/api/scheduler/reload/route.ts\n   - 스케줄 상태 조회 (GET)\n   - 수동 재로드 (POST)\n\n5. app/api/settings/route.ts\n   - 메일 설정 변경 시 자동 스케줄러 재로드\n\n6. app/settings/page.tsx\n   - checkInterval 입력 범위 1~5분으로 제한\n   - 설명 추가: \"1~5분 사이로 설정 가능합니다.\"\n\n7. next.config.js\n   - instrumentationHook: true 활성화\n\n8. vercel.json\n   - check-mail cron 제거 (daily-tasks는 유지)\n\n장점:\n- Railway, Vercel 모두 호환\n- 무료 플랜에서도 작동\n- 설정 변경 즉시 반영\n- 서버 재시작 불필요\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git commit:*)",
       "Bash(public/.gitkeep)",
-      "Bash(Dockerfile.worker)"
+      "Bash(Dockerfile.worker)",
+      "Bash(npm run db:seed:*)"
     ],
     "deny": [],
     "ask": []
