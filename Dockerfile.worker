@@ -27,7 +27,7 @@ RUN echo "=== Installed packages ===" && ls -la node_modules | head -30
 # Prisma Client 생성
 RUN npx prisma generate
 
-# 필요한 소스 코드 복사
+# 필요한 소스 코드 복사 (2025-11-11 업데이트)
 COPY worker ./worker/
 COPY lib ./lib/
 COPY tsconfig.json ./
