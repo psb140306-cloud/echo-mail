@@ -245,10 +245,24 @@ export class MailMonitorService {
         emailReceivedAt: date,
       })
 
-      // 알림 발송 (재시도 로직) - 이메일 수신 시간 전달
+      // EmailLog 생성 (중복 발송 방지용)
+      const emailLog = await prisma.emailLog.create({
+        data: {
+          messageId: message.uid.toString(), // IMAP UID를 messageId로 사용
+          sender: from?.address || '',
+          recipient: '', // IMAP에서는 수신자 정보 없음
+          subject: subject || '',
+          receivedAt: date,
+          status: 'MATCHED',
+          companyId: company.id,
+          tenantId,
+        },
+      })
+
+      // 알림 발송 (재시도 로직) - 이메일 수신 시간 및 로그 ID 전달
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const results = await sendOrderReceivedNotification(company.id, date)
+          const results = await sendOrderReceivedNotification(company.id, date, emailLog.id)
           const successCount = results.filter((r) => r.success).length
 
           logger.info('[MailMonitor] 알림 발송 완료', {

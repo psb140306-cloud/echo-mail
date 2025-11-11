@@ -27,6 +27,7 @@ export interface NotificationRequest {
   contactId?: string
   enableFailover?: boolean
   tenantId?: string // 선택적 tenantId (미들웨어에서 전달)
+  emailLogId?: string // 이메일 로그 ID (중복 발송 방지)
 }
 
 export interface NotificationResult {
@@ -440,7 +441,8 @@ export class NotificationService {
    */
   async sendOrderReceivedNotification(
     companyId: string,
-    orderDateTime?: Date
+    orderDateTime?: Date,
+    emailLogId?: string
   ): Promise<NotificationResult[]> {
     try {
       // 업체 및 담당자 정보 조회
@@ -457,28 +459,24 @@ export class NotificationService {
         throw new Error('업체를 찾을 수 없습니다')
       }
 
-      // 중복 발송 체크: 최근 10분 이내 발송 이력 확인
-      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
-      const recentLog = await prisma.notificationLog.findFirst({
-        where: {
-          companyId,
-          tenantId: company.tenantId,
-          createdAt: {
-            gte: tenMinutesAgo,
+      // 중복 발송 체크: emailLogId가 있으면 해당 메일에 대한 발송 이력 확인
+      if (emailLogId) {
+        const existingNotification = await prisma.notificationLog.findFirst({
+          where: {
+            emailLogId,
+            tenantId: company.tenantId,
+            status: 'SUCCESS',
           },
-          status: 'SUCCESS',
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      })
-
-      if (recentLog) {
-        logger.warn('[중복 발송 방지] 최근 발송 이력 존재', {
-          companyId,
-          lastSentAt: recentLog.createdAt,
         })
-        return [] // 빈 배열 반환하여 중복 발송 방지
+
+        if (existingNotification) {
+          logger.warn('[중복 발송 방지] 동일 메일에 대한 발송 이력 존재', {
+            emailLogId,
+            notificationId: existingNotification.id,
+            sentAt: existingNotification.createdAt,
+          })
+          return [] // 빈 배열 반환하여 중복 발송 방지
+        }
       }
 
       // 납품일 계산 (이메일 수신 시간 또는 현재 시간 사용)
@@ -514,6 +512,7 @@ export class NotificationService {
             contactId: contact.id,
             tenantId: company.tenantId,
             enableFailover: contact.smsEnabled,
+            emailLogId, // 이메일 로그 ID 전달
           })
 
           results.push(kakaoResult)
@@ -534,6 +533,7 @@ export class NotificationService {
             companyId: company.id,
             contactId: contact.id,
             tenantId: company.tenantId,
+            emailLogId, // 이메일 로그 ID 전달
           })
 
           results.push(smsResult)
@@ -668,6 +668,7 @@ export class NotificationService {
           errorMessage: result.error,
           companyId: request.companyId,
           tenantId: request.tenantId || '',
+          emailLogId: request.emailLogId, // 이메일 로그 연결
           createdAt: new Date(),
         },
       })
@@ -791,7 +792,8 @@ export async function queueNotification(request: NotificationRequest): Promise<s
 
 export async function sendOrderReceivedNotification(
   companyId: string,
-  orderDateTime?: Date
+  orderDateTime?: Date,
+  emailLogId?: string
 ): Promise<NotificationResult[]> {
-  return notificationService.sendOrderReceivedNotification(companyId, orderDateTime)
+  return notificationService.sendOrderReceivedNotification(companyId, orderDateTime, emailLogId)
 }
