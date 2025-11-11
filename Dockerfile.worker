@@ -24,7 +24,7 @@ RUN npm install -D prisma
 # 설치된 패키지 확인 (디버깅용)
 RUN echo "=== Installed packages ===" && ls -la node_modules | head -30
 
-# Prisma Client 생성
+# Prisma Client 생성 (2025-11-11 ENUM 타입 반영)
 RUN npx prisma generate
 
 # 필요한 소스 코드 복사 (2025-11-11 업데이트)
