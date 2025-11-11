@@ -22,7 +22,9 @@
       "Bash(Dockerfile.worker)",
       "Bash(npm run db:seed:*)",
       "Bash(curl:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(node -e:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

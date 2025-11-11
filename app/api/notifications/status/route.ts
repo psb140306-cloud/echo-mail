@@ -4,10 +4,16 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validati
 import { notificationService } from '@/lib/notifications/notification-service'
 import { notificationQueue } from '@/lib/notifications/queue/notification-queue'
 import { templateManager } from '@/lib/notifications/templates/template-manager'
+import { identifyTenant } from '@/lib/middleware/tenant-context'
 
 // 알림 시스템 상태 조회
 export async function GET(request: NextRequest) {
   try {
+    const tenant = await identifyTenant(request)
+    if (!tenant) {
+      return createErrorResponse('Tenant not found', 404)
+    }
+
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
@@ -115,6 +121,11 @@ async function handleProviderStatus() {
 // 큐 제어
 export async function POST(request: NextRequest) {
   try {
+    const tenant = await identifyTenant(request)
+    if (!tenant) {
+      return createErrorResponse('Tenant not found', 404)
+    }
+
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
