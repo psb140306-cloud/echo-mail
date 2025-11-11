@@ -204,14 +204,38 @@ export async function PUT(request: NextRequest) {
 
       logger.info('설정 업데이트 완료', { tenantId, updateCount: updates.length })
 
-      // 메일 서버 설정이 변경된 경우 스케줄러 재로드
+      // 메일 서버 설정이 변경된 경우 Railway Worker에 스케줄러 재로드 요청
       if (data.mailServer) {
         try {
-          logger.info('메일 서버 설정 변경 감지, 스케줄러 재로드 시작')
-          await mailScheduler.reloadAllSchedules()
-          logger.info('스케줄러 재로드 완료')
+          logger.info('메일 서버 설정 변경 감지, Railway Worker에 재로드 요청')
+
+          const railwayWorkerUrl = process.env.RAILWAY_WORKER_URL || 'https://echo-mail-production.up.railway.app'
+          const railwaySecret = process.env.RAILWAY_WORKER_SECRET
+
+          if (!railwaySecret) {
+            logger.warn('RAILWAY_WORKER_SECRET이 설정되지 않았습니다. 스케줄러 재로드를 건너뜁니다.')
+          } else {
+            const response = await fetch(`${railwayWorkerUrl}/reload-scheduler`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${railwaySecret}`,
+                'Content-Type': 'application/json'
+              }
+            })
+
+            if (response.ok) {
+              const result = await response.json()
+              logger.info('Railway Worker 스케줄러 재로드 완료:', result)
+            } else {
+              const errorText = await response.text()
+              logger.error('Railway Worker 스케줄러 재로드 실패:', {
+                status: response.status,
+                error: errorText
+              })
+            }
+          }
         } catch (schedulerError) {
-          logger.error('스케줄러 재로드 실패:', schedulerError)
+          logger.error('Railway Worker 스케줄러 재로드 요청 실패:', schedulerError)
           // 스케줄러 재로드 실패해도 설정 저장은 성공으로 처리
         }
       }
