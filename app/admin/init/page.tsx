@@ -10,7 +10,7 @@ export default function AdminInitPage() {
   const [result, setResult] = useState<any>(null)
   const { toast } = useToast()
 
-  const initializeSubscription = async () => {
+  const initializeSubscription = async (plan: 'FREE_TRIAL' | 'STARTER') => {
     try {
       setLoading(true)
       setResult(null)
@@ -18,7 +18,10 @@ export default function AdminInitPage() {
       const response = await fetch('/api/admin/init-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId: 'cmhn51bs10000upmjuafsfl2n' }),
+        body: JSON.stringify({
+          tenantId: 'cmhn51bs10000upmjuafsfl2n',
+          plan,
+        }),
       })
 
       const data = await response.json()
@@ -27,7 +30,7 @@ export default function AdminInitPage() {
       if (data.success) {
         toast({
           title: '성공',
-          description: 'FREE_TRIAL 구독이 생성되었습니다.',
+          description: `${plan} 구독이 생성되었습니다.`,
         })
       } else {
         toast({
@@ -53,12 +56,29 @@ export default function AdminInitPage() {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>구독 초기화</CardTitle>
-          <CardDescription>FREE_TRIAL 구독을 생성합니다.</CardDescription>
+          <CardDescription>park8374@naver.com 계정의 구독을 생성합니다.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button onClick={initializeSubscription} disabled={loading} className="w-full">
-            {loading ? '처리 중...' : 'FREE_TRIAL 구독 생성'}
-          </Button>
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              onClick={() => initializeSubscription('FREE_TRIAL')}
+              disabled={loading}
+              variant="outline"
+            >
+              {loading ? '처리 중...' : 'FREE_TRIAL (100건)'}
+            </Button>
+            <Button
+              onClick={() => initializeSubscription('STARTER')}
+              disabled={loading}
+            >
+              {loading ? '처리 중...' : 'STARTER (500건)'}
+            </Button>
+          </div>
+
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>• FREE_TRIAL: 이메일 100건, 알림 100건 (SMS 불가)</p>
+            <p>• STARTER: 이메일 500건, 알림 500건 (SMS/카카오 가능)</p>
+          </div>
 
           {result && (
             <div className="mt-4 p-4 bg-muted rounded-lg">
