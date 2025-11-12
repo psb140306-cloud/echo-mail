@@ -91,14 +91,16 @@ export class SolapiSMSProvider implements SMSProvider {
       }
     } catch (error: any) {
       logger.error('[SOLAPI] SMS 전송 오류:', {
-        error: error.message,
+        error: error.message || error.toString(),
         statusCode: error.statusCode,
         errorCode: error.errorCode,
+        fullError: JSON.stringify(error),
+        stack: error.stack,
       })
 
       return {
         success: false,
-        error: error.message || '알 수 없는 오류',
+        error: error.message || error.toString() || '알 수 없는 오류',
       }
     }
   }
