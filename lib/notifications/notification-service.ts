@@ -662,13 +662,13 @@ export class NotificationService {
         data: {
           type: request.type,
           recipient: request.recipient,
-          content: JSON.stringify(request.variables), // 발송된 내용 저장
+          message: JSON.stringify(request.variables), // message 필드로 수정
           status: result.success ? 'SENT' : 'FAILED',
           errorMessage: result.error,
           companyId: request.companyId,
           tenantId: request.tenantId || '',
           emailLogId: request.emailLogId, // 이메일 로그 연결
-          createdAt: new Date(),
+          // createdAt 제거 - 자동으로 설정됨
         },
       })
     } catch (error) {
