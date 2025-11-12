@@ -353,6 +353,13 @@ export async function getTenantUsageReport(tenantId: string) {
     const { subscription, limits } = await getTenantSubscription(tenantId)
     const usage = await getTenantUsage(tenantId)
 
+    const emailPercentage = isUnlimited(limits.maxEmailsPerMonth)
+      ? 0
+      : Math.round((usage.emailsThisMonth / limits.maxEmailsPerMonth) * 100)
+    const smsPercentage = isUnlimited(limits.maxNotificationsPerMonth)
+      ? 0
+      : Math.round((usage.notificationsThisMonth / limits.maxNotificationsPerMonth) * 100)
+
     return {
       plan: subscription.plan,
       status: subscription.status,
@@ -375,17 +382,38 @@ export async function getTenantUsageReport(tenantId: string) {
         emailsThisMonth: {
           current: usage.emailsThisMonth,
           limit: limits.maxEmailsPerMonth,
-          percentage: isUnlimited(limits.maxEmailsPerMonth)
-            ? 0
-            : Math.round((usage.emailsThisMonth / limits.maxEmailsPerMonth) * 100),
+          percentage: emailPercentage,
         },
         notificationsThisMonth: {
           current: usage.notificationsThisMonth,
           limit: limits.maxNotificationsPerMonth,
-          percentage: isUnlimited(limits.maxNotificationsPerMonth)
-            ? 0
-            : Math.round((usage.notificationsThisMonth / limits.maxNotificationsPerMonth) * 100),
+          percentage: smsPercentage,
         },
+      },
+      // 대시보드용 summary 필드 추가
+      summary: {
+        email: {
+          current: usage.emailsThisMonth,
+          limit: limits.maxEmailsPerMonth,
+          percentage: emailPercentage,
+        },
+        sms: {
+          current: usage.notificationsThisMonth,
+          limit: limits.maxNotificationsPerMonth,
+          percentage: smsPercentage,
+        },
+        kakao: {
+          current: 0,
+          limit: limits.maxNotificationsPerMonth,
+          percentage: 0,
+        },
+        api: {
+          current: 0,
+          limit: 10000,
+          percentage: 0,
+        },
+        hasWarning: emailPercentage >= 80 || smsPercentage >= 80,
+        hasExceeded: emailPercentage >= 100 || smsPercentage >= 100,
       },
       features: limits.features,
     }
