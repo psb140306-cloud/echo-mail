@@ -25,7 +25,8 @@
       "Bash(git log:*)",
       "Bash(node -e:*)",
       "Bash(git push:*)",
-      "Bash(npx prisma migrate:*)"
+      "Bash(npx prisma migrate:*)",
+      "Bash(npx prisma generate:*)"
     ],
     "deny": [],
     "ask": []
