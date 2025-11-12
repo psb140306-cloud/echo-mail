@@ -663,7 +663,7 @@ export class NotificationService {
           type: request.type,
           recipient: request.recipient,
           content: JSON.stringify(request.variables), // 발송된 내용 저장
-          status: result.success ? 'SUCCESS' : 'FAILED',
+          status: result.success ? 'SENT' : 'FAILED',
           errorMessage: result.error,
           companyId: request.companyId,
           tenantId: request.tenantId || '',
