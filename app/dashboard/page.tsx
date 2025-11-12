@@ -122,7 +122,7 @@ function DashboardContent() {
 
       // 병렬로 데이터 로딩
       const [usageRes, subscriptionRes, activitiesRes, companiesRes] = await Promise.all([
-        fetch('/api/usage'),
+        fetch('/api/subscription/usage'),
         fetch('/api/subscription'),
         fetch('/api/activities?limit=10'),
         fetch('/api/companies?limit=1'), // 업체 수만 가져오기 위해 limit=1
