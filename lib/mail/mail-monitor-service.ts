@@ -346,20 +346,18 @@ export class MailMonitorService {
       return cached.emails
     }
 
-    // DB에서 조회
+    // DB에서 조회 (모든 업체를 가져온 후 이메일이 있는 것만 필터링)
     const companies = await prisma.company.findMany({
       where: {
         tenantId,
         isActive: true,
-        NOT: {
-          email: null,
-        },
       },
       select: {
         email: true,
       },
     })
 
+    // null이 아닌 이메일만 필터링
     const emails = companies.map((c) => c.email).filter((email): email is string => !!email)
 
     // 캐시 업데이트
