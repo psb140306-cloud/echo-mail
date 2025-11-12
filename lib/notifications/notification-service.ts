@@ -465,7 +465,7 @@ export class NotificationService {
           where: {
             emailLogId,
             tenantId: company.tenantId,
-            status: 'SUCCESS',
+            status: 'SENT',
           },
         })
 
