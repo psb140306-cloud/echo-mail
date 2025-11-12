@@ -634,10 +634,6 @@ export class SubscriptionService {
       },
       include: {
         tenant: true,
-        invoices: {
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-        },
       },
     })
   }
