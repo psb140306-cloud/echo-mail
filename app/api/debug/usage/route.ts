@@ -33,7 +33,7 @@ async function debugUsage(request: NextRequest) {
       select: {
         id: true,
         createdAt: true,
-        from: true,
+        sender: true,
         subject: true,
       },
     })
@@ -89,7 +89,7 @@ async function debugUsage(request: NextRequest) {
       recentEmails: allEmails.map(e => ({
         id: e.id,
         createdAt: e.createdAt.toISOString(),
-        from: e.from,
+        sender: e.sender,
         subject: e.subject,
       })),
       recentNotifications: allNotifications.map(n => ({
