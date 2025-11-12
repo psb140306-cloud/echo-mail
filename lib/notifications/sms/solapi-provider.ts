@@ -239,7 +239,7 @@ export class SolapiSMSProvider implements SMSProvider {
 export function createSolapiProviderFromEnv(): SolapiSMSProvider {
   const apiKey = process.env.SOLAPI_API_KEY
   const apiSecret = process.env.SOLAPI_API_SECRET
-  const sender = process.env.SOLAPI_SENDER_PHONE || process.env.DEFAULT_SENDER_PHONE
+  const sender = process.env.SOLAPI_SENDER || process.env.SOLAPI_SENDER_PHONE || process.env.DEFAULT_SENDER_PHONE
 
   // 디버깅: 환경 변수 타입 확인
   logger.info('[SOLAPI] 환경 변수 로드', {
@@ -248,10 +248,11 @@ export function createSolapiProviderFromEnv(): SolapiSMSProvider {
     apiSecretType: typeof apiSecret,
     apiSecretLength: apiSecret?.length,
     senderType: typeof sender,
+    sender: sender,
   })
 
   if (!apiKey || !apiSecret || !sender) {
-    throw new Error('SOLAPI 환경변수가 설정되지 않았습니다 (SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_SENDER_PHONE)')
+    throw new Error('SOLAPI 환경변수가 설정되지 않았습니다 (SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_SENDER)')
   }
 
   // ENABLE_REAL_NOTIFICATIONS가 명시적으로 true면 실제 발송
