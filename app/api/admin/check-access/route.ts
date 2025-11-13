@@ -21,8 +21,8 @@ export async function GET(req: NextRequest) {
     // user_metadata.role로 슈퍼어드민 확인
     const isAdmin = user.user_metadata?.role === 'super_admin'
 
-    // 임시: park8374@naver.com은 기본적으로 슈퍼어드민으로 처리 (초기 설정용)
-    const isDefaultAdmin = user.email === 'park8374@naver.com'
+    // 임시: seah0623@naver.com은 기본적으로 슈퍼어드민으로 처리 (초기 설정용)
+    const isDefaultAdmin = user.email === 'seah0623@naver.com'
 
     const finalIsAdmin = isAdmin || isDefaultAdmin
     console.log('[Admin Check API] Is admin (role)?:', isAdmin)
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 현재 사용자가 슈퍼어드민인지 확인
-    const isAdmin = user.user_metadata?.role === 'super_admin' || user.email === 'park8374@naver.com'
+    const isAdmin = user.user_metadata?.role === 'super_admin' || user.email === 'seah0623@naver.com'
 
     if (!isAdmin) {
       return NextResponse.json(

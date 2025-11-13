@@ -81,14 +81,14 @@ async function main() {
   console.log('🚀 슈퍼어드민 설정 스크립트 시작\n')
   console.log('Supabase URL:', supabaseUrl)
 
-  const success = await setUserAsAdmin('park8374@naver.com')
+  const success = await setUserAsAdmin('seah0623@naver.com')
 
   if (success) {
-    console.log('\n✨ 완료! park8374@naver.com이 이제 슈퍼어드민입니다.')
+    console.log('\n✨ 완료! seah0623@naver.com이 이제 슈퍼어드민입니다.')
     console.log('이제 /admin 페이지에 접근할 수 있습니다.')
   } else {
     console.log('\n⚠️  슈퍼어드민 설정에 실패했습니다.')
-    console.log('1. park8374@naver.com으로 먼저 회원가입했는지 확인하세요.')
+    console.log('1. seah0623@naver.com으로 먼저 회원가입했는지 확인하세요.')
     console.log('2. SUPABASE_SERVICE_ROLE_KEY가 올바른지 확인하세요.')
   }
 }
