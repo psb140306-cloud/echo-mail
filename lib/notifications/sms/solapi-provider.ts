@@ -67,8 +67,15 @@ export class SolapiSMSProvider implements SMSProvider {
         }
       }
 
-      // 메시지 타입 결정 (SMS: 90자 이하, LMS: 90자 초과)
-      const messageType = message.message.length <= 90 ? 'SMS' : 'LMS'
+      // 메시지 타입 결정 (SMS: 90바이트 이하, LMS: 90바이트 초과)
+      const messageBytes = Buffer.from(message.message, 'utf8').length
+      const messageType = messageBytes <= 90 ? 'SMS' : 'LMS'
+
+      logger.info('[SOLAPI] 메시지 타입 결정', {
+        messageLength: message.message.length,
+        messageBytes,
+        type: messageType,
+      })
 
       // SOLAPI SDK를 사용한 메시지 발송
       const result = await this.messageService.send({
