@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { Menu, X, Mail, Users, Calendar, Bell, Settings, BarChart3, Activity } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WordMarkLink } from '@/components/ui/wordmark-link'
 
 interface NavItem {
   href: string
@@ -69,10 +70,10 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent side="left" className="pr-0">
         <div className="flex items-center justify-between pb-6">
-          <div className="flex items-center space-x-2">
+          <WordMarkLink className="flex items-center space-x-2 text-echo-blue-900 no-underline">
             <Mail className="h-6 w-6 text-echo-blue-600" />
-            <span className="font-bold text-xl">Echo Mail</span>
-          </div>
+            <span className="font-bold text-xl text-inherit">Echo Mail</span>
+          </WordMarkLink>
         </div>
 
         <nav id="mobile-navigation" className="flex flex-col space-y-2" role="navigation" aria-label="모바일 메인 네비게이션">
@@ -115,10 +116,10 @@ export function MobileHeader() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden">
       <div className="container flex h-14 items-center">
         <MobileNav />
-        <div className="flex items-center space-x-2">
+        <WordMarkLink className="flex items-center space-x-2 text-echo-blue-900 no-underline">
           <Mail className="h-5 w-5 text-echo-blue-600" />
-          <span className="font-semibold">Echo Mail</span>
-        </div>
+          <span className="font-semibold text-inherit">Echo Mail</span>
+        </WordMarkLink>
         <div className="ml-auto">
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             <Activity className="mr-1 h-3 w-3" />

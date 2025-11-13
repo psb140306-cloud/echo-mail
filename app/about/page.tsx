@@ -7,6 +7,7 @@ import { GlassmorphismCard } from '@/components/ui/glassmorphism-card'
 import { GradientText } from '@/components/ui/kinetic-text'
 import { ScrollReveal, StaggerContainer, StaggerItem } from '@/components/ui/scroll-reveal'
 import { FloatingElement } from '@/components/ui/3d-card'
+import { WordMarkLink } from '@/components/ui/wordmark-link'
 import {
   Mail,
   ArrowRight,
@@ -45,7 +46,7 @@ export default function AboutPage() {
         <header className="relative z-50 border-b border-white/20 backdrop-blur-md">
           <div className="container mx-auto px-4 py-6">
             <nav className="flex items-center justify-between">
-              <Link href="/" className="flex items-center space-x-3">
+              <WordMarkLink className="flex items-center space-x-3 no-underline">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-lg opacity-50" />
                   <div className="relative w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
@@ -55,7 +56,7 @@ export default function AboutPage() {
                 <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Echo Mail
                 </span>
-              </Link>
+              </WordMarkLink>
               <div className="flex items-center gap-4">
                 <Button variant="ghost" asChild className="hidden md:inline-flex">
                   <Link href="/features">기능</Link>
@@ -462,14 +463,14 @@ export default function AboutPage() {
         {/* Footer */}
         <footer className="relative z-50 mt-32 border-t border-white/20 backdrop-blur-md">
           <div className="container mx-auto px-4 py-12">
-            <div className="flex items-center justify-center mb-8">
+            <WordMarkLink className="flex items-center justify-center mb-8 no-underline">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mr-3">
                 <Mail className="w-6 h-6 text-white" />
               </div>
               <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Echo Mail
               </span>
-            </div>
+            </WordMarkLink>
             <div className="flex justify-center flex-wrap gap-6 mb-8">
               <Link
                 href="/features"

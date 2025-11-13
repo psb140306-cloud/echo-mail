@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
@@ -15,20 +14,22 @@ import { AppHeader } from '@/components/layout/app-header'
 import {
   ArrowLeft,
   Mail,
-  MessageCircle,
-  Key,
-  Server,
   Settings,
   Save,
   TestTube,
   AlertTriangle,
   CheckCircle,
   Loader2,
+  Building2,
+  Users,
+  Clock,
+  FileText,
+  Bell,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { UsageDisplay } from '@/components/subscription/usage-display'
 
-interface SystemSettings {
+interface TenantSettings {
   mailServer: {
     host: string
     port: number
@@ -38,36 +39,23 @@ interface SystemSettings {
     checkInterval: number
     enabled: boolean
   }
-  sms: {
-    provider: string
-    apiKey: string
-    apiSecret: string
-    senderId: string
-    enabled: boolean
-    testMode: boolean
+  notification: {
+    defaultSMSEnabled: boolean
+    defaultKakaoEnabled: boolean
+    notifyOnNewOrder: boolean
+    notifyOnError: boolean
   }
-  kakao: {
-    apiKey: string
-    plusFriendId: string
-    enabled: boolean
-    testMode: boolean
-    fallbackToSMS: boolean
-  }
-  system: {
-    timezone: string
-    queueSize: number
-    retryAttempts: number
-    logLevel: string
-    enableNotifications: boolean
-  }
-  templates: {
-    smsTemplate: string
-    kakaoTemplate: string
+  business: {
+    companyName: string
+    businessNumber: string
+    address: string
+    contactEmail: string
+    contactPhone: string
   }
 }
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<SystemSettings>({
+  const [settings, setSettings] = useState<TenantSettings>({
     mailServer: {
       host: '',
       port: 993,
@@ -77,66 +65,76 @@ export default function SettingsPage() {
       checkInterval: 5,
       enabled: false,
     },
-    sms: {
-      provider: 'aligo',
-      apiKey: '',
-      apiSecret: '',
-      senderId: '',
-      enabled: false,
-      testMode: true,
+    notification: {
+      defaultSMSEnabled: true,
+      defaultKakaoEnabled: true,
+      notifyOnNewOrder: true,
+      notifyOnError: true,
     },
-    kakao: {
-      apiKey: '',
-      plusFriendId: '',
-      enabled: false,
-      testMode: true,
-      fallbackToSMS: true,
-    },
-    system: {
-      timezone: 'Asia/Seoul',
-      queueSize: 1000,
-      retryAttempts: 3,
-      logLevel: 'info',
-      enableNotifications: true,
-    },
-    templates: {
-      smsTemplate: '[{companyName}] 발주 확인: {orderDate}까지 납품 예정입니다.',
-      kakaoTemplate:
-        '안녕하세요, {companyName}입니다.\n\n발주가 확인되었습니다.\n납품 예정일: {orderDate}\n\n문의사항이 있으시면 연락 주세요.',
+    business: {
+      companyName: '',
+      businessNumber: '',
+      address: '',
+      contactEmail: '',
+      contactPhone: '',
     },
   })
 
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState<string | null>(null)
-  const [testResults, setTestResults] = useState<Record<string, boolean>>({})
-  const [mailboxInfo, setMailboxInfo] = useState<{
-    exists: number
-    messages: number
-    path: string
-  } | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [testingMail, setTestingMail] = useState(false)
   const { toast } = useToast()
 
-  // 설정 데이터 로드
-  const fetchSettings = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/settings')
-      const data = await response.json()
+  useEffect(() => {
+    loadSettings()
+  }, [])
 
-      if (data.success) {
-        setSettings(data.data)
-      } else {
-        toast({
-          title: '오류',
-          description: data.error || '설정을 불러오는데 실패했습니다.',
-          variant: 'destructive',
-        })
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/settings')
+      if (response.ok) {
+        const data = await response.json()
+        setSettings((prev) => ({
+          ...prev,
+          ...data,
+        }))
       }
     } catch (error) {
       toast({
         title: '오류',
-        description: '네트워크 오류가 발생했습니다.',
+        description: '설정을 불러오는데 실패했습니다',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const saveSettings = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings),
+      })
+
+      if (response.ok) {
+        toast({
+          title: '성공',
+          description: '설정이 저장되었습니다',
+        })
+
+        // 메일 체크 스케줄러 리로드
+        if (settings.mailServer.enabled) {
+          await fetch('/api/scheduler/reload', { method: 'POST' })
+        }
+      } else {
+        throw new Error('설정 저장 실패')
+      }
+    } catch (error) {
+      toast({
+        title: '오류',
+        description: '설정 저장에 실패했습니다',
         variant: 'destructive',
       })
     } finally {
@@ -144,254 +142,149 @@ export default function SettingsPage() {
     }
   }
 
-  // 설정 저장
-  const saveSettings = async () => {
-    try {
-      setSaving(true)
+  const testMailConnection = async () => {
+    if (!settings.mailServer.host || !settings.mailServer.username || !settings.mailServer.password) {
+      toast({
+        title: '입력 오류',
+        description: '메일 서버 정보를 모두 입력해주세요',
+        variant: 'destructive',
+      })
+      return
+    }
 
-      const response = await fetch('/api/settings', {
-        method: 'PUT',
+    setTestingMail(true)
+    try {
+      const response = await fetch('/api/settings/test/mail', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(settings.mailServer),
       })
 
-      const data = await response.json()
+      const result = await response.json()
 
-      if (data.success) {
+      if (result.success) {
         toast({
-          title: '성공',
-          description: '설정이 저장되었습니다.',
+          title: '연결 성공',
+          description: result.message,
         })
       } else {
         toast({
-          title: '오류',
-          description: data.error || '설정 저장에 실패했습니다.',
+          title: '연결 실패',
+          description: result.message || '메일 서버 연결에 실패했습니다',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
         title: '오류',
-        description: '네트워크 오류가 발생했습니다.',
+        description: '연결 테스트 중 오류가 발생했습니다',
         variant: 'destructive',
       })
     } finally {
-      setSaving(false)
+      setTestingMail(false)
     }
-  }
-
-  // 연결 테스트
-  const testConnection = async (type: 'mail' | 'sms' | 'kakao') => {
-    try {
-      setTesting(type)
-
-      const response = await fetch(`/api/settings/test/${type}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings[type === 'mail' ? 'mailServer' : type]),
-      })
-
-      const data = await response.json()
-
-      setTestResults((prev) => ({
-        ...prev,
-        [type]: data.success,
-      }))
-
-      if (data.success) {
-        // 메일 서버 연결 성공 시 메일함 정보 저장
-        if (type === 'mail' && data.data?.mailbox) {
-          setMailboxInfo(data.data.mailbox)
-        }
-
-        toast({
-          title: '연결 성공',
-          description: `${type === 'mail' ? '메일 서버' : type === 'sms' ? 'SMS API' : '카카오톡 API'} 연결이 성공했습니다.`,
-        })
-      } else {
-        // 연결 실패 시 메일함 정보 초기화
-        if (type === 'mail') {
-          setMailboxInfo(null)
-        }
-
-        toast({
-          title: '연결 실패',
-          description: data.error || '연결 테스트에 실패했습니다.',
-          variant: 'destructive',
-        })
-      }
-    } catch (error) {
-      setTestResults((prev) => ({
-        ...prev,
-        [type]: false,
-      }))
-      toast({
-        title: '연결 실패',
-        description: '네트워크 오류가 발생했습니다.',
-        variant: 'destructive',
-      })
-    } finally {
-      setTesting(null)
-    }
-  }
-
-  // 설정 값 업데이트
-  const updateSetting = (section: keyof SystemSettings, field: string, value: any) => {
-    setSettings((prev) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [field]: value,
-      },
-    }))
-  }
-
-  useEffect(() => {
-    fetchSettings()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-background">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AppHeader />
 
-      {/* Sub Header */}
-      <div className="border-b border-border bg-white dark:bg-card">
-        <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link href="/dashboard" className="flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
-              <span>대시보드</span>
-            </Link>
-            <h1 className="text-lg font-semibold dark:text-foreground">시스템 설정</h1>
-          </div>
-          <Button onClick={saveSettings} disabled={saving}>
-            {saving ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
-            )}
-            설정 저장
-          </Button>
-        </div>
-      </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm" className="mb-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              대시보드
+            </Button>
+          </Link>
 
-      {/* Main Content */}
-      <main className="container py-6">
-        <Tabs defaultValue="usage" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="usage" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              사용량
-            </TabsTrigger>
-            <TabsTrigger value="mail" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">시스템 설정</h1>
+              <p className="text-gray-500 mt-1">서비스 설정을 관리합니다</p>
+            </div>
+            <Button
+              onClick={saveSettings}
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              설정 저장
+            </Button>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <UsageDisplay />
+        </div>
+
+        <Tabs defaultValue="mail" className="space-y-6">
+          <TabsList className="grid grid-cols-4 w-full max-w-[600px]">
+            <TabsTrigger value="mail">
+              <Mail className="mr-2 h-4 w-4" />
               메일 서버
             </TabsTrigger>
-            <TabsTrigger value="sms" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              SMS
+            <TabsTrigger value="notification">
+              <Bell className="mr-2 h-4 w-4" />
+              알림
             </TabsTrigger>
-            <TabsTrigger value="kakao" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              카카오톡
+            <TabsTrigger value="business">
+              <Building2 className="mr-2 h-4 w-4" />
+              사업자 정보
             </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              시스템
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
-              <Key className="h-4 w-4" />
+            <TabsTrigger value="template">
+              <FileText className="mr-2 h-4 w-4" />
               템플릿
             </TabsTrigger>
           </TabsList>
 
-          {/* Usage Statistics */}
-          <TabsContent value="usage" className="space-y-6">
+          <TabsContent value="mail">
             <Card>
               <CardHeader>
-                <CardTitle>사용량 및 구독 정보</CardTitle>
-                <CardDescription>현재 플랜의 사용량과 제한사항을 확인하세요</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <UsageDisplay />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Mail Server Settings */}
-          <TabsContent value="mail" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>메일 서버 설정</span>
-                  <div className="flex items-center gap-2">
-                    {testResults.mail !== undefined && (
-                      <Badge variant={testResults.mail ? 'default' : 'destructive'}>
-                        {testResults.mail ? (
-                          <>
-                            <CheckCircle className="mr-1 h-3 w-3" />
-                            연결 성공
-                          </>
-                        ) : (
-                          <>
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            연결 실패
-                          </>
-                        )}
-                      </Badge>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => testConnection('mail')}
-                      disabled={testing === 'mail'}
-                    >
-                      {testing === 'mail' ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <TestTube className="mr-2 h-4 w-4" />
-                      )}
-                      연결 테스트
-                    </Button>
-                  </div>
-                </CardTitle>
-                <CardDescription>메일을 받아올 IMAP 서버 설정을 입력하세요</CardDescription>
+                <CardTitle>메일 서버 설정</CardTitle>
+                <CardDescription>
+                  발주 메일을 수신할 메일 서버를 설정합니다
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="mail-enabled">메일 수신 활성화</Label>
+                  <Label htmlFor="mail-enabled">메일 모니터링 활성화</Label>
                   <Switch
                     id="mail-enabled"
                     checked={settings.mailServer.enabled}
-                    onCheckedChange={(checked) => updateSetting('mailServer', 'enabled', checked)}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        mailServer: { ...settings.mailServer, enabled: checked },
+                      })
+                    }
                   />
                 </div>
 
                 <Separator />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="mail-host">메일 서버 주소</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="mail-host">IMAP 서버</Label>
                     <Input
                       id="mail-host"
                       placeholder="imap.gmail.com"
                       value={settings.mailServer.host}
-                      onChange={(e) => updateSetting('mailServer', 'host', e.target.value)}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          mailServer: { ...settings.mailServer, host: e.target.value },
+                        })
+                      }
                     />
                   </div>
-                  <div>
+                  <div className="space-y-2">
                     <Label htmlFor="mail-port">포트</Label>
                     <Input
                       id="mail-port"
@@ -399,413 +292,317 @@ export default function SettingsPage() {
                       placeholder="993"
                       value={settings.mailServer.port}
                       onChange={(e) =>
-                        updateSetting('mailServer', 'port', parseInt(e.target.value))
+                        setSettings({
+                          ...settings,
+                          mailServer: { ...settings.mailServer, port: parseInt(e.target.value) },
+                        })
                       }
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="mail-username">사용자명</Label>
-                    <Input
-                      id="mail-username"
-                      placeholder="your-email@company.com"
-                      value={settings.mailServer.username}
-                      onChange={(e) => updateSetting('mailServer', 'username', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="mail-password">비밀번호</Label>
-                    <Input
-                      id="mail-password"
-                      type="password"
-                      placeholder="앱 비밀번호 또는 계정 비밀번호"
-                      value={settings.mailServer.password}
-                      onChange={(e) => updateSetting('mailServer', 'password', e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="mail-ssl">SSL/TLS 사용</Label>
-                    <Switch
-                      id="mail-ssl"
-                      checked={settings.mailServer.useSSL}
-                      onCheckedChange={(checked) => updateSetting('mailServer', 'useSSL', checked)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="mail-interval">확인 간격 (분)</Label>
-                    <Input
-                      id="mail-interval"
-                      type="number"
-                      min="1"
-                      max="5"
-                      value={settings.mailServer.checkInterval}
-                      onChange={(e) =>
-                        updateSetting('mailServer', 'checkInterval', parseInt(e.target.value))
-                      }
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      1~5분 사이로 설정 가능합니다. (권장: 5분)
-                    </p>
-                  </div>
-                </div>
-
-                {/* 메일함 정보 표시 */}
-                {mailboxInfo && testResults.mail && (
-                  <>
-                    <Separator />
-                    <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800 p-4">
-                      <h4 className="text-sm font-semibold text-green-900 dark:text-green-100 mb-3 flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4" />
-                        연결된 메일함 정보
-                      </h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <div className="text-green-600 dark:text-green-400 font-medium mb-1">메일함</div>
-                          <div className="text-green-900 dark:text-green-100">{mailboxInfo.path}</div>
-                        </div>
-                        <div>
-                          <div className="text-green-600 dark:text-green-400 font-medium mb-1">메일 개수</div>
-                          <div className="text-green-900 dark:text-green-100">{mailboxInfo.exists.toLocaleString()}개</div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* SMS Settings */}
-          <TabsContent value="sms" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>SMS 발송 설정</span>
-                  <div className="flex items-center gap-2">
-                    {testResults.sms !== undefined && (
-                      <Badge variant={testResults.sms ? 'default' : 'destructive'}>
-                        {testResults.sms ? (
-                          <>
-                            <CheckCircle className="mr-1 h-3 w-3" />
-                            연결 성공
-                          </>
-                        ) : (
-                          <>
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            연결 실패
-                          </>
-                        )}
-                      </Badge>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => testConnection('sms')}
-                      disabled={testing === 'sms'}
-                    >
-                      {testing === 'sms' ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <TestTube className="mr-2 h-4 w-4" />
-                      )}
-                      연결 테스트
-                    </Button>
-                  </div>
-                </CardTitle>
-                <CardDescription>SMS 발송을 위한 API 설정을 입력하세요</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="sms-enabled">SMS 발송 활성화</Label>
-                  <Switch
-                    id="sms-enabled"
-                    checked={settings.sms.enabled}
-                    onCheckedChange={(checked) => updateSetting('sms', 'enabled', checked)}
-                  />
-                </div>
-
-                <Separator />
-
-                <div>
-                  <Label htmlFor="sms-provider">SMS 제공업체</Label>
-                  <select
-                    id="sms-provider"
-                    value={settings.sms.provider}
-                    onChange={(e) => updateSetting('sms', 'provider', e.target.value)}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                  >
-                    <option value="aligo">알리고 (Aligo)</option>
-                    <option value="ncp">네이버 클라우드 플랫폼</option>
-                    <option value="solapi">솔라피 (SOLAPI)</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="sms-key">API 키</Label>
-                    <Input
-                      id="sms-key"
-                      type="password"
-                      placeholder="API 키를 입력하세요"
-                      value={settings.sms.apiKey}
-                      onChange={(e) => updateSetting('sms', 'apiKey', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sms-secret">API 시크릿</Label>
-                    <Input
-                      id="sms-secret"
-                      type="password"
-                      placeholder="API 시크릿을 입력하세요"
-                      value={settings.sms.apiSecret}
-                      onChange={(e) => updateSetting('sms', 'apiSecret', e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="sms-sender">발신번호</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="mail-username">이메일 주소</Label>
                   <Input
-                    id="sms-sender"
-                    placeholder="01012345678"
-                    value={settings.sms.senderId}
-                    onChange={(e) => updateSetting('sms', 'senderId', e.target.value)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="sms-test">테스트 모드</Label>
-                  <Switch
-                    id="sms-test"
-                    checked={settings.sms.testMode}
-                    onCheckedChange={(checked) => updateSetting('sms', 'testMode', checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* KakaoTalk Settings */}
-          <TabsContent value="kakao" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>카카오톡 발송 설정</span>
-                  <div className="flex items-center gap-2">
-                    {testResults.kakao !== undefined && (
-                      <Badge variant={testResults.kakao ? 'default' : 'destructive'}>
-                        {testResults.kakao ? (
-                          <>
-                            <CheckCircle className="mr-1 h-3 w-3" />
-                            연결 성공
-                          </>
-                        ) : (
-                          <>
-                            <AlertTriangle className="mr-1 h-3 w-3" />
-                            연결 실패
-                          </>
-                        )}
-                      </Badge>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => testConnection('kakao')}
-                      disabled={testing === 'kakao'}
-                    >
-                      {testing === 'kakao' ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <TestTube className="mr-2 h-4 w-4" />
-                      )}
-                      연결 테스트
-                    </Button>
-                  </div>
-                </CardTitle>
-                <CardDescription>카카오 비즈메시지 API 설정을 입력하세요</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="kakao-enabled">카카오톡 발송 활성화</Label>
-                  <Switch
-                    id="kakao-enabled"
-                    checked={settings.kakao.enabled}
-                    onCheckedChange={(checked) => updateSetting('kakao', 'enabled', checked)}
-                  />
-                </div>
-
-                <Separator />
-
-                <div>
-                  <Label htmlFor="kakao-key">REST API 키</Label>
-                  <Input
-                    id="kakao-key"
-                    type="password"
-                    placeholder="카카오 개발자센터에서 발급받은 API 키"
-                    value={settings.kakao.apiKey}
-                    onChange={(e) => updateSetting('kakao', 'apiKey', e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="kakao-friend">플러스친구 ID</Label>
-                  <Input
-                    id="kakao-friend"
-                    placeholder="@your_business_id"
-                    value={settings.kakao.plusFriendId}
-                    onChange={(e) => updateSetting('kakao', 'plusFriendId', e.target.value)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="kakao-test">테스트 모드</Label>
-                  <Switch
-                    id="kakao-test"
-                    checked={settings.kakao.testMode}
-                    onCheckedChange={(checked) => updateSetting('kakao', 'testMode', checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="kakao-fallback">SMS 폴백</Label>
-                  <Switch
-                    id="kakao-fallback"
-                    checked={settings.kakao.fallbackToSMS}
-                    onCheckedChange={(checked) => updateSetting('kakao', 'fallbackToSMS', checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* System Settings */}
-          <TabsContent value="system" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>시스템 설정</CardTitle>
-                <CardDescription>전체 시스템 동작에 관한 설정입니다</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="timezone">시간대</Label>
-                  <select
-                    id="timezone"
-                    value={settings.system.timezone}
-                    onChange={(e) => updateSetting('system', 'timezone', e.target.value)}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                  >
-                    <option value="Asia/Seoul">Asia/Seoul (한국 표준시)</option>
-                    <option value="UTC">UTC (협정 세계시)</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="queue-size">큐 최대 크기</Label>
-                    <Input
-                      id="queue-size"
-                      type="number"
-                      min="100"
-                      max="10000"
-                      value={settings.system.queueSize}
-                      onChange={(e) =>
-                        updateSetting('system', 'queueSize', parseInt(e.target.value))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="retry-attempts">재시도 횟수</Label>
-                    <Input
-                      id="retry-attempts"
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={settings.system.retryAttempts}
-                      onChange={(e) =>
-                        updateSetting('system', 'retryAttempts', parseInt(e.target.value))
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="log-level">로그 레벨</Label>
-                  <select
-                    id="log-level"
-                    value={settings.system.logLevel}
-                    onChange={(e) => updateSetting('system', 'logLevel', e.target.value)}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                  >
-                    <option value="error">Error (오류만)</option>
-                    <option value="warn">Warning (경고 이상)</option>
-                    <option value="info">Info (정보 이상)</option>
-                    <option value="debug">Debug (모든 로그)</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="enable-notifications">알림 시스템 활성화</Label>
-                  <Switch
-                    id="enable-notifications"
-                    checked={settings.system.enableNotifications}
-                    onCheckedChange={(checked) =>
-                      updateSetting('system', 'enableNotifications', checked)
+                    id="mail-username"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={settings.mailServer.username}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        mailServer: { ...settings.mailServer, username: e.target.value },
+                      })
                     }
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="mail-password">비밀번호</Label>
+                  <Input
+                    id="mail-password"
+                    type="password"
+                    placeholder="앱 비밀번호 입력"
+                    value={settings.mailServer.password}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        mailServer: { ...settings.mailServer, password: e.target.value },
+                      })
+                    }
+                  />
+                  <p className="text-sm text-gray-500">
+                    Gmail의 경우 앱 비밀번호를 사용하세요
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="check-interval">확인 주기 (분)</Label>
+                  <Input
+                    id="check-interval"
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={settings.mailServer.checkInterval}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        mailServer: { ...settings.mailServer, checkInterval: parseInt(e.target.value) },
+                      })
+                    }
+                  />
+                  <p className="text-sm text-gray-500">
+                    1~5분 사이로 설정 가능합니다
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="use-ssl"
+                    checked={settings.mailServer.useSSL}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        mailServer: { ...settings.mailServer, useSSL: checked },
+                      })
+                    }
+                  />
+                  <Label htmlFor="use-ssl">SSL/TLS 사용</Label>
+                </div>
+
+                <Separator />
+
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={testMailConnection}
+                    disabled={testingMail}
+                  >
+                    {testingMail ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <TestTube className="mr-2 h-4 w-4" />
+                    )}
+                    연결 테스트
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Templates */}
-          <TabsContent value="templates" className="space-y-6">
+          <TabsContent value="notification">
             <Card>
               <CardHeader>
-                <CardTitle>알림 템플릿</CardTitle>
+                <CardTitle>알림 설정</CardTitle>
                 <CardDescription>
-                  SMS와 카카오톡 발송 시 사용할 템플릿을 설정하세요
-                  <br />
-                  사용 가능한 변수: {'{companyName}'}, {'{orderDate}'}, {'{contactName}'}
+                  알림 발송 관련 기본 설정을 관리합니다
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="sms-template">SMS 템플릿</Label>
-                  <Textarea
-                    id="sms-template"
-                    placeholder="SMS 메시지 템플릿을 입력하세요..."
-                    rows={3}
-                    value={settings.templates.smsTemplate}
-                    onChange={(e) => updateSetting('templates', 'smsTemplate', e.target.value)}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label>새 발주 알림</Label>
+                      <p className="text-sm text-gray-500">
+                        새로운 발주 메일 수신 시 담당자에게 알림을 발송합니다
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings.notification.notifyOnNewOrder}
+                      onCheckedChange={(checked) =>
+                        setSettings({
+                          ...settings,
+                          notification: { ...settings.notification, notifyOnNewOrder: checked },
+                        })
+                      }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label>오류 알림</Label>
+                      <p className="text-sm text-gray-500">
+                        시스템 오류 발생 시 관리자에게 알림을 발송합니다
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings.notification.notifyOnError}
+                      onCheckedChange={(checked) =>
+                        setSettings({
+                          ...settings,
+                          notification: { ...settings.notification, notifyOnError: checked },
+                        })
+                      }
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label>기본 SMS 발송</Label>
+                      <p className="text-sm text-gray-500">
+                        새 담당자 등록 시 기본적으로 SMS 수신을 활성화합니다
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings.notification.defaultSMSEnabled}
+                      onCheckedChange={(checked) =>
+                        setSettings({
+                          ...settings,
+                          notification: { ...settings.notification, defaultSMSEnabled: checked },
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label>기본 카카오톡 발송</Label>
+                      <p className="text-sm text-gray-500">
+                        새 담당자 등록 시 기본적으로 카카오톡 수신을 활성화합니다
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings.notification.defaultKakaoEnabled}
+                      onCheckedChange={(checked) =>
+                        setSettings({
+                          ...settings,
+                          notification: { ...settings.notification, defaultKakaoEnabled: checked },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="business">
+            <Card>
+              <CardHeader>
+                <CardTitle>사업자 정보</CardTitle>
+                <CardDescription>
+                  서비스 운영 사업자 정보를 입력합니다
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="company-name">회사명</Label>
+                  <Input
+                    id="company-name"
+                    value={settings.business.companyName}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        business: { ...settings.business, companyName: e.target.value },
+                      })
+                    }
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    SMS는 90자 이내로 작성하는 것을 권장합니다.
-                  </p>
                 </div>
 
-                <div>
-                  <Label htmlFor="kakao-template">카카오톡 템플릿</Label>
-                  <Textarea
-                    id="kakao-template"
-                    placeholder="카카오톡 메시지 템플릿을 입력하세요..."
-                    rows={6}
-                    value={settings.templates.kakaoTemplate}
-                    onChange={(e) => updateSetting('templates', 'kakaoTemplate', e.target.value)}
+                <div className="space-y-2">
+                  <Label htmlFor="business-number">사업자등록번호</Label>
+                  <Input
+                    id="business-number"
+                    placeholder="000-00-00000"
+                    value={settings.business.businessNumber}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        business: { ...settings.business, businessNumber: e.target.value },
+                      })
+                    }
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    카카오톡은 1000자까지 입력 가능합니다.
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address">주소</Label>
+                  <Input
+                    id="address"
+                    value={settings.business.address}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        business: { ...settings.business, address: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-email">대표 이메일</Label>
+                    <Input
+                      id="contact-email"
+                      type="email"
+                      value={settings.business.contactEmail}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          business: { ...settings.business, contactEmail: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-phone">대표 전화번호</Label>
+                    <Input
+                      id="contact-phone"
+                      type="tel"
+                      placeholder="02-0000-0000"
+                      value={settings.business.contactPhone}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          business: { ...settings.business, contactPhone: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="template">
+            <Card>
+              <CardHeader>
+                <CardTitle>메시지 템플릿</CardTitle>
+                <CardDescription>
+                  알림 메시지 템플릿을 관리합니다
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <h3 className="font-medium mb-2">현재 템플릿</h3>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="font-medium">SMS:</span>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          [발주접수] {'{{companyName}}'}님 발주확인. 납품:{'{{shortDate}}'} {'{{deliveryTime}}'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="font-medium">카카오톡:</span>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          안녕하세요, {'{{companyName}}'}님. 발주가 접수되었습니다...
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    템플릿 수정은 관리자에게 문의하세요
                   </p>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
     </div>
   )
 }

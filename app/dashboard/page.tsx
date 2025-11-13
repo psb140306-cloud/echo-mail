@@ -31,6 +31,7 @@ import {
   TestTube,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { WordMarkLink } from '@/components/ui/wordmark-link'
 
 export default function DashboardPage() {
   return (
@@ -44,10 +45,12 @@ function DashboardLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
       <div className="text-center">
-        <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <Mail className="w-8 h-8 text-white" />
-        </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">Echo Mail</h1>
+        <WordMarkLink className="inline-flex flex-col items-center gap-4 mb-4 text-gray-900 no-underline">
+          <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto">
+            <Mail className="w-8 h-8 text-white" />
+          </div>
+          <span className="text-2xl font-bold text-inherit">Echo Mail</span>
+        </WordMarkLink>
         <p className="text-gray-600 mb-8">로그인이 필요한 페이지입니다.</p>
         <div className="space-x-4">
           <Button asChild>

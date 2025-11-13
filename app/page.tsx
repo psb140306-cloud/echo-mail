@@ -10,6 +10,7 @@ import { BentoGrid, BentoCard } from '@/components/ui/bento-grid'
 import { KineticText, GradientText, FloatingText } from '@/components/ui/kinetic-text'
 import { Card3D, FloatingElement } from '@/components/ui/3d-card'
 import { ScrollReveal, StaggerContainer, StaggerItem } from '@/components/ui/scroll-reveal'
+import { WordMarkLink } from '@/components/ui/wordmark-link'
 import {
   Mail,
   ArrowRight,
@@ -75,7 +76,7 @@ function ModernLandingPage() {
         <header className="relative z-50 border-b border-white/20 backdrop-blur-md">
           <div className="container mx-auto px-4 py-6">
             <nav className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
+              <WordMarkLink className="flex items-center space-x-3 no-underline">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-lg opacity-50" />
                   <div className="relative w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
@@ -85,7 +86,7 @@ function ModernLandingPage() {
                 <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Echo Mail
                 </span>
-              </div>
+              </WordMarkLink>
               <div className="flex items-center gap-4">
                 <Button variant="ghost" asChild className="hidden md:inline-flex">
                   <a href="/auth/login">로그인</a>
@@ -347,14 +348,14 @@ function ModernLandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
               {/* Logo & Description */}
               <div className="lg:col-span-2">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                    <Mail className="w-6 h-6 text-white" />
-                  </div>
-                  <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Echo Mail
-                  </span>
+              <WordMarkLink className="flex items-center gap-3 mb-4 no-underline">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                  <Mail className="w-6 h-6 text-white" />
                 </div>
+                <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Echo Mail
+                </span>
+              </WordMarkLink>
                 <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm">
                   발주 확인 메일을 자동으로 모니터링하고 SMS/카카오톡으로 즉시 알림을 발송하는
                   AI 기반 비즈니스 자동화 솔루션입니다.

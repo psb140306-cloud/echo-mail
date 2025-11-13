@@ -535,13 +535,13 @@ export class NotificationService {
           }
         }
 
-        // SMS 발송
+        // SMS 발송 (shortDate 사용으로 90바이트 이하 유지)
         if (contact.smsEnabled) {
           const smsResult = await this.sendNotification({
             type: NotificationType.SMS,
             recipient: contact.phone,
             templateName: 'ORDER_RECEIVED_SMS',
-            variables,
+            variables, // shortDate가 포함된 variables 사용
             companyId: company.id,
             contactId: contact.id,
             tenantId: company.tenantId,

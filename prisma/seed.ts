@@ -204,7 +204,7 @@ async function main() {
   // 메시지 템플릿 생성
   // =============================================================================
 
-  // SMS 템플릿 - 발주 접수 알림
+  // SMS 템플릿 - 발주 접수 알림 (90바이트 이하로 최적화)
   await prisma.messageTemplate.upsert({
     where: {
       tenantId_name: {
@@ -217,11 +217,11 @@ async function main() {
       name: 'ORDER_RECEIVED_SMS',
       type: 'SMS',
       content:
-        '[발주 접수] {{companyName}}님, 발주가 접수되었습니다. 납품일: {{deliveryDate}} {{deliveryTime}}',
+        '[발주접수] {{companyName}}님 발주확인. 납품:{{shortDate}} {{deliveryTime}}',
       variables: {
         companyName: '업체명',
-        deliveryDate: '납품일',
-        deliveryTime: '납품 시간대',
+        shortDate: '날짜',
+        deliveryTime: '시간',
       },
       tenantId: testTenant.id,
       isActive: true,

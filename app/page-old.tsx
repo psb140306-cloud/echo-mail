@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Mail, ArrowRight, CheckCircle, Users, MessageCircle, BarChart3, Building } from 'lucide-react'
+import { WordMarkLink } from '@/components/ui/wordmark-link'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
@@ -45,12 +46,12 @@ function LandingPage() {
       <header className="relative z-50">
         <div className="container mx-auto px-4 py-6">
           <nav className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+            <WordMarkLink className="flex items-center space-x-2 text-gray-900 no-underline">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Mail className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl text-gray-900">Echo Mail</span>
-            </div>
+              <span className="font-bold text-xl text-inherit">Echo Mail</span>
+            </WordMarkLink>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" asChild>
                 <a href="/auth/login">로그인</a>
@@ -355,12 +356,12 @@ function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 text-white mt-24">
         <div className="container mx-auto px-4 py-12">
-          <div className="flex items-center justify-center mb-8">
+          <WordMarkLink className="flex items-center justify-center mb-8 text-white no-underline">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
               <Mail className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl">Echo Mail</span>
-          </div>
+            <span className="font-bold text-xl text-inherit">Echo Mail</span>
+          </WordMarkLink>
           <div className="text-center text-gray-400">© 2025 Echo Mail. All rights reserved.</div>
         </div>
       </footer>
