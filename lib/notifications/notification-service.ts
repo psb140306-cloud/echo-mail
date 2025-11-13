@@ -492,14 +492,20 @@ export class NotificationService {
       const orderHour = (orderDateTime || new Date()).getHours()
       const deliveryTime = orderHour < cutoffHour ? '오전' : '오후'
 
+      // 날짜 포맷 준비
+      const deliveryDate = deliveryResult.deliveryDate
+      const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+
       const variables = {
         companyName: company.name,
-        deliveryDate: deliveryResult.deliveryDate.toLocaleDateString('ko-KR', {
+        deliveryDate: deliveryDate.toLocaleDateString('ko-KR', {
           year: 'numeric',
           month: 'long',
           day: 'numeric',
           weekday: 'long',
         }),
+        // SMS용 짧은 날짜 형식 (예: 1/14(화))
+        shortDate: `${deliveryDate.getMonth() + 1}/${deliveryDate.getDate()}(${weekdays[deliveryDate.getDay()]})`,
         deliveryTime, // 배송 시간대 추가
       }
 

@@ -220,9 +220,8 @@ export class TemplateManager {
         {
           name: 'ORDER_RECEIVED_SMS',
           type: NotificationType.SMS,
-          content:
-            '[발주 접수 알림]\n{{companyName}}님의 발주가 접수되었습니다.\n납품 예정일: {{deliveryDate}} {{deliveryTime}}\n감사합니다.',
-          variables: ['companyName', 'deliveryDate', 'deliveryTime'],
+          content: '[발주접수] {{companyName}} 납품:{{shortDate}} {{deliveryTime}}',
+          variables: ['companyName', 'shortDate', 'deliveryTime'],
           isDefault: true,
         },
         {
