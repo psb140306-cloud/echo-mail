@@ -144,7 +144,8 @@ function DashboardContent() {
 
       if (subscriptionRes.ok) {
         const subData = await subscriptionRes.json()
-        setSubscription(subData.data)
+        // API 응답 구조: { success: true, data: { subscription: {...}, usage: {...} } }
+        setSubscription(subData.data?.subscription || subData.data)
       }
 
       if (activitiesRes.ok) {
@@ -240,7 +241,9 @@ function DashboardContent() {
               {subscription && (
                 <div className="text-right">
                   <div className="flex items-center space-x-2 mb-1">
-                    <span className="text-sm font-medium dark:text-foreground">{subscription.plan.name}</span>
+                    <span className="text-sm font-medium dark:text-foreground">
+                      {subscription.plan || 'FREE_TRIAL'}
+                    </span>
                     {getStatusBadge(subscription.status)}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-muted-foreground">
