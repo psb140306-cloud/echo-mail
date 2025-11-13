@@ -486,6 +486,12 @@ export class NotificationService {
         tenantId: company.tenantId,
       })
 
+      // 배송 시간대 결정 (cutoffTime 기준)
+      // 대부분 cutoffTime이 14:00이므로, 그 이전 주문은 다음날 오전, 이후는 오후 배송
+      const cutoffHour = parseInt(deliveryResult.rule.cutoffTime.split(':')[0])
+      const orderHour = (orderDateTime || new Date()).getHours()
+      const deliveryTime = orderHour < cutoffHour ? '오전' : '오후'
+
       const variables = {
         companyName: company.name,
         deliveryDate: deliveryResult.deliveryDate.toLocaleDateString('ko-KR', {
@@ -494,6 +500,7 @@ export class NotificationService {
           day: 'numeric',
           weekday: 'long',
         }),
+        deliveryTime, // 배송 시간대 추가
       }
 
       const results: NotificationResult[] = []

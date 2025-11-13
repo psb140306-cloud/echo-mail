@@ -145,6 +145,7 @@ export class MailMonitorService {
               envelope: true,
               source: true,
               uid: true,
+              headers: ['message-id'], // 실제 Message-ID 헤더 가져오기
             })) {
               messages.push(message)
             }
@@ -217,15 +218,37 @@ export class MailMonitorService {
     const maxRetries = 3
     let lastError: Error | null = null
 
+    // 실제 Message-ID 헤더 추출
+    const messageIdHeader = message.headers?.['message-id']?.[0] || `uid-${message.uid}-${Date.now()}`
+
     logger.info('[MailMonitor] 메일 처리 시작', {
       tenantId,
       uid: message.uid,
+      messageId: messageIdHeader,
       from: from?.address,
       subject,
       date,
     })
 
     try {
+      // 중복 이메일 체크 (Message-ID 기반)
+      const existingEmail = await prisma.emailLog.findFirst({
+        where: {
+          messageId: messageIdHeader,
+          tenantId,
+        },
+      })
+
+      if (existingEmail) {
+        logger.warn('[MailMonitor] 이미 처리된 이메일 - 스킵', {
+          messageId: messageIdHeader,
+          existingLogId: existingEmail.id,
+          processedAt: existingEmail.createdAt,
+        })
+        // 이미 처리된 메일도 읽음 처리
+        await this.safeMarkAsRead(client, message.uid)
+        return
+      }
       // 메일 파싱하여 업체 정보 추출
       const emailContent = message.source?.toString() || ''
       const parsedData = await parseOrderEmail({
@@ -269,7 +292,7 @@ export class MailMonitorService {
       // EmailLog 생성 (중복 발송 방지용)
       const emailLog = await prisma.emailLog.create({
         data: {
-          messageId: message.uid.toString(), // IMAP UID를 messageId로 사용
+          messageId: messageIdHeader, // 실제 Message-ID 사용
           sender: from?.address || '',
           recipient: '', // IMAP에서는 수신자 정보 없음
           subject: subject || '',
