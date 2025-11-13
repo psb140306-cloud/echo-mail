@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/providers/auth-provider'
 import AdminNav from './components/AdminNav'
+import { SUPER_ADMIN_EMAILS, isSuperAdmin } from '@/lib/constants/admin'
 
 export default function AdminLayout({
   children,
@@ -14,20 +15,32 @@ export default function AdminLayout({
   const router = useRouter()
 
   useEffect(() => {
+    console.log('Admin Layout Effect - Loading:', loading, 'User:', user?.email)
+
     // 로딩이 끝났을 때만 체크
-    if (loading) return
+    if (loading) {
+      console.log('Admin Layout - Still loading, skipping check')
+      return
+    }
 
     // 슈퍼어드민 체크
-    // 임시로 하드코딩 (실제로는 API를 통해 확인해야 함)
-    const SUPER_ADMIN_EMAILS = ['park8374@naver.com']
-
     console.log('Admin Layout - Current user:', user?.email)
-    console.log('Admin Layout - Is super admin:', user?.email && SUPER_ADMIN_EMAILS.includes(user.email))
+    console.log('Admin Layout - Super admin emails:', SUPER_ADMIN_EMAILS)
+    console.log('Admin Layout - Is super admin:', isSuperAdmin(user?.email))
 
-    if (!user || !SUPER_ADMIN_EMAILS.includes(user.email || '')) {
-      console.log('Admin Layout - Redirecting to dashboard')
-      router.push('/dashboard')
+    if (!user) {
+      console.log('Admin Layout - No user, redirecting to login')
+      router.push('/auth/login')
+      return
     }
+
+    if (!isSuperAdmin(user.email)) {
+      console.log('Admin Layout - Not super admin, redirecting to dashboard')
+      router.push('/dashboard')
+      return
+    }
+
+    console.log('Admin Layout - Access granted for super admin')
   }, [user, loading, router])
 
   // 로딩 중이면 로딩 표시
@@ -40,8 +53,7 @@ export default function AdminLayout({
   }
 
   // 슈퍼어드민이 아니면 접근 거부 메시지 표시
-  const SUPER_ADMIN_EMAILS = ['park8374@naver.com']
-  if (!user || !SUPER_ADMIN_EMAILS.includes(user.email || '')) {
+  if (!user || !isSuperAdmin(user.email)) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
