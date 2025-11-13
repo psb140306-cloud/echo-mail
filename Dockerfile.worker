@@ -15,11 +15,11 @@ COPY package.json package-lock.json* ./
 # Prisma 스키마 복사
 COPY prisma ./prisma/
 
-# 의존성 설치
-RUN npm ci --omit=dev --ignore-scripts || npm install --production --ignore-scripts
+# 의존성 설치 (legacy-peer-deps 사용)
+RUN npm ci --omit=dev --ignore-scripts --legacy-peer-deps || npm install --production --ignore-scripts --legacy-peer-deps
 
 # Prisma 설치 (devDependencies)
-RUN npm install -D prisma
+RUN npm install -D prisma --legacy-peer-deps
 
 # 설치된 패키지 확인 (디버깅용)
 RUN echo "=== Installed packages ===" && ls -la node_modules | head -30
