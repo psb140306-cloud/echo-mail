@@ -191,13 +191,17 @@ function DashboardContent() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800">활성</Badge>
+      case 'ACTIVE':
+        return <Badge className="bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800">활성</Badge>
       case 'trialing':
-        return <Badge className="bg-blue-100 text-blue-800">체험중</Badge>
+      case 'TRIAL':
+        return <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800">체험중</Badge>
       case 'past_due':
-        return <Badge className="bg-yellow-100 text-yellow-800">결제 지연</Badge>
+      case 'PAST_DUE':
+        return <Badge className="bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800">결제 지연</Badge>
       case 'canceled':
-        return <Badge className="bg-red-100 text-red-800">취소됨</Badge>
+      case 'CANCELED':
+        return <Badge className="bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800">취소됨</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
@@ -256,18 +260,18 @@ function DashboardContent() {
 
           {/* 사용량 경고 */}
           {usage?.hasWarning && (
-            <Alert className="mt-4 border-yellow-200 bg-yellow-50">
-              <AlertTriangle className="w-4 h-4" />
-              <AlertDescription>
+            <Alert className="mt-4 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/50">
+              <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+              <AlertDescription className="text-yellow-800 dark:text-yellow-200">
                 일부 서비스의 사용량이 한계에 근접했습니다. 플랜 업그레이드를 고려해보세요.
               </AlertDescription>
             </Alert>
           )}
 
           {usage?.hasExceeded && (
-            <Alert className="mt-4 border-red-200 bg-red-50">
-              <AlertTriangle className="w-4 h-4" />
-              <AlertDescription>
+            <Alert className="mt-4 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/50">
+              <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <AlertDescription className="text-red-800 dark:text-red-200">
                 사용량 한계를 초과했습니다. 서비스가 일시 중단될 수 있습니다.
                 <Button size="sm" variant="outline" className="ml-2" asChild>
                   <a href="/settings/subscription">플랜 업그레이드</a>
