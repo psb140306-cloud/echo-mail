@@ -98,6 +98,7 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^6.10.1",
     "postcss": "^8.4.38",
+    "prisma": "^6.19.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.51.5",
@@ -139,7 +140,6 @@
     "jest-environment-jsdom": "^29.7.0",
     "nock": "^13.5.4",
     "prettier": "^3.3.2",
-    "prisma": "^5.15.0",
     "tsx": "^4.15.7",
     "vercel": "^48.1.1"
   },
