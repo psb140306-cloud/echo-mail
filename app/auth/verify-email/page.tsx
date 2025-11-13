@@ -9,6 +9,7 @@ import { useAuth } from '@/components/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { Mail, CheckCircle, RefreshCw, ArrowLeft } from 'lucide-react'
+import { WordMarkLink } from '@/components/ui/wordmark-link'
 
 export default function VerifyEmailPage() {
   const [resending, setResending] = useState(false)
@@ -61,10 +62,12 @@ export default function VerifyEmailPage() {
       <div className="w-full max-w-md">
         {/* 로고/헤더 */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <Mail className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Echo Mail</h1>
+          <WordMarkLink className="inline-flex flex-col items-center gap-4 mb-2 text-gray-900 no-underline">
+            <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto">
+              <Mail className="w-8 h-8 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-inherit">Echo Mail</span>
+          </WordMarkLink>
           <p className="text-gray-600">발주 확인 자동 알림 시스템</p>
         </div>
 
