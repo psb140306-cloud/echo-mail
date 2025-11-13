@@ -1,26 +1,32 @@
-import { redirect } from 'next/navigation'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/auth-provider'
 import AdminNav from './components/AdminNav'
 
-export const metadata = {
-  title: 'Echo Mail Admin',
-  description: '시스템 관리자 페이지',
-}
-
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
+  const { user } = useAuth()
+  const router = useRouter()
 
-  // 슈퍼어드민 체크 (환경변수에 설정된 이메일)
-  const SUPER_ADMIN_EMAILS = process.env.SUPER_ADMIN_EMAILS?.split(',') || []
-  const isSuperAdmin = session?.user?.email && SUPER_ADMIN_EMAILS.includes(session.user.email)
+  useEffect(() => {
+    // 슈퍼어드민 체크
+    // 임시로 하드코딩 (실제로는 API를 통해 확인해야 함)
+    const SUPER_ADMIN_EMAILS = ['park8374@naver.com']
 
-  if (!isSuperAdmin) {
-    redirect('/')
+    if (!user || !SUPER_ADMIN_EMAILS.includes(user.email || '')) {
+      router.push('/dashboard')
+    }
+  }, [user, router])
+
+  // 슈퍼어드민이 아니면 null 반환 (로딩 중)
+  const SUPER_ADMIN_EMAILS = ['park8374@naver.com']
+  if (!user || !SUPER_ADMIN_EMAILS.includes(user.email || '')) {
+    return null
   }
 
   return (
