@@ -35,6 +35,9 @@ export default function AdminLayout({
           <div className="text-sm text-gray-500">
             관리자 권한을 확인하고 있습니다
           </div>
+          <div className="text-xs text-gray-400 mt-4">
+            현재 사용자: {user?.email || '로딩중...'}
+          </div>
         </div>
       </div>
     )
