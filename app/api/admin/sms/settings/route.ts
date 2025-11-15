@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createSolapiProviderFromEnv } from '@/lib/notifications/sms/solapi-provider'
 import { createNCPProviderFromEnv } from '@/lib/notifications/sms/ncp-provider'
 
+export const dynamic = 'force-dynamic'
+
 // 슈퍼어드민용 SMS 설정 API (환경변수 조회 전용)
 export async function GET(request: NextRequest) {
   try {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 프로덕션 DB에 저장된 SMS 설정 확인용 API
  * GET /api/admin/debug/db-settings

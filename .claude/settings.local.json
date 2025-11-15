@@ -32,7 +32,11 @@
       "Bash(npm run build:*)",
       "Bash(npm run dev:*)",
       "Bash(nul)",
-      "Bash(if exist .next rmdir /s /q .next)"
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel inspect:*)",
+      "Bash(vercel --prod:*)",
+      "Bash(git config:*)"
     ],
     "deny": [],
     "ask": []
