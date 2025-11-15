@@ -157,8 +157,15 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
   },
 }
 
+// 플랜 가격 정보 인터페이스
+export interface PlanPricing {
+  monthly: number
+  yearly: number
+  currency: string
+}
+
 // 플랜별 가격 정보 (원화)
-export const PLAN_PRICING = {
+export const PLAN_PRICING: Record<SubscriptionPlan, PlanPricing> = {
   [SubscriptionPlan.FREE_TRIAL]: {
     monthly: 0,
     yearly: 0,
@@ -221,4 +228,14 @@ export function formatLimit(value: number, suffix: string = ''): string {
     return '무제한'
   }
   return `${value.toLocaleString()}${suffix}`
+}
+
+// 플랜 비교: planA가 planB보다 상위 플랜인지 확인
+export function isPlanHigherThan(planA: SubscriptionPlan, planB: SubscriptionPlan): boolean {
+  return PLAN_LIMITS[planA].priority > PLAN_LIMITS[planB].priority
+}
+
+// 플랜 비교: planA가 planB보다 하위 플랜인지 확인
+export function isPlanLowerThan(planA: SubscriptionPlan, planB: SubscriptionPlan): boolean {
+  return PLAN_LIMITS[planA].priority < PLAN_LIMITS[planB].priority
 }

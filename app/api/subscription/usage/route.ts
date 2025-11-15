@@ -29,9 +29,37 @@ async function getUsage(request: NextRequest) {
       plan: usageReport.plan,
     })
 
+    // 페이지에서 기대하는 형식으로 변환
+    const formattedUsage = {
+      // 구독 페이지용 간단한 형식
+      companies: {
+        current: usageReport.limits.companies.current,
+        limit: usageReport.limits.companies.limit,
+      },
+      contacts: {
+        current: usageReport.limits.contacts.current,
+        limit: usageReport.limits.contacts.limit,
+      },
+      emails: {
+        current: usageReport.limits.emailsThisMonth.current,
+        limit: usageReport.limits.emailsThisMonth.limit,
+      },
+      notifications: {
+        current: usageReport.limits.notificationsThisMonth.current,
+        limit: usageReport.limits.notificationsThisMonth.limit,
+      },
+      // 대시보드에서 사용하는 summary 필드
+      summary: usageReport.summary,
+      // UsageDisplay 컴포넌트용 전체 정보
+      plan: usageReport.plan,
+      status: usageReport.status,
+      limits: usageReport.limits,
+      features: usageReport.features,
+    }
+
     return NextResponse.json({
       success: true,
-      data: usageReport,
+      data: formattedUsage,
     })
   } catch (error) {
     logger.error('Failed to get usage report', { error })

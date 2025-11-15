@@ -50,14 +50,17 @@ async function getSubscription(request: NextRequest) {
       status: subscription.status,
     })
 
+    // 페이지에서 기대하는 형식으로 변환
+    const subscriptionInfo = {
+      plan: subscription.plan,
+      status: subscription.status,
+      currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+      trialEndsAt: subscription.trialEndsAt?.toISOString(),
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+    }
+
     return createSuccessResponse(
-      {
-        subscription,
-        usage: {
-          emailCount: subscription.currentEmailCount,
-          notificationCount: subscription.currentNotificationCount,
-        },
-      },
+      subscriptionInfo,
       '구독 정보를 성공적으로 조회했습니다.'
     )
   } catch (error) {

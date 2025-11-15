@@ -29,7 +29,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { SubscriptionPlan, PLAN_LIMITS, PLAN_PRICING, getPlanDisplayName } from '@/lib/subscription/plans'
+import { SubscriptionPlan, PLAN_LIMITS, PLAN_PRICING, getPlanDisplayName, isPlanHigherThan } from '@/lib/subscription/plans'
 import { AppHeader } from '@/components/layout/app-header'
 
 interface SubscriptionInfo {
@@ -100,10 +100,13 @@ export default function SubscriptionPage() {
   }
 
   const handleChangePlan = async () => {
-    if (!selectedPlan) return
+    if (!selectedPlan || !subscription) return
 
     try {
       setActionLoading(true)
+
+      // 업그레이드인지 다운그레이드인지 판단
+      const isUpgrade = isPlanHigherThan(selectedPlan, subscription.plan)
 
       const response = await fetch('/api/subscription/change', {
         method: 'POST',
@@ -112,6 +115,7 @@ export default function SubscriptionPage() {
         },
         body: JSON.stringify({
           newPlan: selectedPlan,
+          immediate: isUpgrade, // 업그레이드는 즉시, 다운그레이드는 다음 주기
         }),
       })
 
@@ -120,7 +124,9 @@ export default function SubscriptionPage() {
       if (data.success) {
         toast({
           title: '성공',
-          description: '플랜이 변경되었습니다.',
+          description: isUpgrade
+            ? '플랜이 즉시 업그레이드되었습니다. 상위 플랜의 모든 기능을 바로 사용하실 수 있습니다.'
+            : `플랜 변경이 예약되었습니다. ${new Date(subscription.currentPeriodEnd).toLocaleDateString('ko-KR')}부터 적용됩니다.`,
         })
         setShowChangePlanDialog(false)
         loadSubscriptionData()
@@ -516,13 +522,13 @@ export default function SubscriptionPage() {
                       {!isCurrent && (
                         <Button
                           className="w-full mt-4"
-                          variant={plan > (subscription?.plan || SubscriptionPlan.FREE_TRIAL) ? 'default' : 'outline'}
+                          variant={isPlanHigherThan(plan, subscription?.plan || SubscriptionPlan.FREE_TRIAL) ? 'default' : 'outline'}
                           onClick={() => {
                             setSelectedPlan(plan)
                             setShowChangePlanDialog(true)
                           }}
                         >
-                          {plan > (subscription?.plan || SubscriptionPlan.FREE_TRIAL) ? (
+                          {isPlanHigherThan(plan, subscription?.plan || SubscriptionPlan.FREE_TRIAL) ? (
                             <>
                               <ArrowUpCircle className="mr-2 h-4 w-4" />
                               업그레이드
@@ -553,13 +559,38 @@ export default function SubscriptionPage() {
             <DialogDescription>
               {selectedPlan && subscription && (
                 <>
-                  <p className="mb-2">
+                  <p className="mb-4">
                     <span className="font-semibold">{getPlanDisplayName(subscription.plan)}</span>에서{' '}
                     <span className="font-semibold">{getPlanDisplayName(selectedPlan)}</span>로 변경하시겠습니까?
                   </p>
-                  <p className="text-sm">
-                    변경 사항은 다음 결제 주기부터 적용됩니다.
-                  </p>
+                  {isPlanHigherThan(selectedPlan, subscription.plan) ? (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <ArrowUpCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">즉시 적용</p>
+                          <p className="text-sm text-blue-700 dark:text-blue-200">
+                            업그레이드는 즉시 적용되며, 상위 플랜의 모든 기능을 바로 사용하실 수 있습니다.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-amber-900 dark:text-amber-100 mb-1">
+                            {new Date(subscription.currentPeriodEnd).toLocaleDateString('ko-KR')} 적용
+                          </p>
+                          <p className="text-sm text-amber-700 dark:text-amber-200">
+                            현재 결제 기간이 종료되면 자동으로 변경됩니다.
+                            그 전까지는 현재 플랜의 모든 기능을 계속 이용하실 수 있습니다.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </DialogDescription>

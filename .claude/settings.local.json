@@ -37,7 +37,9 @@
       "Bash(vercel inspect:*)",
       "Bash(vercel --prod:*)",
       "Bash(git config:*)",
-      "Bash(vercel login:*)"
+      "Bash(vercel login:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(del nul)"
     ],
     "deny": [],
     "ask": []
