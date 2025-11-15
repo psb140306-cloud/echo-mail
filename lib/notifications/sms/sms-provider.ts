@@ -422,8 +422,15 @@ export function createSMSProviderFromEnv(): SMSProvider {
       testMode,
     }
 
-    if (!config.apiKey || !config.apiSecret || !config.serviceId || !config.sender) {
-      throw new Error('NCP SMS 설정이 완전하지 않습니다. 환경변수를 확인하세요.')
+    // 상세 로깅
+    const missingVars = []
+    if (!config.apiKey) missingVars.push('NCP_ACCESS_KEY')
+    if (!config.apiSecret) missingVars.push('NCP_SECRET_KEY')
+    if (!config.serviceId) missingVars.push('NCP_SERVICE_ID')
+    if (!config.sender) missingVars.push('NCP_SENDER 또는 SMS_SENDER')
+
+    if (missingVars.length > 0) {
+      throw new Error(`NCP SMS 필수 환경변수 누락: ${missingVars.join(', ')}`)
     }
   } else if (provider === 'aligo') {
     // Aligo 설정
