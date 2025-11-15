@@ -118,13 +118,26 @@ export class TemplateManager {
       })
 
       if (template) {
+        // variables가 배열이 아니면 객체의 키 배열로 변환 (방어 로직)
+        const variables = Array.isArray(template.variables)
+          ? template.variables
+          : Object.keys(template.variables || {})
+
+        if (!Array.isArray(template.variables)) {
+          logger.warn('[TemplateManager] variables가 배열이 아닙니다. 객체 키로 변환', {
+            templateName: template.name,
+            originalType: typeof template.variables,
+            converted: variables,
+          })
+        }
+
         const templateData: NotificationTemplate = {
           id: template.id,
           name: template.name,
           type: template.type,
           subject: template.subject || undefined,
           content: template.content,
-          variables: template.variables as string[],
+          variables: variables as string[],
           isDefault: template.isDefault,
           createdAt: template.createdAt,
           updatedAt: template.updatedAt,
