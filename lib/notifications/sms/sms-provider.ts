@@ -224,12 +224,12 @@ export class NCPSMSProvider implements SMSProvider {
         type: messageType,
         contentType: 'COMM',
         countryCode: '82',
-        from: this.config.sender,
+        from: this.config.sender.replace(/-/g, ''), // NCP는 발신번호도 하이픈 제거
         subject: message.subject || '알림',
         content: message.message,
         messages: [
           {
-            to: message.to.replace(/-/g, ''), // NCP는 하이픈 제거
+            to: message.to.replace(/-/g, ''), // NCP는 수신번호 하이픈 제거
           },
         ],
       }
@@ -264,6 +264,7 @@ export class NCPSMSProvider implements SMSProvider {
           statusCode: result.statusCode,
           statusName: result.statusName,
           to: message.to,
+          fullResponse: result, // 전체 응답 로깅
         })
 
         return {
@@ -309,7 +310,7 @@ export class NCPSMSProvider implements SMSProvider {
         type: messageType,
         contentType: 'COMM',
         countryCode: '82',
-        from: this.config.sender,
+        from: this.config.sender.replace(/-/g, ''), // NCP는 발신번호도 하이픈 제거
         subject: messages[0].subject || '알림',
         content: messages[0].message,
         messages: messages.map((msg) => ({
