@@ -186,10 +186,20 @@ export class TemplateManager {
   private replaceVariables(content: string, variables: Record<string, string>): string {
     let result = content
 
+    // variables가 객체가 아니면 빈 객체로 처리
+    if (!variables || typeof variables !== 'object' || Array.isArray(variables)) {
+      logger.warn('[TemplateManager] variables가 올바른 객체가 아닙니다', {
+        variables,
+        type: typeof variables,
+        isArray: Array.isArray(variables),
+      })
+      return result
+    }
+
     // {{variable}} 형태의 변수 치환
     Object.entries(variables).forEach(([key, value]) => {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
-      result = result.replace(regex, value)
+      result = result.replace(regex, String(value))
     })
 
     return result
