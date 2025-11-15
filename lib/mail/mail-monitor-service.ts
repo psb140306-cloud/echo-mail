@@ -133,6 +133,7 @@ export class MailMonitorService {
         logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 등록된 업체 ${registeredEmails.length}개`)
 
         // 등록된 업체 이메일에서 온 읽지 않은 메일만 검색
+        logger.info(`[MailMonitor] 검색할 이메일 목록:`, { emails: registeredEmails })
         const messages = []
         for (const email of registeredEmails) {
           try {
@@ -141,16 +142,23 @@ export class MailMonitorService {
               from: email,
             }
 
+            logger.info(`[MailMonitor] IMAP 검색 시작:`, { email, searchCriteria })
+
             for await (const message of client.fetch(searchCriteria, {
               envelope: true,
               source: true,
               uid: true,
               headers: ['message-id'], // 실제 Message-ID 헤더 가져오기
             })) {
+              logger.info(`[MailMonitor] 메일 발견:`, {
+                uid: message.uid,
+                from: message.envelope?.from?.[0]?.address,
+                subject: message.envelope?.subject,
+              })
               messages.push(message)
             }
           } catch (error) {
-            logger.debug(`[MailMonitor] ${email} 검색 실패 (무시됨):`, error)
+            logger.warn(`[MailMonitor] ${email} 검색 실패:`, error)
           }
         }
 
@@ -363,7 +371,7 @@ export class MailMonitorService {
   }
 
   /**
-   * 테넌트의 등록된 업체 이메일 목록 조회 (캐싱)
+   * 테넌트의 등록된 업체 및 담당자 이메일 목록 조회 (캐싱)
    */
   private async getRegisteredCompanyEmails(tenantId: string): Promise<string[]> {
     const CACHE_TTL = 5 * 60 * 1000 // 5분
@@ -378,7 +386,7 @@ export class MailMonitorService {
       return cached.emails
     }
 
-    // DB에서 조회 (모든 업체를 가져온 후 이메일이 있는 것만 필터링)
+    // 1. 업체 이메일 가져오기
     const companies = await prisma.company.findMany({
       where: {
         tenantId,
@@ -389,21 +397,41 @@ export class MailMonitorService {
       },
     })
 
-    // null이 아닌 이메일만 필터링
-    const emails = companies.map((c) => c.email).filter((email): email is string => !!email)
+    const companyEmails = companies.map((c) => c.email).filter((email): email is string => !!email)
+
+    // 2. 담당자 이메일 가져오기
+    const contacts = await prisma.contact.findMany({
+      where: {
+        company: {
+          tenantId,
+          isActive: true,
+        },
+        isActive: true,
+      },
+      select: {
+        email: true,
+      },
+    })
+
+    const contactEmails = contacts.map((c) => c.email).filter((email): email is string => !!email)
+
+    // 3. 중복 제거하여 합치기
+    const allEmails = Array.from(new Set([...companyEmails, ...contactEmails]))
 
     // 캐시 업데이트
     this.companyEmailsCache.set(tenantId, {
-      emails,
+      emails: allEmails,
       updatedAt: new Date(),
     })
 
-    logger.info('[MailMonitor] 등록된 업체 이메일 로드 완료', {
+    logger.info('[MailMonitor] 등록된 업체 및 담당자 이메일 로드 완료', {
       tenantId,
-      count: emails.length,
+      companyEmails: companyEmails.length,
+      contactEmails: contactEmails.length,
+      totalUnique: allEmails.length,
     })
 
-    return emails
+    return allEmails
   }
 
   /**

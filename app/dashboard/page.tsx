@@ -442,8 +442,8 @@ function DashboardContent() {
                   </Button>
                   <Button variant="outline" className="p-4 h-auto" asChild>
                     <a href="/settings" className="flex flex-col items-center">
-                      <BarChart3 className="w-6 h-6 mb-2" />
-                      <span>사용량 통계</span>
+                      <Settings className="w-6 h-6 mb-2" />
+                      <span>시스템 설정</span>
                     </a>
                   </Button>
                 </div>

@@ -111,7 +111,7 @@ export default function SettingsPage() {
     setLoading(true)
     try {
       const response = await fetch('/api/settings', {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
