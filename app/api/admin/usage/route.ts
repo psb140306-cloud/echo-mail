@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
     // 전체 알림 로그 통계
     const totalNotifications = await prisma.notificationLog.count()
     const smsCount = await prisma.notificationLog.count({
-      where: { channel: 'SMS' },
+      where: { type: 'SMS' },
     })
     const kakaoCount = await prisma.notificationLog.count({
-      where: { channel: { in: ['KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK'] } },
+      where: { type: { in: ['KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK'] } },
     })
 
     // 최근 30일 알림 통계
@@ -58,14 +58,14 @@ export async function GET(request: NextRequest) {
 
     const recentSMS = await prisma.notificationLog.count({
       where: {
-        channel: 'SMS',
+        type: 'SMS',
         createdAt: { gte: thirtyDaysAgo },
       },
     })
 
     const recentKakao = await prisma.notificationLog.count({
       where: {
-        channel: { in: ['KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK'] },
+        type: { in: ['KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK'] },
         createdAt: { gte: thirtyDaysAgo },
       },
     })
@@ -107,13 +107,13 @@ export async function GET(request: NextRequest) {
         })
 
         const sms = await prisma.notificationLog.count({
-          where: { tenantId: tenant.id, channel: 'SMS' },
+          where: { tenantId: tenant.id, type: 'SMS' },
         })
 
         const kakao = await prisma.notificationLog.count({
           where: {
             tenantId: tenant.id,
-            channel: { in: ['KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK'] },
+            type: { in: ['KAKAO_ALIMTALK', 'KAKAO_FRIENDTALK'] },
           },
         })
 
