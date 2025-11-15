@@ -352,7 +352,7 @@ export default function NotificationTestPage() {
                 <div className="space-y-1 text-muted-foreground">
                   <p>• SMS는 90자 이하면 SMS, 초과하면 LMS로 전송됩니다</p>
                   <p>• 카카오 알림톡은 사전에 승인된 템플릿만 사용 가능합니다</p>
-                  <p>• 발신번호는 SOLAPI에 등록된 번호여야 합니다</p>
+                  <p>• 발신번호는 {envConfig?.SMS_PROVIDER === 'solapi' ? 'SOLAPI' : envConfig?.SMS_PROVIDER === 'ncp' ? 'NCP' : 'SMS Provider'}에 등록된 번호여야 합니다</p>
                   <p>• 실제 발송 시 비용이 발생할 수 있습니다</p>
                 </div>
               </CardContent>
@@ -368,7 +368,7 @@ export default function NotificationTestPage() {
                   <div className="space-y-2 text-sm font-mono">
                     <div>
                       <span className="text-muted-foreground">SMS_PROVIDER:</span>{' '}
-                      <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">solapi</code>
+                      <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{envConfig.SMS_PROVIDER || 'solapi'}</code>
                     </div>
                     <div>
                       <span className="text-muted-foreground">NODE_ENV:</span>{' '}
