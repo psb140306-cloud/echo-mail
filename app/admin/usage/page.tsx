@@ -58,6 +58,7 @@ interface UsageData {
 export default function UsageStatisticsPage() {
   const [data, setData] = useState<UsageData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchUsage = async () => {
@@ -66,12 +67,14 @@ export default function UsageStatisticsPage() {
           credentials: 'include',
         })
         if (!response.ok) {
-          throw new Error('Failed to fetch usage data')
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+          throw new Error(errorData.error || `HTTP ${response.status}`)
         }
         const result = await response.json()
         setData(result)
       } catch (error) {
         console.error('Failed to load usage:', error)
+        setError(error instanceof Error ? error.message : 'Unknown error')
       } finally {
         setLoading(false)
       }
@@ -91,10 +94,27 @@ export default function UsageStatisticsPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 max-w-2xl mx-auto">
+          <p className="text-red-600 dark:text-red-400 font-semibold mb-2">사용량 데이터를 불러올 수 없습니다</p>
+          <p className="text-sm text-red-500 dark:text-red-300">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (!data) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">사용량 데이터를 불러올 수 없습니다.</p>
+        <p className="text-gray-500">데이터를 불러오는 중...</p>
       </div>
     )
   }
