@@ -59,9 +59,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // 로그인/로그아웃 시에만 리다이렉트 (새로고침 대신)
       if (event === 'SIGNED_IN') {
-        // 현재 페이지가 인증 페이지인 경우에만 대시보드로 리다이렉트
+        // 현재 페이지가 인증 페이지인 경우에만 리다이렉트
         if (window.location.pathname.startsWith('/auth/')) {
-          window.location.href = '/dashboard'
+          // 관리자 권한 확인 후 적절한 페이지로 리다이렉트
+          try {
+            const response = await fetch('/api/admin/check-access')
+            const data = await response.json()
+
+            if (data.isAdmin) {
+              logger.info('Admin user logged in, redirecting to /admin', { email: session?.user?.email })
+              window.location.href = '/admin'
+            } else {
+              logger.info('Regular user logged in, redirecting to /dashboard', { email: session?.user?.email })
+              window.location.href = '/dashboard'
+            }
+          } catch (error) {
+            logger.error('Failed to check admin status, defaulting to /dashboard', { error })
+            window.location.href = '/dashboard'
+          }
         }
       } else if (event === 'SIGNED_OUT') {
         // 로그아웃 시 로그인 페이지로 리다이렉트

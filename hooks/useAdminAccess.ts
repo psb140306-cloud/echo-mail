@@ -39,6 +39,12 @@ export function useAdminAccess() {
         const response = await fetch('/api/admin/check-access')
         const data = await response.json()
 
+        console.log('[useAdminAccess] API Response:', {
+          status: response.status,
+          ok: response.ok,
+          data
+        })
+
         if (!response.ok) {
           throw new Error(data.error || 'Failed to check admin access')
         }
@@ -51,7 +57,8 @@ export function useAdminAccess() {
 
         console.log('[useAdminAccess] Access check result:', {
           email: user.email,
-          isAdmin: data.isAdmin
+          isAdmin: data.isAdmin,
+          finalState: { isAdmin: data.isAdmin, isLoading: false }
         })
       } catch (error) {
         console.error('[useAdminAccess] Error checking admin access:', error)

@@ -20,8 +20,15 @@ export default function AdminLayout({
         console.log('[Admin Layout] No user, redirecting to login')
         router.push('/auth/login')
       } else {
-        console.log('[Admin Layout] Not admin, redirecting to dashboard')
-        router.push('/dashboard')
+        console.log('[Admin Layout] Not admin, redirecting to dashboard', {
+          isAdmin,
+          isCheckingAccess,
+          user: user?.email
+        })
+        // 잠시 대기 후 리다이렉트 (API 응답 대기)
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 100)
       }
     }
   }, [isCheckingAccess, isAdmin, user, router])

@@ -60,7 +60,7 @@ export class NotificationService {
     if (this.initialized) return
 
     try {
-      // SMS Provider 초기화
+      // SMS Provider 초기화 (fallback용 - 환경변수)
       this.smsProvider = createSMSProviderFromEnv()
 
       // Kakao Provider 초기화 (선택적)
@@ -79,54 +79,12 @@ export class NotificationService {
   }
 
   /**
-   * 테넌트별 SMS Provider 생성 (발신번호 포함)
+   * SMS Provider 가져오기 (환경변수만 사용)
    */
-  private async getTenantSMSProvider(tenantId: string): Promise<SMSProvider> {
-    // 테넌트의 발신번호 조회
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: {
-        senderPhone: true,
-        senderVerified: true,
-      },
-    })
-
-    if (!tenant || !tenant.senderPhone || !tenant.senderVerified) {
-      logger.warn('테넌트 발신번호 미설정 또는 미인증', {
-        tenantId,
-        hasSenderPhone: !!tenant?.senderPhone,
-        isVerified: tenant?.senderVerified,
-      })
-      // 기본 Provider 사용 (환경변수의 발신번호)
-      return this.smsProvider!
-    }
-
-    // 테넌트 발신번호로 SMS Provider 생성
-    const provider = (process.env.SMS_PROVIDER || 'aligo') as 'aligo' | 'ncp' | 'solapi'
-    const testMode = process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
-
-    if (provider === 'ncp') {
-      const { NCPSMSProvider } = await import('./sms/sms-provider')
-      return new NCPSMSProvider({
-        provider: 'ncp',
-        apiKey: process.env.NCP_ACCESS_KEY || '',
-        apiSecret: process.env.NCP_SECRET_KEY || '',
-        serviceId: process.env.NCP_SERVICE_ID || '',
-        sender: tenant.senderPhone, // 테넌트 발신번호 사용
-        testMode,
-      })
-    } else if (provider === 'aligo') {
-      const { AligoSMSProvider } = await import('./sms/sms-provider')
-      return new AligoSMSProvider({
-        provider: 'aligo',
-        apiKey: process.env.ALIGO_API_KEY || '',
-        userId: process.env.ALIGO_USER_ID || '',
-        sender: tenant.senderPhone, // 테넌트 발신번호 사용
-        testMode,
-      })
-    }
-
-    // 기본 Provider 사용
+  private async getTenantSMSProvider(_tenantId: string): Promise<SMSProvider> {
+    // 환경변수에서 생성한 Provider를 그대로 사용
+    // 테넌트별 구분 없이 시스템 전역 SMS 설정 사용
+    logger.info('[NotificationService] SMS Provider 사용 (환경변수)')
     return this.smsProvider!
   }
 

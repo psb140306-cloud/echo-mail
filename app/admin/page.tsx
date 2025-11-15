@@ -22,15 +22,29 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // API를 통해 통계 데이터 가져오기
-    // 임시로 하드코딩된 값 사용
-    setStats({
-      tenantCount: 1,
-      userCount: 5,
-      notificationCount: 150,
-      companyCount: 12
-    })
-    setLoading(false)
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/admin/stats')
+        if (!response.ok) {
+          throw new Error('Failed to fetch stats')
+        }
+        const data = await response.json()
+        setStats(data)
+      } catch (error) {
+        console.error('Failed to load admin stats:', error)
+        // 에러 시 기본값 사용
+        setStats({
+          tenantCount: 0,
+          userCount: 0,
+          notificationCount: 0,
+          companyCount: 0
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
   }, [])
 
   if (loading) {
@@ -61,16 +75,18 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              총 사용자
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.userCount}</div>
-          </CardContent>
-        </Card>
+        <a href="/admin/users">
+          <Card className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                총 사용자
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.userCount}</div>
+            </CardContent>
+          </Card>
+        </a>
 
         <Card>
           <CardHeader className="pb-3">

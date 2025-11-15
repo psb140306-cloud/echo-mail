@@ -408,7 +408,7 @@ export function createSMSProviderFromEnv(): SMSProvider {
   let config: SMSConfig
 
   if (provider === 'solapi') {
-    // SOLAPI 설정
+    // SOLAPI 설정 (환경변수만 사용 - 레거시)
     const { createSolapiProviderFromEnv } = require('./solapi-provider')
     return createSolapiProviderFromEnv()
   } else if (provider === 'ncp') {

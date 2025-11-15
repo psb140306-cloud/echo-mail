@@ -29,7 +29,10 @@
       "Bash(npx prisma generate:*)",
       "Bash(node:*)",
       "Bash(npx tsx:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(nul)",
+      "Bash(if exist .next rmdir /s /q .next)"
     ],
     "deny": [],
     "ask": []

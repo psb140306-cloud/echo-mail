@@ -34,10 +34,24 @@ interface SolapiErrorResponse {
 export class SolapiSMSProvider implements SMSProvider {
   private config: SolapiConfig
   private messageService: SolapiMessageService
+  private readonly baseUrl = 'https://api.solapi.com'
 
   constructor(config: SolapiConfig) {
     this.config = config
     this.messageService = new SolapiMessageService(config.apiKey, config.apiSecret)
+  }
+
+  /**
+   * HMAC-SHA256 서명 생성
+   * Solapi API 인증: date + salt를 secret으로 HMAC-SHA256
+   */
+  private generateSignature(date: string, salt: string): string {
+    const crypto = require('crypto')
+    const message = date + salt
+    return crypto
+      .createHmac('sha256', this.config.apiSecret)
+      .update(message)
+      .digest('hex')
   }
 
   async sendSMS(message: SMSMessage): Promise<SMSResult> {
@@ -119,17 +133,20 @@ export class SolapiSMSProvider implements SMSProvider {
       }
 
       const date = new Date().toISOString()
-      const signature = this.generateSignature(date)
+      const salt = Date.now().toString()
+      const signature = this.generateSignature(date, salt)
 
       const response = await fetch(`${this.baseUrl}/cash/v1/balance`, {
         method: 'GET',
         headers: {
-          Authorization: `HMAC-SHA256 apiKey=${this.config.apiKey}, date=${date}, signature=${signature}`,
+          Authorization: `HMAC-SHA256 apiKey=${this.config.apiKey}, date=${date}, salt=${salt}, signature=${signature}`,
         },
       })
 
       if (!response.ok) {
-        throw new Error('잔액 조회 실패')
+        const errorText = await response.text()
+        logger.error('[SOLAPI] 잔액 조회 실패:', { status: response.status, error: errorText })
+        throw new Error(`잔액 조회 실패: ${response.status}`)
       }
 
       const data = await response.json()
@@ -176,17 +193,18 @@ export class SolapiSMSProvider implements SMSProvider {
       }
 
       const date = new Date().toISOString()
+      const salt = Date.now().toString()
       const requestBody = {
         phoneNumber: phoneNumber.replace(/-/g, ''),
         ...(comment && { comment }),
       }
-      const signature = this.generateSignature(date, requestBody)
+      const signature = this.generateSignature(date, salt)
 
       const response = await fetch(`${this.baseUrl}/senderid/v1/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `HMAC-SHA256 apiKey=${this.config.apiKey}, date=${date}, signature=${signature}`,
+          Authorization: `HMAC-SHA256 apiKey=${this.config.apiKey}, date=${date}, salt=${salt}, signature=${signature}`,
         },
         body: JSON.stringify(requestBody),
       })
@@ -220,17 +238,20 @@ export class SolapiSMSProvider implements SMSProvider {
       }
 
       const date = new Date().toISOString()
-      const signature = this.generateSignature(date)
+      const salt = Date.now().toString()
+      const signature = this.generateSignature(date, salt)
 
       const response = await fetch(`${this.baseUrl}/senderid/v1/list`, {
         method: 'GET',
         headers: {
-          Authorization: `HMAC-SHA256 apiKey=${this.config.apiKey}, date=${date}, signature=${signature}`,
+          Authorization: `HMAC-SHA256 apiKey=${this.config.apiKey}, date=${date}, salt=${salt}, signature=${signature}`,
         },
       })
 
       if (!response.ok) {
-        throw new Error('발신번호 조회 실패')
+        const errorText = await response.text()
+        logger.error('[SOLAPI] 발신번호 조회 실패:', { status: response.status, error: errorText })
+        throw new Error(`발신번호 조회 실패: ${response.status}`)
       }
 
       const data = await response.json()
@@ -243,7 +264,97 @@ export class SolapiSMSProvider implements SMSProvider {
 }
 
 /**
- * 환경변수에서 SOLAPI Provider 생성
+ * 데이터베이스에서 SOLAPI Provider 생성 (우선)
+ * DB에 설정이 없으면 환경변수 사용
+ */
+export async function createSolapiProviderFromDB(tenantId: string): Promise<SolapiSMSProvider> {
+  const { prisma } = await import('@/lib/db')
+
+  try {
+    // 1. 데이터베이스에서 SMS 설정 조회
+    const configs = await prisma.systemConfig.findMany({
+      where: {
+        tenantId,
+        key: {
+          in: ['sms.apiKey', 'sms.apiSecret', 'sms.senderId', 'sms.enabled', 'sms.testMode']
+        }
+      }
+    })
+
+    // 설정을 객체로 변환
+    const dbSettings: Record<string, any> = {}
+    configs.forEach(config => {
+      const key = config.key.split('.')[1] // 'sms.apiKey' -> 'apiKey'
+      try {
+        dbSettings[key] = JSON.parse(config.value)
+      } catch {
+        dbSettings[key] = config.value
+      }
+    })
+
+    logger.info('[SOLAPI] DB 설정 조회 결과', {
+      tenantId,
+      hasApiKey: !!dbSettings.apiKey,
+      hasSenderId: !!dbSettings.senderId,
+      enabled: dbSettings.enabled,
+      testMode: dbSettings.testMode,
+    })
+
+    // 2. DB 설정이 있으면 DB 우선 사용
+    let apiKey = dbSettings.apiKey
+    let apiSecret = dbSettings.apiSecret
+    let sender = dbSettings.senderId
+
+    // 3. DB에 없으면 환경변수 fallback
+    if (!apiKey) {
+      apiKey = process.env.SOLAPI_API_KEY
+      logger.info('[SOLAPI] API Key를 환경변수에서 로드')
+    }
+    if (!apiSecret) {
+      apiSecret = process.env.SOLAPI_API_SECRET
+      logger.info('[SOLAPI] API Secret을 환경변수에서 로드')
+    }
+    if (!sender) {
+      sender = process.env.SOLAPI_SENDER || process.env.SOLAPI_SENDER_PHONE || process.env.DEFAULT_SENDER_PHONE
+      logger.info('[SOLAPI] Sender를 환경변수에서 로드')
+    }
+
+    // 4. 최종 검증
+    if (!apiKey || !apiSecret || !sender) {
+      throw new Error('SOLAPI 설정이 DB와 환경변수 모두에 없습니다 (apiKey, apiSecret, sender 필요)')
+    }
+
+    // 5. testMode 결정 (DB 우선, 없으면 환경변수)
+    let testMode = dbSettings.testMode !== undefined
+      ? dbSettings.testMode
+      : process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
+
+    logger.info('[SOLAPI] Provider 생성 (DB 우선)', {
+      tenantId,
+      source: {
+        apiKey: dbSettings.apiKey ? 'DB' : 'ENV',
+        apiSecret: dbSettings.apiSecret ? 'DB' : 'ENV',
+        sender: dbSettings.senderId ? 'DB' : 'ENV',
+        testMode: dbSettings.testMode !== undefined ? 'DB' : 'ENV',
+      },
+      testMode,
+    })
+
+    return new SolapiSMSProvider({
+      apiKey,
+      apiSecret,
+      sender,
+      testMode,
+    })
+  } catch (error) {
+    logger.error('[SOLAPI] DB에서 Provider 생성 실패, 환경변수로 fallback:', error)
+    // DB 조회 실패시 환경변수로 완전 fallback
+    return createSolapiProviderFromEnv()
+  }
+}
+
+/**
+ * 환경변수에서 SOLAPI Provider 생성 (레거시/fallback)
  */
 export function createSolapiProviderFromEnv(): SolapiSMSProvider {
   const apiKey = process.env.SOLAPI_API_KEY
@@ -267,7 +378,7 @@ export function createSolapiProviderFromEnv(): SolapiSMSProvider {
   // ENABLE_REAL_NOTIFICATIONS가 명시적으로 true면 실제 발송
   const testMode = process.env.ENABLE_REAL_NOTIFICATIONS !== 'true'
 
-  logger.info('[SOLAPI] Provider 생성', {
+  logger.info('[SOLAPI] Provider 생성 (환경변수)', {
     NODE_ENV: process.env.NODE_ENV,
     ENABLE_REAL_NOTIFICATIONS: process.env.ENABLE_REAL_NOTIFICATIONS,
     testMode,

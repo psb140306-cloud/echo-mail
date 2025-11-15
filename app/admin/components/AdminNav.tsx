@@ -15,13 +15,13 @@ import {
 
 const navigation = [
   { name: '대시보드', href: '/admin', icon: HomeIcon },
+  { name: '테넌트 관리', href: '/admin/tenants', icon: UserGroupIcon },
+  { name: '사용자 관리', href: '/admin/users', icon: UserGroupIcon },
+  { name: '사용량 통계', href: '/admin/usage', icon: ChartBarIcon },
   { name: 'SMS 설정', href: '/admin/sms', icon: ChatBubbleLeftIcon },
   { name: '카카오톡 설정', href: '/admin/kakao', icon: EnvelopeIcon },
-  { name: '테넌트 관리', href: '/admin/tenants', icon: UserGroupIcon },
-  { name: '사용량 통계', href: '/admin/usage', icon: ChartBarIcon },
   { name: 'API 키 관리', href: '/admin/api-keys', icon: KeyIcon },
   { name: '시스템 설정', href: '/admin/system', icon: ServerIcon },
-  { name: '일반 설정', href: '/settings', icon: CogIcon },
 ]
 
 export default function AdminNav() {

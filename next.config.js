@@ -31,17 +31,6 @@ const nextConfig = {
     APP_VERSION: process.env.npm_package_version || '1.0.0',
   },
 
-  // 리다이렉트 설정
-  async redirects() {
-    return [
-      {
-        source: '/admin',
-        destination: '/dashboard',
-        permanent: true,
-      },
-    ]
-  },
-
   // 헤더 설정
   async headers() {
     return [
