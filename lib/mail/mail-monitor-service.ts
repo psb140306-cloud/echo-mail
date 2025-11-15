@@ -314,15 +314,36 @@ export class MailMonitorService {
       // 알림 발송 (재시도 로직) - 이메일 수신 시간 및 로그 ID 전달
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
+          logger.info('[MailMonitor] 알림 발송 시작', {
+            companyId: company.id,
+            companyName: company.name,
+            emailLogId: emailLog.id,
+            attempt,
+          })
+
           const results = await sendOrderReceivedNotification(company.id, date, emailLog.id)
           const successCount = results.filter((r) => r.success).length
 
           logger.info('[MailMonitor] 알림 발송 완료', {
             companyId: company.id,
+            companyName: company.name,
             totalContacts: results.length,
             successCount,
             attempt,
+            results: results.map((r) => ({
+              success: r.success,
+              error: r.error,
+              provider: r.provider,
+            })),
           })
+
+          // 빈 배열 반환 시 경고 (중복 발송 방지로 스킵된 경우)
+          if (results.length === 0) {
+            logger.warn('[MailMonitor] 알림이 발송되지 않음 - 담당자 없음 또는 중복 발송 방지', {
+              companyId: company.id,
+              emailLogId: emailLog.id,
+            })
+          }
 
           // 알림 발송 성공 시 읽음 처리
           await this.safeMarkAsRead(client, message.uid)
