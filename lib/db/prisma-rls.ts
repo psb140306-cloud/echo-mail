@@ -30,6 +30,10 @@ export function withRLSContext<T>(context: RLSContext, fn: () => T): T {
 /**
  * Prisma에 RLS 세션 주입
  * 모든 쿼리 실행 전에 request.jwt.claim.* 세션 변수 설정
+ *
+ * CRITICAL: 세션 변수와 쿼리를 같은 커넥션에서 실행
+ * - set_config()로 세션 변수를 설정한 트랜잭션 커넥션(tx)에서
+ * - 실제 쿼리도 실행해야 RLS 정책이 적용됨
  */
 export function createPrismaWithRLS(prisma: PrismaClient) {
   return prisma.$extends({
@@ -45,7 +49,7 @@ export function createPrismaWithRLS(prisma: PrismaClient) {
 
         // 트랜잭션 시작하여 세션 변수 설정 후 쿼리 실행
         return prisma.$transaction(async (tx) => {
-          // 1. Set JWT claims as session variables
+          // 1. Set JWT claims as session variables on transaction connection
           if (context.userId) {
             await (tx as any)
               .$executeRawUnsafe(`SELECT set_config('request.jwt.claim.sub', '${context.userId}', true)`)
@@ -56,10 +60,22 @@ export function createPrismaWithRLS(prisma: PrismaClient) {
               .$executeRawUnsafe(`SELECT set_config('request.jwt.claim.role', '${context.role}', true)`)
           }
 
-          // 2. Execute the actual query
-          // Note: We need to use the original query here, not tx
-          // because query is already bound to the right context
-          return query(args)
+          // 2. Execute the actual query on the SAME transaction connection
+          // CRITICAL FIX: tx[model][operation](args) 대신 tx의 실제 모델 메서드 사용
+          if (!model) {
+            // $queryRaw, $executeRaw 등 model이 없는 경우
+            return query(args)
+          }
+
+          // 타입 안전하게 tx를 통해 쿼리 실행
+          const txModel = (tx as any)[model]
+          if (!txModel || typeof txModel[operation] !== 'function') {
+            // 해당 operation이 없으면 fallback
+            return query(args)
+          }
+
+          // CRITICAL: 같은 트랜잭션 커넥션에서 쿼리 실행
+          return txModel[operation](args)
         })
       },
     },
