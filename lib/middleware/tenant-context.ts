@@ -347,11 +347,40 @@ export async function withTenantContext<T>(
           tenantName: tenant.name,
           userId: authUser?.id,
         })
+
+        // 🔒 RLS 컨텍스트 설정: Prisma 쿼리에 JWT claim 주입
+        if (authUser?.id) {
+          const { withRLSContext } = await import('@/lib/db')
+          return withRLSContext(
+            {
+              userId: authUser.id,
+              role: 'authenticated',
+            },
+            async () => {
+              return await handler(request)
+            }
+          )
+        }
+
         return await handler(request)
       })
     } else {
       // 인증되지 않은 요청이거나 Super Admin API
       logger.debug('No tenant context - unauthenticated or super admin')
+
+      // 슈퍼어드민의 경우 service_role로 RLS 설정
+      if (authUser?.email === 'seah0623@naver.com') {
+        const { withRLSContext } = await import('@/lib/db')
+        return withRLSContext(
+          {
+            role: 'service_role',
+          },
+          async () => {
+            return await handler(request)
+          }
+        )
+      }
+
       return await handler(request)
     }
   } catch (error) {
