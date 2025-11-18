@@ -479,16 +479,8 @@ export class NotificationService {
         tenantId: company.tenantId,
       })
 
-      // 배송 시간대 결정 - 마감 전/후에 따라 선택된 배송 시간 사용
-      const orderDate = orderDateTime || new Date()
-      const kstComponents = this.getKSTComponents(orderDate)
-      const orderTime = kstComponents.hours * 60 + kstComponents.minutes
-      const cutoffTime = this.parseTime(deliveryResult.rule.cutoffTime)
-
-      // 마감 전/후 주문에 따라 설정된 배송 시간 사용
-      const deliveryTime = orderTime < cutoffTime
-        ? deliveryResult.rule.beforeCutoffDeliveryTime
-        : deliveryResult.rule.afterCutoffDeliveryTime
+      // 배송 시간대는 deliveryResult에 이미 계산되어 있음
+      const deliveryTime = deliveryResult.deliveryTime || '미정'
 
       // 날짜 포맷 준비 (한국 시간대 기준)
       const deliveryDate = deliveryResult.deliveryDate
