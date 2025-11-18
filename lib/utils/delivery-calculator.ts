@@ -239,13 +239,18 @@ export class DeliveryCalculator {
   }
 
   /**
-   * 공휴일 여부 확인
+   * 공휴일 여부 확인 (한국 시간대 기준)
    */
   private async isHoliday(date: Date, customHolidays?: Date[], tenantId?: string): Promise<boolean> {
+    // KST 날짜 문자열로 변환 (YYYY-MM-DD)
+    const dateString = this.formatDateKST(date)
+
     // 커스텀 공휴일 확인
     if (customHolidays) {
-      const dateString = date.toISOString().split('T')[0]
-      return customHolidays.some((holiday) => holiday.toISOString().split('T')[0] === dateString)
+      return customHolidays.some((holiday) => {
+        const holidayString = this.formatDateKST(holiday)
+        return holidayString === dateString
+      })
     }
 
     // tenantId가 없으면 공휴일 아님
@@ -254,7 +259,8 @@ export class DeliveryCalculator {
     }
 
     // 데이터베이스 공휴일 확인 (캐싱)
-    const year = date.getFullYear()
+    const kstComponents = this.getKSTComponents(date)
+    const year = kstComponents.year
     const cacheKey = `holidays_${tenantId}_${year}`
 
     let holidays: Date[]
@@ -275,8 +281,10 @@ export class DeliveryCalculator {
       this.holidayCache.set(cacheKey, holidays)
     }
 
-    const dateString = date.toISOString().split('T')[0]
-    return holidays.some((holiday) => holiday.toISOString().split('T')[0] === dateString)
+    return holidays.some((holiday) => {
+      const holidayString = this.formatDateKST(holiday)
+      return holidayString === dateString
+    })
   }
 
   /**
