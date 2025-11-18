@@ -739,35 +739,41 @@ export default function DeliveryRulesPage() {
               <Label htmlFor="beforeCutoffDays" className="text-right">
                 마감 전 배송
               </Label>
-              <Input
-                id="beforeCutoffDays"
-                type="number"
-                min="0"
-                max="14"
-                value={formData.beforeCutoffDays}
-                onChange={(e) =>
-                  setFormData({ ...formData, beforeCutoffDays: parseInt(e.target.value) })
-                }
-                className="col-span-3"
-                placeholder="N일 후"
-              />
+              <div className="col-span-3 flex items-center gap-2">
+                <Input
+                  id="beforeCutoffDays"
+                  type="number"
+                  min="0"
+                  max="14"
+                  value={formData.beforeCutoffDays}
+                  onChange={(e) =>
+                    setFormData({ ...formData, beforeCutoffDays: parseInt(e.target.value) })
+                  }
+                  className="w-20"
+                  placeholder="1"
+                />
+                <span className="text-sm text-muted-foreground">일 후</span>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="afterCutoffDays" className="text-right">
                 마감 후 배송
               </Label>
-              <Input
-                id="afterCutoffDays"
-                type="number"
-                min="0"
-                max="14"
-                value={formData.afterCutoffDays}
-                onChange={(e) =>
-                  setFormData({ ...formData, afterCutoffDays: parseInt(e.target.value) })
-                }
-                className="col-span-3"
-                placeholder="N일 후"
-              />
+              <div className="col-span-3 flex items-center gap-2">
+                <Input
+                  id="afterCutoffDays"
+                  type="number"
+                  min="0"
+                  max="14"
+                  value={formData.afterCutoffDays}
+                  onChange={(e) =>
+                    setFormData({ ...formData, afterCutoffDays: parseInt(e.target.value) })
+                  }
+                  className="w-20"
+                  placeholder="2"
+                />
+                <span className="text-sm text-muted-foreground">일 후</span>
+              </div>
             </div>
 
             {/* 배송 시간대 선택 */}
