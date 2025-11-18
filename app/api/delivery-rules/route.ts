@@ -94,7 +94,9 @@ export async function GET(request: NextRequest) {
       return createPaginatedResponse(deliveryRules, { page, limit, total })
     } catch (error) {
       logger.error('납품 규칙 목록 조회 실패:', error)
-      return createErrorResponse('납품 규칙 목록 조회에 실패했습니다.')
+      // DEBUG: 실제 에러 메시지 노출 (production에서는 제거)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      return createErrorResponse(`납품 규칙 목록 조회에 실패했습니다. [DEBUG: ${errorMessage}]`)
     }
   })
 }
