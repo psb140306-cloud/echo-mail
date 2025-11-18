@@ -1,5 +1,6 @@
 // =============================================================================
 // Echo Mail Database Schema
+// Updated: 2025-11-18 - Force Prisma Client regeneration for Vercel
 // =============================================================================
 
 generator client {
