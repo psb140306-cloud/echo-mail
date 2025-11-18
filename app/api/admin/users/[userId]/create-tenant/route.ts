@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 
@@ -10,9 +11,10 @@ import { logger } from '@/lib/utils/logger'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
+    const params = await context.params
     const userId = params.userId
 
     if (!userId) {
@@ -26,20 +28,7 @@ export async function POST(
     }
 
     // 1. 관리자 권한 확인
-    const { createServerClient } = await import('@supabase/ssr')
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set() {},
-          remove() {},
-        },
-      }
-    )
+    const supabase = await createClient()
 
     const {
       data: { user: adminUser },
@@ -56,13 +45,23 @@ export async function POST(
       )
     }
 
-    // TODO: 실제 관리자 권한 체크 로직 추가
-    // 현재는 인증된 사용자면 모두 허용
+    // 슈퍼어드민 체크
+    const isDefaultAdmin = adminUser.email === 'seah0623@naver.com'
+    if (!isDefaultAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Forbidden - Admin access required',
+        },
+        { status: 403 }
+      )
+    }
 
-    // 2. 대상 사용자 확인
-    const targetUser = await supabase.auth.admin.getUserById(userId)
+    // 2. 대상 사용자 확인 (Service Role 사용)
+    const adminSupabase = createAdminClient()
+    const { data: targetUser, error: targetUserError } = await adminSupabase.auth.admin.getUserById(userId)
 
-    if (targetUser.error || !targetUser.data.user) {
+    if (targetUserError || !targetUser?.user) {
       return NextResponse.json(
         {
           success: false,
@@ -72,7 +71,7 @@ export async function POST(
       )
     }
 
-    const targetUserData = targetUser.data.user
+    const targetUserData = targetUser.user
 
     // 3. 이미 Tenant가 있는지 확인
     const existingTenant = await prisma.tenant.findFirst({
@@ -159,6 +158,7 @@ export async function POST(
       },
     })
   } catch (error) {
+    const params = await context.params
     logger.error('[Admin] Failed to create tenant for user', {
       error,
       userId: params.userId,
