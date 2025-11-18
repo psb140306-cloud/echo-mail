@@ -61,8 +61,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN') {
         // 현재 페이지가 인증 페이지인 경우에만 리다이렉트
         if (window.location.pathname.startsWith('/auth/')) {
-          // 관리자 권한 확인 후 적절한 페이지로 리다이렉트
           try {
+            // 1. Tenant 상태 체크 (우선)
+            const tenantCheckRes = await fetch('/api/auth/check-tenant-status')
+            const tenantCheck = await tenantCheckRes.json()
+
+            if (!tenantCheck.success || !tenantCheck.data?.isReady || !tenantCheck.data?.hasTenant) {
+              // Tenant 없음 또는 준비 안됨 → 설정 대기 페이지
+              logger.warn('Tenant not ready after login, redirecting to setup-pending', {
+                email: session?.user?.email,
+                hasTenant: tenantCheck.data?.hasTenant,
+                isReady: tenantCheck.data?.isReady,
+              })
+              window.location.href = '/auth/setup-pending'
+              return
+            }
+
+            // 2. Tenant 준비 완료 → 관리자 권한 확인
             const response = await fetch('/api/admin/check-access')
             const data = await response.json()
 
@@ -74,8 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               window.location.href = '/dashboard'
             }
           } catch (error) {
-            logger.error('Failed to check admin status, defaulting to /dashboard', { error })
-            window.location.href = '/dashboard'
+            logger.error('Failed to check tenant/admin status', { error })
+            // 에러 시 설정 페이지로 안전하게 이동
+            window.location.href = '/auth/setup-pending'
           }
         }
       } else if (event === 'SIGNED_OUT') {

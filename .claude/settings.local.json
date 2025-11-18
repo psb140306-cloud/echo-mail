@@ -41,7 +41,10 @@
       "Bash(python -m json.tool:*)",
       "Bash(del nul)",
       "Bash(npx prisma studio:*)",
-      "Bash(vercel logs:*)"
+      "Bash(vercel logs:*)",
+      "Bash(npx prisma:*)",
+      "Bash(xargs cat:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

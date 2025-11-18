@@ -203,6 +203,11 @@ function extractSubdomain(host: string): string | null {
 /**
  * API 라우트용 테넌트 컨텍스트 미들웨어
  * ⚠️ SECURITY: 반드시 사용자의 멤버십을 검증하여 크로스 테넌트 접근 방지
+ *
+ * 🔒 보안 원칙:
+ * 1. 인증된 사용자 → membership 기반 tenant 필수
+ * 2. membership 없음 → 즉시 차단 (TENANT_NOT_READY)
+ * 3. host 기반 tenant는 비인증 사용자 전용
  */
 export async function withTenantContext<T>(
   request: NextRequest,
@@ -211,9 +216,9 @@ export async function withTenantContext<T>(
   const tenantContext = TenantContext.getInstance()
 
   try {
-    // 1. Supabase Auth 세션 먼저 확인
+    // 1. Supabase Auth 세션 확인
     let authUser: any = null
-    let userTenantId: string | null = null
+    let tenant: TenantInfo | null = null
 
     try {
       const { createServerClient } = await import('@supabase/ssr')
@@ -238,56 +243,16 @@ export async function withTenantContext<T>(
 
       if (user) {
         authUser = user
-
-        // 사용자의 멤버십에서 tenantId 가져오기
-        const membership = await prisma.tenantMember.findFirst({
-          where: {
-            userId: user.id,
-            status: 'ACTIVE',
-          },
-          include: {
-            tenant: true,
-          },
-        })
-
-        if (membership) {
-          userTenantId = membership.tenantId
-          logger.debug('User membership found', {
-            userId: user.id,
-            tenantId: userTenantId,
-            role: membership.role,
-          })
-        }
       }
     } catch (error) {
       logger.error('Failed to get user session', { error })
     }
 
-    // 2. 호스트에서 테넌트 식별
-    let tenant = await identifyTenant(request)
-
-    // 3. CRITICAL: 호스트에서 식별된 테넌트와 사용자 멤버십 일치 검증
-    if (tenant && authUser && userTenantId) {
-      if (tenant.id !== userTenantId) {
-        logger.error('🚨 SECURITY: Tenant mismatch detected!', {
-          hostTenantId: tenant.id,
-          userTenantId,
-          userId: authUser.id,
-          host: request.headers.get('host'),
-        })
-
-        // 멤버십 없는 테넌트 접근 시도 차단
-        throw new Error('Unauthorized: You are not a member of this tenant')
-      }
-    }
-
-    // 4. 도메인에서 tenant를 찾지 못했지만 사용자에게 멤버십이 있는 경우
-    if (!tenant && userTenantId && authUser) {
-      // 멤버십에서 테넌트 조회
+    // 2. 🔒 인증된 사용자: membership 기반 tenant 필수
+    if (authUser) {
       const membership = await prisma.tenantMember.findFirst({
         where: {
           userId: authUser.id,
-          tenantId: userTenantId,
           status: 'ACTIVE',
         },
         include: {
@@ -295,18 +260,70 @@ export async function withTenantContext<T>(
         },
       })
 
-      if (membership?.tenant) {
-        tenant = {
-          id: membership.tenant.id,
-          name: membership.tenant.name,
-          subdomain: membership.tenant.subdomain,
-          customDomain: membership.tenant.customDomain || undefined,
-          subscriptionPlan: membership.tenant.subscriptionPlan,
-        }
-        logger.info('✅ Tenant found from user membership', {
+      if (!membership || !membership.tenant) {
+        // 🚨 인증된 사용자인데 membership 없음 → 설정 대기 필요
+        logger.warn('🔴 Authenticated user without tenant membership', {
           userId: authUser.id,
-          tenantId: tenant.id,
+          email: authUser.email,
+          path: request.nextUrl.pathname,
         })
+
+        // 특정 경로는 예외 처리 (tenant 생성 API 등)
+        const allowedPaths = [
+          '/api/auth/check-tenant-status',
+          '/api/auth/setup-account',
+          '/api/admin/',
+          '/auth/setup-pending',
+        ]
+
+        if (allowedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
+          logger.debug('Allowed path for tenant setup', { path: request.nextUrl.pathname })
+          return await handler(request)
+        }
+
+        // 다른 모든 경로는 차단
+        throw new Error('TENANT_NOT_READY')
+      }
+
+      // Membership에서 tenant 설정
+      tenant = {
+        id: membership.tenant.id,
+        name: membership.tenant.name,
+        subdomain: membership.tenant.subdomain,
+        customDomain: membership.tenant.customDomain || undefined,
+        subscriptionPlan: membership.tenant.subscriptionPlan,
+      }
+
+      logger.debug('✅ Tenant loaded from user membership', {
+        userId: authUser.id,
+        tenantId: tenant.id,
+        role: membership.role,
+      })
+
+      // 3. 🔒 Host 검증 (보안): host tenant와 membership tenant가 다르면 차단
+      const hostTenant = await identifyTenant(request)
+      if (hostTenant && hostTenant.id !== tenant.id) {
+        logger.error('🚨 SECURITY: Tenant mismatch - potential cross-tenant attack!', {
+          hostTenantId: hostTenant.id,
+          userTenantId: tenant.id,
+          userId: authUser.id,
+          host: request.headers.get('host'),
+          path: request.nextUrl.pathname,
+        })
+
+        throw new Error('TENANT_MISMATCH')
+      }
+    } else {
+      // 4. 비인증 사용자: host 기반 tenant 사용 (공개 페이지 전용)
+      tenant = await identifyTenant(request)
+
+      if (tenant) {
+        logger.debug('Tenant identified from host (unauthenticated)', {
+          tenantId: tenant.id,
+          host: request.headers.get('host'),
+        })
+      } else {
+        logger.debug('No tenant context - public access or super admin')
       }
     }
 
@@ -326,8 +343,27 @@ export async function withTenantContext<T>(
       return await handler(request)
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+    // 특정 에러는 명확한 응답 반환
+    if (errorMessage === 'TENANT_NOT_READY') {
+      logger.info('Tenant not ready - redirecting to setup', {
+        path: request.nextUrl.pathname,
+      })
+      // NextResponse는 제네릭 T에 할당 불가능하므로 throw
+      throw error
+    }
+
+    if (errorMessage === 'TENANT_MISMATCH') {
+      logger.error('Tenant mismatch - security violation', {
+        path: request.nextUrl.pathname,
+      })
+      throw error
+    }
+
     logger.error('Tenant context middleware error', {
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: errorMessage,
+      path: request.nextUrl.pathname,
     })
     throw error
   }

@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/use-toast'
+import { Plus, AlertCircle } from 'lucide-react'
 
 interface Tenant {
   tenantId: string
@@ -23,25 +26,71 @@ interface User {
 export default function UsersManagementPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  const [creatingTenant, setCreatingTenant] = useState<string | null>(null)
+  const { toast } = useToast()
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users')
+      if (!response.ok) {
+        throw new Error('Failed to fetch users')
+      }
+      const data = await response.json()
+      setUsers(data.users)
+    } catch (error) {
+      console.error('Failed to load users:', error)
+      toast({
+        title: '사용자 목록 로딩 실패',
+        description: '다시 시도해주세요.',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch('/api/admin/users')
-        if (!response.ok) {
-          throw new Error('Failed to fetch users')
-        }
-        const data = await response.json()
-        setUsers(data.users)
-      } catch (error) {
-        console.error('Failed to load users:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchUsers()
   }, [])
+
+  const handleCreateTenant = async (userId: string) => {
+    if (!confirm('이 사용자에게 새 테넌트를 생성하시겠습니까?')) {
+      return
+    }
+
+    setCreatingTenant(userId)
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/create-tenant`, {
+        method: 'POST',
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: '테넌트 생성 완료',
+          description: result.data.alreadyExists
+            ? '사용자에게 이미 테넌트가 있습니다.'
+            : `테넌트 "${result.data.tenantName}"이(가) 생성되었습니다.`,
+        })
+
+        // 목록 새로고침
+        fetchUsers()
+      } else {
+        throw new Error(result.message || 'Failed to create tenant')
+      }
+    } catch (error) {
+      console.error('Failed to create tenant:', error)
+      toast({
+        title: '테넌트 생성 실패',
+        description: error instanceof Error ? error.message : '다시 시도해주세요.',
+        variant: 'destructive',
+      })
+    } finally {
+      setCreatingTenant(null)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -144,10 +193,39 @@ export default function UsersManagementPage() {
                       가입일: {new Date(user.createdAt).toLocaleDateString('ko-KR')}
                     </p>
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {user.tenants.length}개 테넌트
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm text-gray-500">
+                      {user.tenants.length}개 테넌트
+                    </div>
+                    {user.tenants.length === 0 && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleCreateTenant(user.userId)}
+                        disabled={creatingTenant === user.userId}
+                      >
+                        {creatingTenant === user.userId ? (
+                          <>생성 중...</>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 mr-1" />
+                            테넌트 생성
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
+
+                {/* 테넌트 없음 경고 */}
+                {user.tenants.length === 0 && (
+                  <div className="mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                    <div className="text-sm text-yellow-800 dark:text-yellow-200">
+                      <strong>테넌트 없음:</strong> 이 사용자는 작업 공간이 설정되지 않았습니다.
+                      수동으로 생성해주세요.
+                    </div>
+                  </div>
+                )}
 
                 {/* 테넌트 멤버십 목록 */}
                 <div className="space-y-2">
