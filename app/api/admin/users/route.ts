@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -24,7 +24,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
     }
 
-    // 모든 tenant members 조회
+    // 1. Supabase auth.users에서 모든 사용자 조회 (service_role 사용)
+    const adminSupabase = createAdminClient()
+    const { data: authUsers, error: authUsersError } = await adminSupabase.auth.admin.listUsers()
+
+    if (authUsersError) {
+      throw new Error(`Failed to list auth users: ${authUsersError.message}`)
+    }
+
+    // 2. 모든 tenant members 조회
     const members = await prisma.tenantMember.findMany({
       select: {
         id: true,
@@ -39,29 +47,23 @@ export async function GET(request: NextRequest) {
           select: {
             name: true,
             subdomain: true,
-          }
-        }
+          },
+        },
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     })
 
-    // userId 기준으로 그룹화하여 고유 사용자 목록 생성
-    const userMap = new Map()
+    // 3. userId 기준으로 membership 그룹화
+    const membershipMap = new Map<string, any[]>()
 
-    members.forEach(member => {
-      if (!userMap.has(member.userId)) {
-        userMap.set(member.userId, {
-          userId: member.userId,
-          email: member.userEmail,
-          name: member.userName,
-          createdAt: member.createdAt,
-          tenants: []
-        })
+    members.forEach((member) => {
+      if (!membershipMap.has(member.userId)) {
+        membershipMap.set(member.userId, [])
       }
 
-      userMap.get(member.userId).tenants.push({
+      membershipMap.get(member.userId)!.push({
         tenantId: member.tenantId,
         tenantName: member.tenant.name,
         subdomain: member.tenant.subdomain,
@@ -70,16 +72,33 @@ export async function GET(request: NextRequest) {
       })
     })
 
-    const users = Array.from(userMap.values())
+    // 4. auth.users와 membership 결합
+    const users = authUsers.users.map((authUser) => {
+      const memberships = membershipMap.get(authUser.id) || []
+
+      return {
+        userId: authUser.id,
+        email: authUser.email || 'Unknown',
+        name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Unknown',
+        createdAt: authUser.created_at,
+        tenants: memberships,
+      }
+    })
+
+    // 5. 생성일 기준 정렬 (최신순)
+    users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return NextResponse.json({
       users,
-      total: users.length
+      total: users.length,
     })
   } catch (error) {
     console.error('[Admin Users API] Error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     )
   }
