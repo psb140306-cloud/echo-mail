@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma migrate deploy && next build",
+    "vercel-build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
