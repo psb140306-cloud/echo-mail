@@ -793,6 +793,7 @@ export default function DeliveryRulesPage() {
                 <SelectContent>
                   <SelectItem value="오전">오전</SelectItem>
                   <SelectItem value="오후">오후</SelectItem>
+                  <SelectItem value="미정">미정</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -812,6 +813,7 @@ export default function DeliveryRulesPage() {
                 <SelectContent>
                   <SelectItem value="오전">오전</SelectItem>
                   <SelectItem value="오후">오후</SelectItem>
+                  <SelectItem value="미정">미정</SelectItem>
                 </SelectContent>
               </Select>
             </div>

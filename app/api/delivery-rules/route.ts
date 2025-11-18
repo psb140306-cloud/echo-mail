@@ -27,8 +27,8 @@ const createDeliveryRuleSchema = z.object({
     .int()
     .min(0, '배송일은 0 이상이어야 합니다')
     .max(14, '배송일은 14일 이하여야 합니다'),
-  beforeCutoffDeliveryTime: z.enum(['오전', '오후']).optional(),
-  afterCutoffDeliveryTime: z.enum(['오전', '오후']).optional(),
+  beforeCutoffDeliveryTime: z.enum(['오전', '오후', '미정']).optional(),
+  afterCutoffDeliveryTime: z.enum(['오전', '오후', '미정']).optional(),
   workingDays: z.array(z.string()).min(1, '최소 1개 이상의 영업일을 선택해야 합니다').optional(),
   customClosedDates: z.array(z.string()).optional(),
   excludeHolidays: z.boolean().optional(),

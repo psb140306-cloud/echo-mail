@@ -526,7 +526,8 @@ export class NotificationService {
         }),
         // SMS용 짧은 날짜 형식 (예: 11/18(월)) - 한국 시간 기준
         shortDate: `${kstMonth}/${kstDay}(${weekdays[kstDayOfWeek]})`,
-        deliveryTime, // 배송 시간대 추가
+        // 배송 시간대 - "미정"일 경우 공백 처리 (11/19(수) 배송 예정)
+        deliveryTime: deliveryTime === '미정' ? '' : ` ${deliveryTime}`,
       }
 
       const results: NotificationResult[] = []
