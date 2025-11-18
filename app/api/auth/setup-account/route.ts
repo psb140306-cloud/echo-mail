@@ -69,28 +69,44 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Tenant 생성 (간단!)
-    const tenant = await prisma.tenant.create({
-      data: {
-        name: companyName || '내 회사',
-        subdomain: subdomain || authUser.email!.split('@')[0].replace(/[^a-zA-Z0-9-]/g, ''),
-        ownerId: authUser.id, // Supabase Auth UUID
-        ownerEmail: authUser.email!,
-        ownerName: ownerName || authUser.email!.split('@')[0],
-        subscriptionPlan: subscriptionPlan || 'FREE_TRIAL',
-        subscriptionStatus: subscriptionPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
-        trialEndsAt:
-          subscriptionPlan === 'FREE_TRIAL'
-            ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14일
-            : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 기본 14일
-        maxCompanies: subscriptionPlan === 'FREE_TRIAL' ? 10 : 50,
-        maxContacts: subscriptionPlan === 'FREE_TRIAL' ? 50 : 300,
-        maxEmails: subscriptionPlan === 'FREE_TRIAL' ? 100 : 5000,
-        maxNotifications: subscriptionPlan === 'FREE_TRIAL' ? 100 : 10000,
-      },
+    // Tenant + TenantMember를 트랜잭션으로 함께 생성
+    const tenant = await prisma.$transaction(async (tx) => {
+      // 1. Tenant 생성
+      const newTenant = await tx.tenant.create({
+        data: {
+          name: companyName || '내 회사',
+          subdomain: subdomain || authUser.email!.split('@')[0].replace(/[^a-zA-Z0-9-]/g, ''),
+          ownerId: authUser.id, // Supabase Auth UUID
+          ownerEmail: authUser.email!,
+          ownerName: ownerName || authUser.email!.split('@')[0],
+          subscriptionPlan: subscriptionPlan || 'FREE_TRIAL',
+          subscriptionStatus: subscriptionPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
+          trialEndsAt:
+            subscriptionPlan === 'FREE_TRIAL'
+              ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14일
+              : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 기본 14일
+          maxCompanies: subscriptionPlan === 'FREE_TRIAL' ? 10 : 50,
+          maxContacts: subscriptionPlan === 'FREE_TRIAL' ? 50 : 300,
+          maxEmails: subscriptionPlan === 'FREE_TRIAL' ? 100 : 5000,
+          maxNotifications: subscriptionPlan === 'FREE_TRIAL' ? 100 : 10000,
+        },
+      })
+
+      // 2. TenantMember 생성 (OWNER)
+      await tx.tenantMember.create({
+        data: {
+          userId: authUser.id,
+          tenantId: newTenant.id,
+          userEmail: authUser.email!,
+          role: 'OWNER',
+          status: 'ACTIVE',
+        },
+      })
+
+      return newTenant
     })
 
-    logger.info('Tenant created successfully', {
+    logger.info('Tenant and membership created successfully', {
       tenantId: tenant.id,
       ownerId: authUser.id,
       email: authUser.email,
