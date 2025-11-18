@@ -62,7 +62,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // 현재 페이지가 인증 페이지인 경우에만 리다이렉트
         if (window.location.pathname.startsWith('/auth/')) {
           try {
-            // 1. Tenant 상태 체크 (우선)
+            // 1. 슈퍼어드민 체크 (우선)
+            const isSuperAdmin = session?.user?.email === 'seah0623@naver.com'
+
+            if (isSuperAdmin) {
+              logger.info('Super admin logged in, redirecting to /admin', { email: session?.user?.email })
+              window.location.href = '/admin'
+              return
+            }
+
+            // 2. 일반 사용자: Tenant 상태 체크
             const tenantCheckRes = await fetch('/api/auth/check-tenant-status')
             const tenantCheck = await tenantCheckRes.json()
 
@@ -77,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return
             }
 
-            // 2. Tenant 준비 완료 → 관리자 권한 확인
+            // 3. Tenant 준비 완료 → 관리자 권한 확인
             const response = await fetch('/api/admin/check-access')
             const data = await response.json()
 
@@ -90,8 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (error) {
             logger.error('Failed to check tenant/admin status', { error })
-            // 에러 시 설정 페이지로 안전하게 이동
-            window.location.href = '/auth/setup-pending'
+            // 슈퍼어드민이면 /admin으로, 아니면 setup-pending으로
+            const isSuperAdmin = session?.user?.email === 'seah0623@naver.com'
+            window.location.href = isSuperAdmin ? '/admin' : '/auth/setup-pending'
           }
         }
       } else if (event === 'SIGNED_OUT') {
