@@ -250,6 +250,18 @@ export async function withTenantContext<T>(
 
     // 2. 🔒 인증된 사용자: membership 기반 tenant 필수
     if (authUser) {
+      // 🔓 슈퍼어드민 체크 (tenant 없이도 모든 접근 허용)
+      const isSuperAdmin = authUser.email === 'seah0623@naver.com'
+
+      if (isSuperAdmin) {
+        logger.debug('✅ Super admin access - bypassing tenant check', {
+          email: authUser.email,
+          path: request.nextUrl.pathname,
+        })
+        // 슈퍼어드민은 tenant 없이 실행
+        return await handler(request)
+      }
+
       const membership = await prisma.tenantMember.findFirst({
         where: {
           userId: authUser.id,
