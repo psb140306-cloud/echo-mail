@@ -145,6 +145,13 @@ export class DeliveryCalculator {
     let currentDate = this.toKST(startDate)
     let daysAdded = 0
 
+    logger.info('[calculateBusinessDate] 시작', {
+      startDate: startDate.toISOString(),
+      startDateKST: this.formatDateKST(currentDate),
+      businessDays,
+      workingDays: rule.workingDays,
+    })
+
     while (daysAdded < businessDays) {
       currentDate.setDate(currentDate.getDate() + 1)
 
@@ -152,24 +159,45 @@ export class DeliveryCalculator {
       const kstComponents = this.getKSTComponents(currentDate)
       const kstDate = new Date(kstComponents.year, kstComponents.month, kstComponents.day)
       const dayOfWeek = kstDate.getDay().toString()
+      const dateString = this.formatDateKST(currentDate)
+
+      logger.info('[calculateBusinessDate] 날짜 체크', {
+        dateString,
+        dayOfWeek,
+        isWorkingDay: rule.workingDays.includes(dayOfWeek),
+        daysAdded,
+      })
 
       if (!rule.workingDays.includes(dayOfWeek)) {
+        logger.info('[calculateBusinessDate] 영업일 아님 - 스킵')
         continue
       }
 
       // 2. 커스텀 휴무일 확인
-      const dateString = this.formatDateKST(currentDate)
       if (rule.customClosedDates.includes(dateString)) {
+        logger.info('[calculateBusinessDate] 커스텀 휴무일 - 스킵')
         continue
       }
 
       // 3. 공휴일 확인 (excludeHolidays가 true일 때만)
-      if (rule.excludeHolidays && await this.isHoliday(currentDate, undefined, tenantId)) {
+      const isHoliday = rule.excludeHolidays && await this.isHoliday(currentDate, undefined, tenantId)
+      if (isHoliday) {
+        logger.info('[calculateBusinessDate] 공휴일 - 스킵')
         continue
       }
 
       daysAdded++
+      logger.info('[calculateBusinessDate] 영업일로 카운트', {
+        dateString,
+        daysAdded,
+        remainingDays: businessDays - daysAdded,
+      })
     }
+
+    logger.info('[calculateBusinessDate] 완료', {
+      finalDate: this.formatDateKST(currentDate),
+      totalDaysAdded: daysAdded,
+    })
 
     return currentDate
   }
