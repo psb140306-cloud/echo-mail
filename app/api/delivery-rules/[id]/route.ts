@@ -11,26 +11,28 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 납품 규칙 수정 스키마
 const updateDeliveryRuleSchema = z.object({
-  morningCutoff: z
+  region: z.string().min(1).max(50).optional(),
+  cutoffTime: z
     .string()
     .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)')
     .optional(),
-  afternoonCutoff: z
-    .string()
-    .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)')
-    .optional(),
-  morningDeliveryDays: z
+  beforeCutoffDays: z
     .number()
     .int()
     .min(0, '배송일은 0 이상이어야 합니다')
     .max(14, '배송일은 14일 이하여야 합니다')
     .optional(),
-  afternoonDeliveryDays: z
+  afterCutoffDays: z
     .number()
     .int()
     .min(0, '배송일은 0 이상이어야 합니다')
     .max(14, '배송일은 14일 이하여야 합니다')
     .optional(),
+  beforeCutoffDeliveryTime: z.enum(['오전', '오후']).optional(),
+  afterCutoffDeliveryTime: z.enum(['오전', '오후']).optional(),
+  workingDays: z.array(z.string()).min(1, '최소 1개 이상의 영업일을 선택해야 합니다').optional(),
+  customClosedDates: z.array(z.string()).optional(),
+  excludeHolidays: z.boolean().optional(),
   isActive: z.boolean().optional(),
 })
 
@@ -108,32 +110,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
       if (!existingRule) {
         return createErrorResponse('납품 규칙을 찾을 수 없습니다.', 404)
-      }
-
-      // 시간 검증 (둘 다 제공된 경우)
-      if (data.morningCutoff && data.afternoonCutoff) {
-        const morningTime = parseTime(data.morningCutoff)
-        const afternoonTime = parseTime(data.afternoonCutoff)
-
-        if (morningTime >= afternoonTime) {
-          return createErrorResponse('오전 마감시간은 오후 마감시간보다 빨라야 합니다.', 400)
-        }
-      } else if (data.morningCutoff) {
-        // 오전 시간만 변경되는 경우
-        const morningTime = parseTime(data.morningCutoff)
-        const afternoonTime = parseTime(existingRule.afternoonCutoff)
-
-        if (morningTime >= afternoonTime) {
-          return createErrorResponse('오전 마감시간은 오후 마감시간보다 빨라야 합니다.', 400)
-        }
-      } else if (data.afternoonCutoff) {
-        // 오후 시간만 변경되는 경우
-        const morningTime = parseTime(existingRule.morningCutoff)
-        const afternoonTime = parseTime(data.afternoonCutoff)
-
-        if (morningTime >= afternoonTime) {
-          return createErrorResponse('오후 마감시간은 오전 마감시간보다 늦어야 합니다.', 400)
-        }
       }
 
       // 납품 규칙 수정

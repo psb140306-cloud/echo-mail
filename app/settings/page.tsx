@@ -82,6 +82,11 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(false)
   const [testingMail, setTestingMail] = useState(false)
+  const [mailboxInfo, setMailboxInfo] = useState<{
+    path: string
+    exists: number
+    messages: number
+  } | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -92,10 +97,12 @@ export default function SettingsPage() {
     try {
       const response = await fetch('/api/settings')
       if (response.ok) {
-        const data = await response.json()
+        const result = await response.json()
+        // API 응답이 { data: {...} } 형태인지 확인
+        const settingsData = result.data || result
         setSettings((prev) => ({
           ...prev,
-          ...data,
+          ...settingsData,
         }))
       }
     } catch (error) {
@@ -165,11 +172,17 @@ export default function SettingsPage() {
       const result = await response.json()
 
       if (result.success) {
+        // 메일함 정보 저장
+        if (result.data?.mailbox) {
+          setMailboxInfo(result.data.mailbox)
+        }
+
         toast({
           title: '연결 성공',
           description: result.message,
         })
       } else {
+        setMailboxInfo(null)
         toast({
           title: '연결 실패',
           description: result.message || '메일 서버 연결에 실패했습니다',
@@ -200,23 +213,9 @@ export default function SettingsPage() {
             </Button>
           </Link>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">시스템 설정</h1>
-              <p className="text-gray-500 mt-1">서비스 설정을 관리합니다</p>
-            </div>
-            <Button
-              onClick={saveSettings}
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              설정 저장
-            </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">시스템 설정</h1>
+            <p className="text-gray-500 mt-1">서비스 설정을 관리합니다</p>
           </div>
         </div>
 
@@ -386,6 +385,31 @@ export default function SettingsPage() {
                     연결 테스트
                   </Button>
                 </div>
+
+                {/* 메일함 정보 표시 */}
+                {mailboxInfo && (
+                  <div className="mt-4 p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">
+                          연결 성공
+                        </h4>
+                        <div className="space-y-1 text-sm text-green-800 dark:text-green-200">
+                          <p>
+                            <span className="font-medium">메일함:</span> {mailboxInfo.path}
+                          </p>
+                          <p>
+                            <span className="font-medium">전체 메일:</span>{' '}
+                            {mailboxInfo.exists === 1000
+                              ? '999+개'
+                              : `${mailboxInfo.exists.toLocaleString()}개`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -602,6 +626,23 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* 저장 버튼 - 페이지 하단 */}
+        <div className="mt-8 flex justify-end">
+          <Button
+            onClick={saveSettings}
+            disabled={loading}
+            size="lg"
+            className="flex items-center gap-2"
+          >
+            {loading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Save className="h-5 w-5" />
+            )}
+            설정 저장
+          </Button>
+        </div>
       </div>
     </div>
   )

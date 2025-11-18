@@ -240,3 +240,57 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   return withTenantContext(request, bulkCreateHolidays)
 }
+
+// 공휴일 삭제
+async function deleteHoliday(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return createErrorResponse('공휴일 ID가 필요합니다.', 400)
+    }
+
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return createErrorResponse('Tenant context not found', 401)
+    }
+
+    // 존재 확인 (같은 tenant 내에서만)
+    const holiday = await prisma.holiday.findFirst({
+      where: {
+        id,
+        tenantId, // CRITICAL: Check within tenant only
+      },
+    })
+
+    if (!holiday) {
+      return createErrorResponse('공휴일을 찾을 수 없습니다.', 404)
+    }
+
+    // 삭제
+    await prisma.holiday.delete({
+      where: { id },
+    })
+
+    logger.info(`공휴일 삭제 완료: ${holiday.name}`, { id, date: holiday.date })
+
+    return createSuccessResponse(
+      {
+        name: holiday.name,
+        date: holiday.date.toISOString().split('T')[0],
+      },
+      '공휴일이 성공적으로 삭제되었습니다.'
+    )
+  } catch (error) {
+    logger.error('공휴일 삭제 실패:', error)
+    return createErrorResponse('공휴일 삭제에 실패했습니다.')
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  return withTenantContext(request, deleteHoliday)
+}

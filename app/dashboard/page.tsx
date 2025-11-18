@@ -21,6 +21,7 @@ import {
   LogOut,
   Activity,
   Calendar,
+  CalendarDays,
   CreditCard,
   AlertTriangle,
   TrendingUp,
@@ -441,9 +442,9 @@ function DashboardContent() {
                     </a>
                   </Button>
                   <Button variant="outline" className="p-4 h-auto" asChild>
-                    <a href="/settings" className="flex flex-col items-center">
-                      <Settings className="w-6 h-6 mb-2" />
-                      <span>시스템 설정</span>
+                    <a href="/holidays" className="flex flex-col items-center">
+                      <Calendar className="w-6 h-6 mb-2" />
+                      <span>공휴일 관리</span>
                     </a>
                   </Button>
                 </div>
@@ -451,6 +452,12 @@ function DashboardContent() {
 
               <TabsContent value="settings" className="space-y-4">
                 <div className="space-y-3">
+                  <Button variant="outline" className="w-full justify-start" asChild>
+                    <a href="/holidays">
+                      <CalendarDays className="w-4 h-4 mr-2" />
+                      공휴일 관리
+                    </a>
+                  </Button>
                   <Button variant="outline" className="w-full justify-start" asChild>
                     <a href="/settings/team">
                       <Users className="w-4 h-4 mr-2" />팀 관리

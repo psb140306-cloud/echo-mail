@@ -16,11 +16,14 @@ export interface DeliveryResult {
   businessDaysUsed: number
   isHoliday: boolean
   isWeekend: boolean
+  deliveryTime?: string // 오전/오후 배송 시간대
   rule: {
     region: string
     cutoffTime: string
     beforeCutoffDays: number
     afterCutoffDays: number
+    beforeCutoffDeliveryTime: string
+    afterCutoffDeliveryTime: string
   }
 }
 
@@ -29,6 +32,41 @@ export class DeliveryCalculator {
   private deliveryRuleCache: Map<string, any> = new Map()
 
   constructor() {}
+
+  /**
+   * UTC Date를 한국 시간대(KST, UTC+9)로 변환
+   */
+  private toKST(date: Date): Date {
+    const kstDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
+    return kstDate
+  }
+
+  /**
+   * 한국 시간대 기준으로 날짜의 연/월/일/시/분 추출
+   */
+  private getKSTComponents(date: Date) {
+    const kstString = date.toLocaleString('en-US', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+
+    const parts = kstString.split(', ')
+    const datePart = parts[0].split('/')  // MM/DD/YYYY
+    const timePart = parts[1].split(':')  // HH:MM
+
+    return {
+      year: parseInt(datePart[2]),
+      month: parseInt(datePart[0]) - 1,  // JS month is 0-indexed
+      day: parseInt(datePart[1]),
+      hours: parseInt(timePart[0]),
+      minutes: parseInt(timePart[1])
+    }
+  }
 
   /**
    * 메인 납품일 계산 함수
@@ -41,32 +79,37 @@ export class DeliveryCalculator {
         throw new Error(`'${options.region}' 지역의 납품 규칙을 찾을 수 없습니다.`)
       }
 
-      // 주문 시간 분석 (자정 기준 당일 처리)
-      const orderTime = this.getTimeInMinutes(options.orderDateTime)
+      // 주문 시간 분석 (한국 시간 기준)
+      const kstComponents = this.getKSTComponents(options.orderDateTime)
+      const orderTime = kstComponents.hours * 60 + kstComponents.minutes
       const cutoffTime = this.parseTime(rule.cutoffTime)
 
-      // 마감 전/후 판단
-      const isBeforeCutoff = orderTime <= cutoffTime
+      // 마감 전/후 판단 (마감시간 정각은 마감 후로 처리)
+      const isBeforeCutoff = orderTime < cutoffTime
       const deliveryDays = isBeforeCutoff ? rule.beforeCutoffDays : rule.afterCutoffDays
+      const deliveryTime = isBeforeCutoff ? rule.beforeCutoffDeliveryTime : rule.afterCutoffDeliveryTime
 
       // 영업일 기준으로 배송일 계산
       const deliveryDate = await this.calculateBusinessDate(
         options.orderDateTime,
         deliveryDays,
-        options.excludeWeekends ?? true,
-        options.customHolidays
+        rule,
+        options.tenantId
       )
 
       const result: DeliveryResult = {
         deliveryDate,
         businessDaysUsed: deliveryDays,
-        isHoliday: await this.isHoliday(deliveryDate, options.customHolidays),
+        isHoliday: await this.isHoliday(deliveryDate, options.customHolidays, options.tenantId),
         isWeekend: this.isWeekend(deliveryDate),
+        deliveryTime,
         rule: {
           region: rule.region,
           cutoffTime: rule.cutoffTime,
           beforeCutoffDays: rule.beforeCutoffDays,
           afterCutoffDays: rule.afterCutoffDays,
+          beforeCutoffDeliveryTime: rule.beforeCutoffDeliveryTime || '오전',
+          afterCutoffDeliveryTime: rule.afterCutoffDeliveryTime || '오후',
         },
       }
 
@@ -89,27 +132,39 @@ export class DeliveryCalculator {
   }
 
   /**
-   * 영업일 기준 날짜 계산
+   * 영업일 기준 날짜 계산 (한국 시간대 기준)
+   * 유연한 휴무일 관리: workingDays, customClosedDates, excludeHolidays 지원
    */
   private async calculateBusinessDate(
     startDate: Date,
     businessDays: number,
-    excludeWeekends: boolean = true,
-    customHolidays?: Date[]
+    rule: any, // DeliveryRule with workingDays, customClosedDates, excludeHolidays
+    tenantId: string
   ): Promise<Date> {
-    let currentDate = new Date(startDate)
+    // 한국 시간대로 변환
+    let currentDate = this.toKST(startDate)
     let daysAdded = 0
 
     while (daysAdded < businessDays) {
       currentDate.setDate(currentDate.getDate() + 1)
 
-      // 주말 제외 여부 확인
-      if (excludeWeekends && this.isWeekend(currentDate)) {
+      // 1. 영업 요일 확인 (workingDays에 포함되지 않으면 스킵)
+      const kstComponents = this.getKSTComponents(currentDate)
+      const kstDate = new Date(kstComponents.year, kstComponents.month, kstComponents.day)
+      const dayOfWeek = kstDate.getDay().toString()
+
+      if (!rule.workingDays.includes(dayOfWeek)) {
         continue
       }
 
-      // 공휴일 확인
-      if (await this.isHoliday(currentDate, customHolidays)) {
+      // 2. 커스텀 휴무일 확인
+      const dateString = this.formatDateKST(currentDate)
+      if (rule.customClosedDates.includes(dateString)) {
+        continue
+      }
+
+      // 3. 공휴일 확인 (excludeHolidays가 true일 때만)
+      if (rule.excludeHolidays && await this.isHoliday(currentDate, undefined, tenantId)) {
         continue
       }
 
@@ -117,6 +172,17 @@ export class DeliveryCalculator {
     }
 
     return currentDate
+  }
+
+  /**
+   * KST 날짜를 YYYY-MM-DD 형식으로 포맷
+   */
+  private formatDateKST(date: Date): string {
+    const kstComponents = this.getKSTComponents(date)
+    const year = kstComponents.year
+    const month = String(kstComponents.month + 1).padStart(2, '0')
+    const day = String(kstComponents.day).padStart(2, '0')
+    return `${year}-${month}-${day}`
   }
 
   /**
@@ -147,16 +213,21 @@ export class DeliveryCalculator {
   /**
    * 공휴일 여부 확인
    */
-  private async isHoliday(date: Date, customHolidays?: Date[]): Promise<boolean> {
+  private async isHoliday(date: Date, customHolidays?: Date[], tenantId?: string): Promise<boolean> {
     // 커스텀 공휴일 확인
     if (customHolidays) {
       const dateString = date.toISOString().split('T')[0]
       return customHolidays.some((holiday) => holiday.toISOString().split('T')[0] === dateString)
     }
 
+    // tenantId가 없으면 공휴일 아님
+    if (!tenantId) {
+      return false
+    }
+
     // 데이터베이스 공휴일 확인 (캐싱)
     const year = date.getFullYear()
-    const cacheKey = `holidays_${year}`
+    const cacheKey = `holidays_${tenantId}_${year}`
 
     let holidays: Date[]
     if (this.holidayCache.has(cacheKey)) {
@@ -164,6 +235,7 @@ export class DeliveryCalculator {
     } else {
       const holidayRecords = await prisma.holiday.findMany({
         where: {
+          tenantId,
           date: {
             gte: new Date(year, 0, 1),
             lt: new Date(year + 1, 0, 1),
@@ -188,6 +260,16 @@ export class DeliveryCalculator {
   }
 
   /**
+   * 주말 여부 확인 (한국 시간대 기준)
+   */
+  private isWeekendKST(date: Date): boolean {
+    const kstComponents = this.getKSTComponents(date)
+    const kstDate = new Date(kstComponents.year, kstComponents.month, kstComponents.day)
+    const day = kstDate.getDay()
+    return day === 0 || day === 6
+  }
+
+  /**
    * 시간을 분 단위로 변환
    */
   private getTimeInMinutes(date: Date): number {
@@ -203,14 +285,14 @@ export class DeliveryCalculator {
   }
 
   /**
-   * 다음 영업일 조회
+   * 다음 영업일 조회 (한국 시간대 기준)
    */
   async getNextBusinessDay(date: Date, excludeWeekends: boolean = true): Promise<Date> {
-    let nextDay = new Date(date)
+    let nextDay = this.toKST(date)
     nextDay.setDate(nextDay.getDate() + 1)
 
     while (true) {
-      if (excludeWeekends && this.isWeekend(nextDay)) {
+      if (excludeWeekends && this.isWeekendKST(nextDay)) {
         nextDay.setDate(nextDay.getDate() + 1)
         continue
       }
@@ -227,7 +309,7 @@ export class DeliveryCalculator {
   }
 
   /**
-   * 두 날짜 간의 영업일 수 계산
+   * 두 날짜 간의 영업일 수 계산 (한국 시간대 기준)
    */
   async getBusinessDaysBetween(
     startDate: Date,
@@ -235,12 +317,13 @@ export class DeliveryCalculator {
     excludeWeekends: boolean = true
   ): Promise<number> {
     let count = 0
-    let currentDate = new Date(startDate)
+    let currentDate = this.toKST(startDate)
+    const kstEndDate = this.toKST(endDate)
 
-    while (currentDate < endDate) {
+    while (currentDate < kstEndDate) {
       currentDate.setDate(currentDate.getDate() + 1)
 
-      if (excludeWeekends && this.isWeekend(currentDate)) {
+      if (excludeWeekends && this.isWeekendKST(currentDate)) {
         continue
       }
 

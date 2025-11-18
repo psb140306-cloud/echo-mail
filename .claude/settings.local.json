@@ -39,7 +39,8 @@
       "Bash(git config:*)",
       "Bash(vercel login:*)",
       "Bash(python -m json.tool:*)",
-      "Bash(del nul)"
+      "Bash(del nul)",
+      "Bash(npx prisma studio:*)"
     ],
     "deny": [],
     "ask": []

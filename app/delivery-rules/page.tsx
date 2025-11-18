@@ -77,6 +77,11 @@ interface DeliveryRule {
   cutoffTime: string
   beforeCutoffDays: number
   afterCutoffDays: number
+  beforeCutoffDeliveryTime: string
+  afterCutoffDeliveryTime: string
+  workingDays: string[]
+  customClosedDates: string[]
+  excludeHolidays: boolean
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -127,8 +132,16 @@ export default function DeliveryRulesPage() {
     cutoffTime: '12:00',
     beforeCutoffDays: 1,
     afterCutoffDays: 2,
+    beforeCutoffDeliveryTime: '오전',
+    afterCutoffDeliveryTime: '오후',
+    workingDays: ['1', '2', '3', '4', '5'], // 월~금 기본값
+    customClosedDates: [] as string[],
+    excludeHolidays: true,
     isActive: true,
   })
+
+  // 커스텀 휴무일 입력 (임시)
+  const [newClosedDate, setNewClosedDate] = useState('')
 
   // 납품일 계산 폼
   const [calculationForm, setCalculationForm] = useState({
@@ -281,8 +294,14 @@ export default function DeliveryRulesPage() {
       cutoffTime: '12:00',
       beforeCutoffDays: 1,
       afterCutoffDays: 2,
+      beforeCutoffDeliveryTime: '오전',
+      afterCutoffDeliveryTime: '오후',
+      workingDays: ['1', '2', '3', '4', '5'],
+      customClosedDates: [],
+      excludeHolidays: true,
       isActive: true,
     })
+    setNewClosedDate('')
     setIsCustomRegion(false) // 커스텀 입력 모드 해제
   }
 
@@ -293,6 +312,11 @@ export default function DeliveryRulesPage() {
       cutoffTime: rule.cutoffTime,
       beforeCutoffDays: rule.beforeCutoffDays,
       afterCutoffDays: rule.afterCutoffDays,
+      beforeCutoffDeliveryTime: rule.beforeCutoffDeliveryTime || '오전',
+      afterCutoffDeliveryTime: rule.afterCutoffDeliveryTime || '오후',
+      workingDays: rule.workingDays || ['1', '2', '3', '4', '5'],
+      customClosedDates: rule.customClosedDates || [],
+      excludeHolidays: rule.excludeHolidays ?? true,
       isActive: rule.isActive,
     })
     // 수정 시에는 기존 지역이 기본 목록에 없으면 커스텀으로 간주
@@ -641,7 +665,7 @@ export default function DeliveryRulesPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRule ? '배송 규칙 수정' : '새 배송 규칙 추가'}</DialogTitle>
             <DialogDescription>지역별 배송 마감시간과 배송일을 설정하세요</DialogDescription>
@@ -744,6 +768,150 @@ export default function DeliveryRulesPage() {
                 className="col-span-3"
                 placeholder="N일 후"
               />
+            </div>
+
+            {/* 배송 시간대 선택 */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="beforeCutoffDeliveryTime" className="text-right">
+                마감 전 배송
+              </Label>
+              <Select
+                value={formData.beforeCutoffDeliveryTime}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, beforeCutoffDeliveryTime: value })
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="오전">오전</SelectItem>
+                  <SelectItem value="오후">오후</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="afterCutoffDeliveryTime" className="text-right">
+                마감 후 배송
+              </Label>
+              <Select
+                value={formData.afterCutoffDeliveryTime}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, afterCutoffDeliveryTime: value })
+                }
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="오전">오전</SelectItem>
+                  <SelectItem value="오후">오후</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 영업 요일 선택 */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2">영업 요일</Label>
+              <div className="col-span-3 space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: '0', label: '일' },
+                    { value: '1', label: '월' },
+                    { value: '2', label: '화' },
+                    { value: '3', label: '수' },
+                    { value: '4', label: '목' },
+                    { value: '5', label: '금' },
+                    { value: '6', label: '토' },
+                  ].map((day) => (
+                    <Button
+                      key={day.value}
+                      type="button"
+                      size="sm"
+                      variant={formData.workingDays.includes(day.value) ? 'default' : 'outline'}
+                      onClick={() => {
+                        const newWorkingDays = formData.workingDays.includes(day.value)
+                          ? formData.workingDays.filter((d) => d !== day.value)
+                          : [...formData.workingDays, day.value].sort()
+                        setFormData({ ...formData, workingDays: newWorkingDays })
+                      }}
+                    >
+                      {day.label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">선택한 요일에만 배송합니다</p>
+              </div>
+            </div>
+
+            {/* 공휴일 제외 여부 */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="excludeHolidays" className="text-right">
+                공휴일 제외
+              </Label>
+              <div className="col-span-3 flex items-center space-x-2">
+                <input
+                  id="excludeHolidays"
+                  type="checkbox"
+                  checked={formData.excludeHolidays}
+                  onChange={(e) => setFormData({ ...formData, excludeHolidays: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="excludeHolidays" className="text-sm font-normal">
+                  공휴일에는 배송하지 않음
+                </Label>
+              </div>
+            </div>
+
+            {/* 커스텀 휴무일 */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right pt-2">휴무일 추가</Label>
+              <div className="col-span-3 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    type="date"
+                    value={newClosedDate}
+                    onChange={(e) => setNewClosedDate(e.target.value)}
+                    placeholder="YYYY-MM-DD"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      if (newClosedDate && !formData.customClosedDates.includes(newClosedDate)) {
+                        setFormData({
+                          ...formData,
+                          customClosedDates: [...formData.customClosedDates, newClosedDate].sort(),
+                        })
+                        setNewClosedDate('')
+                      }
+                    }}
+                    disabled={!newClosedDate}
+                  >
+                    추가
+                  </Button>
+                </div>
+                {formData.customClosedDates.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {formData.customClosedDates.map((date) => (
+                      <Badge
+                        key={date}
+                        variant="secondary"
+                        className="cursor-pointer"
+                        onClick={() => {
+                          setFormData({
+                            ...formData,
+                            customClosedDates: formData.customClosedDates.filter((d) => d !== date),
+                          })
+                        }}
+                      >
+                        {date} ✕
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">특정 날짜를 휴무일로 지정합니다</p>
+              </div>
             </div>
           </div>
           <DialogFooter>

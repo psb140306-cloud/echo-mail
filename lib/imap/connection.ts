@@ -63,19 +63,53 @@ export async function testImapConnection(
       ),
     ])
 
-    // INBOX 정보 조회
-    const lock = await client.getMailboxLock('INBOX')
+    const mailboxName = 'INBOX'
+    const lock = await client.getMailboxLock(mailboxName)
     let mailboxInfo: MailboxInfo
 
     try {
-      // ImapFlow의 mailbox 객체 전체 로깅
-      logger.debug('IMAP mailbox 객체:', client.mailbox)
+      // STATUS 명령으로 기본 정보 확인
+      const status = await client.status(mailboxName, {
+        messages: true,
+        unseen: true,
+      })
+
+      console.log(
+        '[IMAP] STATUS 명령 결과:',
+        JSON.stringify(
+          {
+            messages: String(status?.messages ?? 0),
+            unseen: String(status?.unseen ?? 0),
+          },
+          null,
+          2
+        )
+      )
+
+      let totalMessages = Number(status?.messages ?? 0)
+
+      // 일부 IMAP 서버(네이버 등)는 STATUS 응답을 1,000개로 제한하므로 SEARCH ALL로 실제 개수 확인
+      try {
+        const searchResult = await client.search({ all: true })
+        if (Array.isArray(searchResult)) {
+          totalMessages = searchResult.length
+          console.log('[IMAP] SEARCH ALL 결과:', totalMessages)
+        }
+      } catch (searchError: any) {
+        logger.warn('IMAP SEARCH ALL 실행 실패, STATUS 결과 사용', {
+          host,
+          username,
+          error: searchError?.message,
+        })
+      }
 
       mailboxInfo = {
-        exists: client.mailbox?.exists || 0,
-        messages: client.mailbox?.messages || 0,
-        path: client.mailbox?.path || 'INBOX',
+        exists: totalMessages,
+        messages: Number(status?.unseen ?? 0),
+        path: client.mailbox?.path || mailboxName,
       }
+
+      console.log('[IMAP] mailbox 최종 값:', JSON.stringify(mailboxInfo, null, 2))
     } finally {
       lock.release()
     }

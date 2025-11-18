@@ -56,6 +56,41 @@ export class NotificationService {
   private isQueueProcessing = false
   private initialized = false
 
+  /**
+   * 한국 시간대 기준으로 날짜의 연/월/일/시/분 추출
+   */
+  private getKSTComponents(date: Date) {
+    const kstString = date.toLocaleString('en-US', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+
+    const parts = kstString.split(', ')
+    const datePart = parts[0].split('/')  // MM/DD/YYYY
+    const timePart = parts[1].split(':')  // HH:MM
+
+    return {
+      year: parseInt(datePart[2]),
+      month: parseInt(datePart[0]) - 1,  // JS month is 0-indexed
+      day: parseInt(datePart[1]),
+      hours: parseInt(timePart[0]),
+      minutes: parseInt(timePart[1])
+    }
+  }
+
+  /**
+   * 시간 문자열을 분 단위로 변환
+   */
+  private parseTime(timeString: string): number {
+    const [hours, minutes] = timeString.split(':').map(Number)
+    return hours * 60 + minutes
+  }
+
   private initialize() {
     if (this.initialized) return
 
@@ -444,26 +479,53 @@ export class NotificationService {
         tenantId: company.tenantId,
       })
 
-      // 배송 시간대 결정 (cutoffTime 기준)
-      // 대부분 cutoffTime이 14:00이므로, 그 이전 주문은 다음날 오전, 이후는 오후 배송
-      const cutoffHour = parseInt(deliveryResult.rule.cutoffTime.split(':')[0])
-      const orderHour = (orderDateTime || new Date()).getHours()
-      const deliveryTime = orderHour < cutoffHour ? '오전' : '오후'
+      // 배송 시간대 결정 - 마감 전/후에 따라 선택된 배송 시간 사용
+      const orderDate = orderDateTime || new Date()
+      const kstComponents = this.getKSTComponents(orderDate)
+      const orderTime = kstComponents.hours * 60 + kstComponents.minutes
+      const cutoffTime = this.parseTime(deliveryResult.rule.cutoffTime)
 
-      // 날짜 포맷 준비
+      // 마감 전/후 주문에 따라 설정된 배송 시간 사용
+      const deliveryTime = orderTime < cutoffTime
+        ? deliveryResult.rule.beforeCutoffDeliveryTime
+        : deliveryResult.rule.afterCutoffDeliveryTime
+
+      // 날짜 포맷 준비 (한국 시간대 기준)
       const deliveryDate = deliveryResult.deliveryDate
       const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+
+      // 한국 시간대로 날짜 컴포넌트 추출
+      const kstDateString = deliveryDate.toLocaleString('en-US', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        hour12: false
+      })
+
+      const parts = kstDateString.split(', ')
+      const datePart = parts[0].split('/') // MM/DD/YYYY
+      const kstMonth = parseInt(datePart[0])
+      const kstDay = parseInt(datePart[1])
+      const kstYear = parseInt(datePart[2])
+
+      // 요일 계산 - KST 타임존으로 Date를 파싱해서 정확한 요일 추출
+      // UTC Date를 만들고 KST 오프셋(+9시간)을 적용한 날짜로 요일 계산
+      const kstDate = new Date(`${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDay).padStart(2, '0')}T12:00:00+09:00`)
+      const kstDayOfWeek = kstDate.getUTCDay()
 
       const variables = {
         companyName: company.name,
         deliveryDate: deliveryDate.toLocaleDateString('ko-KR', {
+          timeZone: 'Asia/Seoul',
           year: 'numeric',
           month: 'long',
           day: 'numeric',
           weekday: 'long',
         }),
-        // SMS용 짧은 날짜 형식 (예: 1/14(화))
-        shortDate: `${deliveryDate.getMonth() + 1}/${deliveryDate.getDate()}(${weekdays[deliveryDate.getDay()]})`,
+        // SMS용 짧은 날짜 형식 (예: 11/18(월)) - 한국 시간 기준
+        shortDate: `${kstMonth}/${kstDay}(${weekdays[kstDayOfWeek]})`,
         deliveryTime, // 배송 시간대 추가
       }
 

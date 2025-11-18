@@ -14,22 +14,24 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 // 납품 규칙 생성 스키마
 const createDeliveryRuleSchema = z.object({
   region: z.string().min(1, '지역은 필수입니다').max(50, '지역은 50자 이하여야 합니다'),
-  morningCutoff: z
+  cutoffTime: z
     .string()
     .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)'),
-  afternoonCutoff: z
-    .string()
-    .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)'),
-  morningDeliveryDays: z
+  beforeCutoffDays: z
     .number()
     .int()
     .min(0, '배송일은 0 이상이어야 합니다')
     .max(14, '배송일은 14일 이하여야 합니다'),
-  afternoonDeliveryDays: z
+  afterCutoffDays: z
     .number()
     .int()
     .min(0, '배송일은 0 이상이어야 합니다')
     .max(14, '배송일은 14일 이하여야 합니다'),
+  beforeCutoffDeliveryTime: z.enum(['오전', '오후']).optional(),
+  afterCutoffDeliveryTime: z.enum(['오전', '오후']).optional(),
+  workingDays: z.array(z.string()).min(1, '최소 1개 이상의 영업일을 선택해야 합니다').optional(),
+  customClosedDates: z.array(z.string()).optional(),
+  excludeHolidays: z.boolean().optional(),
   isActive: z.boolean().optional(),
 })
 
@@ -125,22 +127,18 @@ export async function POST(request: NextRequest) {
         return createErrorResponse(`'${data.region}' 지역의 납품 규칙이 이미 존재합니다.`, 400)
       }
 
-      // 시간 검증 (오전 마감시간 < 오후 마감시간)
-      const morningTime = parseTime(data.morningCutoff)
-      const afternoonTime = parseTime(data.afternoonCutoff)
-
-      if (morningTime >= afternoonTime) {
-        return createErrorResponse('오전 마감시간은 오후 마감시간보다 빨라야 합니다.', 400)
-      }
-
       // 납품 규칙 생성
       const deliveryRule = await prisma.deliveryRule.create({
         data: {
           region: data.region,
-          morningCutoff: data.morningCutoff,
-          afternoonCutoff: data.afternoonCutoff,
-          morningDeliveryDays: data.morningDeliveryDays,
-          afternoonDeliveryDays: data.afternoonDeliveryDays,
+          cutoffTime: data.cutoffTime,
+          beforeCutoffDays: data.beforeCutoffDays,
+          afterCutoffDays: data.afterCutoffDays,
+          beforeCutoffDeliveryTime: data.beforeCutoffDeliveryTime || '오전',
+          afterCutoffDeliveryTime: data.afterCutoffDeliveryTime || '오후',
+          workingDays: data.workingDays || ['1', '2', '3', '4', '5'],
+          customClosedDates: data.customClosedDates || [],
+          excludeHolidays: data.excludeHolidays ?? true,
           isActive: data.isActive ?? true,
           tenantId, // 테넌트 ID 추가
         },
@@ -148,8 +146,8 @@ export async function POST(request: NextRequest) {
 
       logger.info(`납품 규칙 생성 완료: ${deliveryRule.region}`, {
         id: deliveryRule.id,
-        morningCutoff: deliveryRule.morningCutoff,
-        afternoonCutoff: deliveryRule.afternoonCutoff,
+        cutoffTime: deliveryRule.cutoffTime,
+        workingDays: deliveryRule.workingDays,
         tenantId,
       })
 
