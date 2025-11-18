@@ -124,6 +124,19 @@ function DashboardContent() {
     try {
       setLoading(true)
 
+      // ✅ CRITICAL: 테넌트 확인 - 없으면 에러
+      const companiesCheckRes = await fetch('/api/companies?limit=1')
+      if (companiesCheckRes.status === 401) {
+        // 테넌트 없음 - 에러 표시하고 로그아웃
+        toast({
+          title: '계정 설정 오류',
+          description: '테넌트가 생성되지 않았습니다. 다시 로그인해주세요.',
+          variant: 'destructive',
+        })
+        await signOut()
+        return
+      }
+
       // 병렬로 데이터 로딩
       const [usageRes, subscriptionRes, activitiesRes, companiesRes] = await Promise.all([
         fetch('/api/subscription/usage'),
