@@ -74,10 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // 2. 일반 사용자: Tenant 상태 체크
             const tenantCheckRes = await fetch('/api/auth/check-tenant-status')
 
-            // API 서버 에러 시 dashboard로 리다이렉트 (무한 루프 방지)
+            // API 에러 시 setup-pending으로 리다이렉트 (tenant가 없을 가능성 높음)
             if (!tenantCheckRes.ok) {
-              logger.error('Tenant check API failed', { status: tenantCheckRes.status })
-              window.location.href = '/dashboard'
+              logger.error('Tenant check API failed, redirecting to setup-pending', { status: tenantCheckRes.status })
+              window.location.href = '/auth/setup-pending'
               return
             }
 
@@ -115,9 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (error) {
             logger.error('Failed to check tenant/admin status', { error })
-            // 에러 시 무조건 dashboard로 (무한 루프 방지)
-            // dashboard에서 적절한 에러 메시지 표시
-            window.location.href = '/dashboard'
+            // 에러 시 setup-pending으로 (tenant 미생성 가능성)
+            window.location.href = '/auth/setup-pending'
           }
         }
       } else if (event === 'SIGNED_OUT') {

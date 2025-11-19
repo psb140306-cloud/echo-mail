@@ -112,6 +112,7 @@ function DashboardContent() {
   const [stats, setStats] = useState<StatsData>({ companies: 0, todayNotifications: 0 })
   const [loading, setLoading] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [hasError, setHasError] = useState(false)
 
   // 데이터 로딩 - 컴포넌트 생명주기 관리
   useEffect(() => {
@@ -121,6 +122,8 @@ function DashboardContent() {
     const loadDashboardData = async () => {
       // 로그아웃 중이거나 user가 없으면 실행 안함
       if (!user || isSigningOut) return
+      // 이미 에러 상태면 재시도 안함
+      if (hasError) return
 
       try {
         setLoading(true)
@@ -141,7 +144,8 @@ function DashboardContent() {
             window.location.href = '/auth/login'
             return
           } else if (companiesCheckRes.status >= 500) {
-            // 서버 에러
+            // 서버 에러 - 한 번만 표시하고 중지
+            setHasError(true)
             toast({
               title: '서버 연결 오류',
               description: '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.',
@@ -203,6 +207,7 @@ function DashboardContent() {
         if (!isMounted) return
 
         console.error('대시보드 데이터 로딩 실패:', error)
+        setHasError(true)
         toast({
           title: '데이터 로딩 실패',
           description: '일부 정보를 불러올 수 없습니다.',
@@ -222,7 +227,8 @@ function DashboardContent() {
       isMounted = false
       abortController.abort()
     }
-  }, [user, isSigningOut, toast])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isSigningOut])
 
   const handleSignOut = async () => {
     // 이미 로그아웃 중이면 무시
