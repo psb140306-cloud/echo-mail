@@ -50,12 +50,31 @@ export default function LoginPage() {
       }
 
       // 로그인 성공!
-      // auth-provider의 onAuthStateChange가 리다이렉트를 처리함
-      // (tenant 상태에 따라 dashboard 또는 setup-pending으로)
       toast({
         title: '로그인 성공',
         description: 'Echo Mail에 오신 것을 환영합니다!',
       })
+
+      // Tenant 상태 확인 후 리다이렉트
+      try {
+        const tenantRes = await fetch('/api/auth/check-tenant-status')
+        if (tenantRes.ok) {
+          const tenantData = await tenantRes.json()
+          if (tenantData.success && tenantData.data?.isReady && tenantData.data?.hasTenant) {
+            // Tenant 준비됨 → dashboard
+            router.push('/dashboard')
+          } else {
+            // Tenant 없음 → setup-pending
+            router.push('/auth/setup-pending')
+          }
+        } else {
+          // API 에러 → setup-pending
+          router.push('/auth/setup-pending')
+        }
+      } catch {
+        // 에러 시 setup-pending
+        router.push('/auth/setup-pending')
+      }
     } catch (error) {
       toast({
         title: '오류 발생',
