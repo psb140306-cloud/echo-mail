@@ -49,14 +49,13 @@ export default function LoginPage() {
         return
       }
 
-      // 로그인 성공! Tenant는 첫 API 호출 시 자동으로 생성됩니다.
+      // 로그인 성공!
+      // auth-provider의 onAuthStateChange가 리다이렉트를 처리함
+      // (tenant 상태에 따라 dashboard 또는 setup-pending으로)
       toast({
         title: '로그인 성공',
         description: 'Echo Mail에 오신 것을 환영합니다!',
       })
-
-      // 대시보드로 리다이렉트
-      router.push('/dashboard')
     } catch (error) {
       toast({
         title: '오류 발생',
