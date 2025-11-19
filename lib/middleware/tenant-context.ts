@@ -38,29 +38,10 @@ export async function identifyTenant(request: NextRequest): Promise<TenantInfo |
 
   try {
     // 0. Vercel 기본/프리뷰 도메인 처리
+    // Vercel 도메인에서는 호스트 기반 tenant 식별을 하지 않음
+    // 사용자 세션의 tenantId를 사용하도록 null 반환
     if (host.endsWith('.vercel.app')) {
-      const subdomain = host.replace('.vercel.app', '')
-
-      const tenant = await prisma.tenant.findFirst({
-        where: {
-          OR: [{ subdomain }, { customDomain: host }],
-        },
-      })
-
-      if (tenant) {
-        logger.debug('Vercel domain tenant found', { host, tenantId: tenant.id })
-        return {
-          id: tenant.id,
-          name: tenant.name,
-          subdomain: tenant.subdomain,
-          customDomain: tenant.customDomain || undefined,
-          subscriptionPlan: tenant.subscriptionPlan,
-        }
-      }
-
-      // Vercel에서 테넌트를 찾지 못한 경우 null 반환
-      // 사용자 세션의 tenantId를 사용하도록 함
-      logger.debug('No tenant found for Vercel domain - will use user session', { host, subdomain })
+      logger.debug('Vercel domain detected - will use user session tenant', { host })
       return null
     }
 
