@@ -73,6 +73,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // 2. 일반 사용자: Tenant 상태 체크
             const tenantCheckRes = await fetch('/api/auth/check-tenant-status')
+
+            // API 서버 에러 시 dashboard로 리다이렉트 (무한 루프 방지)
+            if (!tenantCheckRes.ok) {
+              logger.error('Tenant check API failed', { status: tenantCheckRes.status })
+              window.location.href = '/dashboard'
+              return
+            }
+
             const tenantCheck = await tenantCheckRes.json()
 
             if (!tenantCheck.success || !tenantCheck.data?.isReady || !tenantCheck.data?.hasTenant) {
@@ -88,6 +96,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // 3. Tenant 준비 완료 → 관리자 권한 확인
             const response = await fetch('/api/admin/check-access')
+
+            // API 실패 시 기본적으로 dashboard로
+            if (!response.ok) {
+              logger.error('Admin check API failed', { status: response.status })
+              window.location.href = '/dashboard'
+              return
+            }
+
             const data = await response.json()
 
             if (data.isAdmin) {
@@ -99,9 +115,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (error) {
             logger.error('Failed to check tenant/admin status', { error })
-            // 슈퍼어드민이면 /admin으로, 아니면 setup-pending으로
-            const isSuperAdmin = session?.user?.email === 'seah0623@naver.com'
-            window.location.href = isSuperAdmin ? '/admin' : '/auth/setup-pending'
+            // 에러 시 무조건 dashboard로 (무한 루프 방지)
+            // dashboard에서 적절한 에러 메시지 표시
+            window.location.href = '/dashboard'
           }
         }
       } else if (event === 'SIGNED_OUT') {
