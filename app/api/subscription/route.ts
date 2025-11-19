@@ -40,7 +40,35 @@ async function getSubscription(request: NextRequest) {
     const subscription = await SubscriptionService.getSubscription(tenantId)
 
     if (!subscription) {
-      return createErrorResponse('활성화된 구독이 없습니다.', 404)
+      // Subscription 레코드가 없는 경우 Tenant 기본 정보로 대체
+      const { prisma } = await import('@/lib/db')
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+      })
+
+      if (!tenant) {
+        return createErrorResponse('테넌트를 찾을 수 없습니다.', 404)
+      }
+
+      logger.info('Subscription 없음 - Tenant 기본 정보 반환', {
+        tenantId,
+        plan: tenant.subscriptionPlan,
+        status: tenant.subscriptionStatus,
+      })
+
+      // Tenant의 기본 정보로 응답
+      const defaultSubscriptionInfo = {
+        plan: tenant.subscriptionPlan,
+        status: tenant.subscriptionStatus,
+        currentPeriodEnd: tenant.trialEndsAt?.toISOString() || new Date().toISOString(),
+        trialEndsAt: tenant.trialEndsAt?.toISOString(),
+        cancelAtPeriodEnd: false,
+      }
+
+      return createSuccessResponse(
+        defaultSubscriptionInfo,
+        '구독 정보를 성공적으로 조회했습니다.'
+      )
     }
 
     logger.info('구독 정보 조회 완료', {
@@ -55,7 +83,7 @@ async function getSubscription(request: NextRequest) {
       plan: subscription.plan,
       status: subscription.status,
       currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
-      trialEndsAt: subscription.trialEndsAt?.toISOString(),
+      trialEndsAt: (subscription as any).trialEndsAt?.toISOString(),
       cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     }
 
