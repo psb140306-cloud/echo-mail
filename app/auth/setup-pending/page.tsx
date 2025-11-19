@@ -148,18 +148,79 @@ export default function SetupPendingPage() {
     router.push('/auth/login')
   }
 
-  // 자동 폴링
+  // 자동 테넌트 생성 및 폴링
   useEffect(() => {
     if (!user) {
       router.push('/auth/login')
       return
     }
 
-    // 초기 체크
-    checkTenantStatus()
+    let isMounted = true
 
-    // 주기적 폴링
+    const initSetup = async () => {
+      // 1. 먼저 테넌트가 이미 있는지 확인
+      const isReady = await checkTenantStatus()
+      if (isReady || !isMounted) return
+
+      // 2. 테넌트가 없으면 자동 생성 시도
+      setSetupProgress({
+        status: 'creating',
+        progress: 30,
+        message: '작업 공간을 자동으로 생성하고 있습니다...',
+        step: '생성 중',
+      })
+
+      try {
+        const response = await fetch('/api/auth/setup-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            companyName: user.email?.split('@')[0] + '의 회사',
+            ownerName: user.email?.split('@')[0] || '사용자',
+            subscriptionPlan: 'FREE_TRIAL',
+            subdomain: user.email?.split('@')[0]?.replace(/[^a-zA-Z0-9-]/g, '') || 'my-company',
+          }),
+        })
+
+        if (!isMounted) return
+
+        const result = await response.json()
+
+        if (result.success) {
+          setSetupProgress({
+            status: 'ready',
+            progress: 100,
+            message: '완료! 대시보드로 이동합니다...',
+            step: '완료',
+          })
+
+          setTimeout(() => {
+            if (isMounted) router.push('/dashboard')
+          }, 1000)
+          return
+        } else {
+          throw new Error(result.message || 'Setup failed')
+        }
+      } catch (error) {
+        console.error('Auto setup failed:', error)
+        if (!isMounted) return
+
+        // 자동 생성 실패 시 폴링으로 전환
+        setSetupProgress({
+          status: 'creating',
+          progress: 40,
+          message: '작업 공간을 확인하고 있습니다...',
+          step: '확인 중',
+        })
+      }
+    }
+
+    initSetup()
+
+    // 주기적 폴링 (자동 생성 후 확인용)
     const interval = setInterval(async () => {
+      if (!isMounted) return
+
       const ready = await checkTenantStatus()
 
       if (ready) {
@@ -185,7 +246,10 @@ export default function SetupPendingPage() {
       })
     }, pollInterval)
 
-    return () => clearInterval(interval)
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
   }, [user, router])
 
   if (!user) {
