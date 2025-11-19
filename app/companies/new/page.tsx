@@ -205,7 +205,7 @@ export default function NewCompanyPage() {
                       }
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="region">
                       <SelectValue placeholder="지역 선택" />
                     </SelectTrigger>
                     <SelectContent>
