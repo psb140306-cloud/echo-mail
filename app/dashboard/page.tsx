@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ThemeToggle } from '@/components/theme-toggle'
 import { AppHeader } from '@/components/layout/app-header'
 import Link from 'next/link'
 import {
@@ -16,9 +15,7 @@ import {
   Building,
   Users,
   Bell,
-  BarChart3,
   Settings,
-  LogOut,
   Activity,
   Calendar,
   CalendarDays,
@@ -114,94 +111,139 @@ function DashboardContent() {
   const [activities, setActivities] = useState<ActivityLog[]>([])
   const [stats, setStats] = useState<StatsData>({ companies: 0, todayNotifications: 0 })
   const [loading, setLoading] = useState(true)
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
-  // 데이터 로딩
+  // 데이터 로딩 - 컴포넌트 생명주기 관리
   useEffect(() => {
-    loadDashboardData()
-  }, [])
+    let isMounted = true
+    const abortController = new AbortController()
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true)
+    const loadDashboardData = async () => {
+      // 로그아웃 중이거나 user가 없으면 실행 안함
+      if (!user || isSigningOut) return
 
-      // ✅ CRITICAL: 테넌트 확인 - 없으면 에러
-      const companiesCheckRes = await fetch('/api/companies?limit=1')
-      if (companiesCheckRes.status === 401) {
-        // 테넌트 없음 - 에러 표시하고 로그아웃
+      try {
+        setLoading(true)
+
+        // 테넌트 확인
+        const companiesCheckRes = await fetch('/api/companies?limit=1', {
+          signal: abortController.signal,
+        })
+
+        // 컴포넌트 unmount 체크
+        if (!isMounted) return
+
+        // HTTP 에러 처리
+        if (!companiesCheckRes.ok) {
+          if (companiesCheckRes.status === 401) {
+            // 인증 실패 - 로그인 페이지로 리다이렉트 (signOut 중복 호출 안함)
+            // auth-provider의 onAuthStateChange가 처리하도록 위임
+            window.location.href = '/auth/login'
+            return
+          } else if (companiesCheckRes.status >= 500) {
+            // 서버 에러
+            toast({
+              title: '서버 연결 오류',
+              description: '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.',
+              variant: 'destructive',
+            })
+            return
+          }
+        }
+
+        // 병렬로 데이터 로딩
+        const [usageRes, subscriptionRes, activitiesRes, companiesRes] = await Promise.all([
+          fetch('/api/subscription/usage', { signal: abortController.signal }),
+          fetch('/api/subscription', { signal: abortController.signal }),
+          fetch('/api/activities?limit=10', { signal: abortController.signal }),
+          fetch('/api/companies?limit=1', { signal: abortController.signal }),
+        ])
+
+        // 컴포넌트 unmount 체크
+        if (!isMounted) return
+
+        if (usageRes.ok) {
+          const usageData = await usageRes.json()
+          setUsage(
+            usageData.data?.summary || {
+              email: { current: 0, limit: 1000, percentage: 0 },
+              sms: { current: 0, limit: 500, percentage: 0 },
+              kakao: { current: 0, limit: 300, percentage: 0 },
+              api: { current: 0, limit: 10000, percentage: 0 },
+              hasWarning: false,
+              hasExceeded: false,
+            }
+          )
+        }
+
+        if (subscriptionRes.ok) {
+          const subData = await subscriptionRes.json()
+          setSubscription(subData.data?.subscription || subData.data)
+        }
+
+        if (activitiesRes.ok) {
+          const activityData = await activitiesRes.json()
+          setActivities(activityData.data || [])
+        }
+
+        if (companiesRes.ok) {
+          const companiesData = await companiesRes.json()
+          setStats({
+            companies: companiesData.pagination?.total || 0,
+            todayNotifications: 0,
+          })
+        }
+      } catch (error) {
+        // AbortError는 무시 (정상적인 취소)
+        if (error instanceof Error && error.name === 'AbortError') {
+          return
+        }
+
+        // 컴포넌트가 unmount 되었으면 상태 업데이트 안함
+        if (!isMounted) return
+
+        console.error('대시보드 데이터 로딩 실패:', error)
         toast({
-          title: '계정 설정 오류',
-          description: '테넌트가 생성되지 않았습니다. 다시 로그인해주세요.',
+          title: '데이터 로딩 실패',
+          description: '일부 정보를 불러올 수 없습니다.',
           variant: 'destructive',
         })
-        await signOut()
-        return
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
       }
-
-      // 병렬로 데이터 로딩
-      const [usageRes, subscriptionRes, activitiesRes, companiesRes] = await Promise.all([
-        fetch('/api/subscription/usage'),
-        fetch('/api/subscription'),
-        fetch('/api/activities?limit=10'),
-        fetch('/api/companies?limit=1'), // 업체 수만 가져오기 위해 limit=1
-      ])
-
-      if (usageRes.ok) {
-        const usageData = await usageRes.json()
-        setUsage(
-          usageData.data.summary || {
-            email: { current: 0, limit: 1000, percentage: 0 },
-            sms: { current: 0, limit: 500, percentage: 0 },
-            kakao: { current: 0, limit: 300, percentage: 0 },
-            api: { current: 0, limit: 10000, percentage: 0 },
-            hasWarning: false,
-            hasExceeded: false,
-          }
-        )
-      }
-
-      if (subscriptionRes.ok) {
-        const subData = await subscriptionRes.json()
-        // API 응답 구조: { success: true, data: { subscription: {...}, usage: {...} } }
-        setSubscription(subData.data?.subscription || subData.data)
-      }
-
-      if (activitiesRes.ok) {
-        const activityData = await activitiesRes.json()
-        setActivities(activityData.data || [])
-      }
-
-      if (companiesRes.ok) {
-        const companiesData = await companiesRes.json()
-        setStats({
-          companies: companiesData.pagination?.total || 0,
-          todayNotifications: 0, // TODO: 실제 오늘 알림 수 조회
-        })
-      }
-    } catch (error) {
-      console.error('대시보드 데이터 로딩 실패:', error)
-      toast({
-        title: '데이터 로딩 실패',
-        description: '일부 정보를 불러올 수 없습니다.',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
     }
-  }
+
+    loadDashboardData()
+
+    // Cleanup: 컴포넌트 unmount 시 요청 취소
+    return () => {
+      isMounted = false
+      abortController.abort()
+    }
+  }, [user, isSigningOut, toast])
 
   const handleSignOut = async () => {
-    const { error } = await signOut()
-    if (error) {
-      toast({
-        title: '로그아웃 실패',
-        description: error.message,
-        variant: 'destructive',
-      })
-    } else {
-      toast({
-        title: '로그아웃 완료',
-        description: '안전하게 로그아웃되었습니다.',
-      })
+    // 이미 로그아웃 중이면 무시
+    if (isSigningOut || loading) return
+
+    try {
+      setIsSigningOut(true)
+      const { error } = await signOut()
+
+      if (error) {
+        toast({
+          title: '로그아웃 실패',
+          description: error.message,
+          variant: 'destructive',
+        })
+        setIsSigningOut(false)
+      }
+      // 성공 시 auth-provider가 리다이렉트 처리
+    } catch (error) {
+      console.error('로그아웃 중 오류:', error)
+      setIsSigningOut(false)
     }
   }
 
@@ -263,7 +305,7 @@ function DashboardContent() {
                 <div className="text-right">
                   <div className="flex items-center space-x-2 mb-1">
                     <span className="text-sm font-medium dark:text-foreground">
-                      {subscription.plan || 'FREE_TRIAL'}
+                      {subscription.plan?.name || 'FREE_TRIAL'}
                     </span>
                     {getStatusBadge(subscription.status)}
                   </div>
