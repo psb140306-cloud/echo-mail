@@ -117,30 +117,74 @@ export class TemplateManager {
         templateName: template?.name,
       })
 
-      if (template) {
-        // variables가 배열이 아니면 객체의 키 배열로 변환 (방어 로직)
-        const variables = Array.isArray(template.variables)
-          ? template.variables
-          : Object.keys(template.variables || {})
+      // 템플릿이 없으면 하드코딩된 기본 템플릿 사용
+      let templateToUse = template
+      if (!templateToUse) {
+        logger.warn('[TemplateManager] DB에 템플릿 없음, 하드코딩된 기본 템플릿 사용', {
+          name,
+          type,
+          tenantId,
+        })
 
-        if (!Array.isArray(template.variables)) {
+        // 하드코딩된 기본 템플릿
+        const defaultTemplates: Record<string, { content: string; variables: string[]; type: NotificationType; subject?: string }> = {
+          'ORDER_RECEIVED_SMS': {
+            type: 'SMS' as NotificationType,
+            content: '[발주접수] {{companyName}} 납품:{{shortDate}}{{deliveryTime}}',
+            variables: ['companyName', 'shortDate', 'deliveryTime'],
+          },
+          'ORDER_RECEIVED_KAKAO': {
+            type: 'KAKAO_ALIMTALK' as NotificationType,
+            subject: '발주 접수 확인',
+            content: '{{companyName}}님의 발주가 정상적으로 접수되었습니다.\n\n📦 납품 예정일: {{deliveryDate}}{{deliveryTime}}\n\n문의사항이 있으시면 언제든 연락 주세요.\n감사합니다.',
+            variables: ['companyName', 'deliveryDate', 'deliveryTime'],
+          },
+        }
+
+        const fallbackTemplate = defaultTemplates[name]
+        if (fallbackTemplate) {
+          templateToUse = {
+            id: 'fallback-' + name,
+            name,
+            type: fallbackTemplate.type,
+            subject: fallbackTemplate.subject || null,
+            content: fallbackTemplate.content,
+            variables: fallbackTemplate.variables,
+            tenantId: tenantId || 'fallback',
+            isActive: true,
+            isDefault: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } as any
+
+          logger.info('[TemplateManager] Fallback 템플릿 사용', { name })
+        }
+      }
+
+      if (templateToUse) {
+        // variables가 배열이 아니면 객체의 키 배열로 변환 (방어 로직)
+        const variables = Array.isArray(templateToUse.variables)
+          ? templateToUse.variables
+          : Object.keys(templateToUse.variables || {})
+
+        if (!Array.isArray(templateToUse.variables)) {
           logger.warn('[TemplateManager] variables가 배열이 아닙니다. 객체 키로 변환', {
-            templateName: template.name,
-            originalType: typeof template.variables,
+            templateName: templateToUse.name,
+            originalType: typeof templateToUse.variables,
             converted: variables,
           })
         }
 
         const templateData: NotificationTemplate = {
-          id: template.id,
-          name: template.name,
-          type: template.type,
-          subject: template.subject || undefined,
-          content: template.content,
+          id: templateToUse.id,
+          name: templateToUse.name,
+          type: templateToUse.type,
+          subject: templateToUse.subject || undefined,
+          content: templateToUse.content,
           variables: variables as string[],
-          isDefault: template.isDefault,
-          createdAt: template.createdAt,
-          updatedAt: template.updatedAt,
+          isDefault: templateToUse.isDefault,
+          createdAt: templateToUse.createdAt,
+          updatedAt: templateToUse.updatedAt,
         }
 
         this.templateCache.set(cacheKey, templateData)
