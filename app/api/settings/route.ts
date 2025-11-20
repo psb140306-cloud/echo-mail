@@ -240,7 +240,14 @@ export async function PUT(request: NextRequest) {
       return createSuccessResponse(data, '설정이 저장되었습니다.')
     } catch (error) {
       logger.error('설정 업데이트 실패:', error)
-      return createErrorResponse('설정 저장에 실패했습니다.')
+
+      // 개발/디버깅을 위해 상세 에러 반환
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
+      const isDev = process.env.NODE_ENV === 'development'
+
+      return createErrorResponse(
+        isDev ? `설정 저장 실패: ${errorMessage}` : '설정 저장에 실패했습니다.'
+      )
     }
   })
 }
