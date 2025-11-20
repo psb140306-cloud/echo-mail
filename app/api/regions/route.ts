@@ -58,4 +58,6 @@ async function getRegions(request: NextRequest) {
   }
 }
 
-export const GET = withTenantContext(getRegions)
+export async function GET(request: NextRequest) {
+  return withTenantContext(request, async () => getRegions(request))
+}
