@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
-import { getServerSession } from '@/lib/auth/session'
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma, TenantContext } from '@/lib/db'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
 // 기본 지역 목록
 const DEFAULT_REGIONS = [
@@ -11,20 +11,22 @@ const DEFAULT_REGIONS = [
 /**
  * 테넌트의 지역 목록 조회 (기본 + 커스텀)
  */
-export async function GET() {
+async function getRegions(request: NextRequest) {
   try {
-    const session = await getServerSession()
+    // CRITICAL: Get tenantId for multi-tenancy isolation
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
 
-    if (!session?.tenantId) {
+    if (!tenantId) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Tenant context not found' },
         { status: 401 }
       )
     }
 
     // 해당 테넌트의 모든 업체에서 사용된 지역 조회
     const companies = await prisma.company.findMany({
-      where: { tenantId: session.tenantId },
+      where: { tenantId },
       select: { region: true },
       distinct: ['region']
     })
@@ -55,3 +57,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withTenantContext(getRegions)
