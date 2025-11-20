@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
+import { templateManager } from '@/lib/notifications/templates/template-manager'
 
 /**
  * 회원가입 후 Tenant 생성
@@ -111,6 +112,18 @@ export async function POST(request: NextRequest) {
       ownerId: authUser.id,
       email: authUser.email,
     })
+
+    // 기본 메시지 템플릿 생성
+    try {
+      await templateManager.createDefaultTemplatesForTenant(tenant.id)
+      logger.info('Default templates created for new tenant', { tenantId: tenant.id })
+    } catch (templateError) {
+      logger.error('Failed to create default templates', {
+        tenantId: tenant.id,
+        error: templateError,
+      })
+      // 템플릿 생성 실패해도 계정 생성은 성공으로 처리
+    }
 
     return NextResponse.json({
       success: true,

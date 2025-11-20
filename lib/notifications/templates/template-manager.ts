@@ -279,26 +279,28 @@ export class TemplateManager {
   }
 
   /**
-   * 기본 템플릿 생성
+   * 테넌트용 기본 템플릿 생성
    */
-  async createDefaultTemplates(): Promise<void> {
+  async createDefaultTemplatesForTenant(tenantId: string): Promise<void> {
     try {
       const defaultTemplates = [
         {
           name: 'ORDER_RECEIVED_SMS',
           type: NotificationType.SMS,
-          content: '[발주접수] {{companyName}} 납품:{{shortDate}} {{deliveryTime}}',
+          content: '[발주접수] {{companyName}} 납품:{{shortDate}}{{deliveryTime}}',
           variables: ['companyName', 'shortDate', 'deliveryTime'],
           isDefault: true,
+          tenantId,
         },
         {
           name: 'ORDER_RECEIVED_KAKAO',
           type: NotificationType.KAKAO_ALIMTALK,
           subject: '발주 접수 확인',
           content:
-            '{{companyName}}님의 발주가 정상적으로 접수되었습니다.\n\n📦 납품 예정일: {{deliveryDate}} {{deliveryTime}}\n\n문의사항이 있으시면 언제든 연락 주세요.\n감사합니다.',
+            '{{companyName}}님의 발주가 정상적으로 접수되었습니다.\n\n📦 납품 예정일: {{deliveryDate}}{{deliveryTime}}\n\n문의사항이 있으시면 언제든 연락 주세요.\n감사합니다.',
           variables: ['companyName', 'deliveryDate', 'deliveryTime'],
           isDefault: true,
+          tenantId,
         },
         {
           name: 'DELIVERY_REMINDER_SMS',
@@ -307,6 +309,7 @@ export class TemplateManager {
             '[배송 안내]\n{{companyName}}님께 오늘 {{deliveryTime}} 배송 예정입니다.\n문의: {{contactNumber}}',
           variables: ['companyName', 'deliveryTime', 'contactNumber'],
           isDefault: true,
+          tenantId,
         },
         {
           name: 'URGENT_NOTICE_SMS',
@@ -314,12 +317,16 @@ export class TemplateManager {
           content: '[긴급 공지]\n{{message}}\n문의: {{contactNumber}}',
           variables: ['message', 'contactNumber'],
           isDefault: false,
+          tenantId,
         },
       ]
 
       for (const templateData of defaultTemplates) {
         const existing = await prisma.messageTemplate.findFirst({
-          where: { name: templateData.name },
+          where: {
+            name: templateData.name,
+            tenantId,
+          },
         })
 
         if (!existing) {
@@ -327,12 +334,23 @@ export class TemplateManager {
             data: templateData,
           })
 
-          logger.info(`기본 템플릿 생성: ${templateData.name}`)
+          logger.info(`테넌트 ${tenantId} 기본 템플릿 생성: ${templateData.name}`)
         }
       }
+
+      logger.info(`테넌트 ${tenantId}에 기본 템플릿 생성 완료`)
     } catch (error) {
-      logger.error('기본 템플릿 생성 실패:', error)
+      logger.error(`테넌트 ${tenantId} 기본 템플릿 생성 실패:`, error)
+      throw error
     }
+  }
+
+  /**
+   * @deprecated Use createDefaultTemplatesForTenant instead
+   * 기본 템플릿 생성 (tenantId 없이 생성하므로 사용 불가)
+   */
+  async createDefaultTemplates(): Promise<void> {
+    logger.warn('createDefaultTemplates는 deprecated되었습니다. createDefaultTemplatesForTenant를 사용하세요.')
   }
 
   /**
