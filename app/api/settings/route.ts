@@ -173,28 +173,31 @@ export async function PUT(request: NextRequest) {
         }
       })
 
-      // 트랜잭션으로 모든 설정 업데이트 (upsert 사용)
-      await prisma.$transaction(
-        updates.map((update) =>
-          prisma.systemConfig.upsert({
-            where: {
-              tenantId_key: {
-                tenantId,
-                key: update.key,
-              },
-            },
-            update: {
-              value: update.value,
-            },
-            create: {
+      // 모든 설정 업데이트 (findFirst + update/create)
+      for (const update of updates) {
+        const existing = await prisma.systemConfig.findFirst({
+          where: {
+            tenantId,
+            key: update.key,
+          },
+        })
+
+        if (existing) {
+          await prisma.systemConfig.update({
+            where: { id: existing.id },
+            data: { value: update.value },
+          })
+        } else {
+          await prisma.systemConfig.create({
+            data: {
               tenantId,
               key: update.key,
               value: update.value,
               category: update.category,
             },
           })
-        )
-      )
+        }
+      }
 
       logger.info('설정 업데이트 완료', { tenantId, updateCount: updates.length })
 
