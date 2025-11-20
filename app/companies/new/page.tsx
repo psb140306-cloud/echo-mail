@@ -44,6 +44,7 @@ export default function NewCompanyPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [isCustomRegion, setIsCustomRegion] = useState(false) // 커스텀 지역 입력 여부
+  const [allRegions, setAllRegions] = useState<string[]>([...DEFAULT_REGIONS]) // 기본 + 커스텀 지역
   const [formData, setFormData] = useState({
     // 업체 정보
     name: '',
@@ -71,6 +72,22 @@ export default function NewCompanyPage() {
       [name]: checked,
     })
   }
+
+  // 지역 목록 조회
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const response = await fetch('/api/regions')
+        const data = await response.json()
+        if (data.success) {
+          setAllRegions(data.data.allRegions)
+        }
+      } catch (error) {
+        console.error('Failed to fetch regions:', error)
+      }
+    }
+    fetchRegions()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -209,7 +226,7 @@ export default function NewCompanyPage() {
                       <SelectValue placeholder="지역 선택" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEFAULT_REGIONS.map((region) => (
+                      {allRegions.map((region) => (
                         <SelectItem key={region} value={region}>
                           {region}
                         </SelectItem>

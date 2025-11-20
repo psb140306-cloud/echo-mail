@@ -60,10 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 로그인/로그아웃 시에만 리다이렉트 (새로고침 대신)
       if (event === 'SIGNED_IN') {
         // 현재 페이지가 인증 페이지인 경우에만 리다이렉트
-        // 단, login과 setup-pending은 자체적으로 리다이렉트 처리함
         const currentPath = window.location.pathname
-        // setup-pending만 제외 (이미 올바른 위치)
-        if (currentPath.startsWith('/auth/') && currentPath !== '/auth/setup-pending') {
+        // setup-pending과 callback은 제외 (자체 리다이렉트 처리)
+        if (currentPath.startsWith('/auth/') &&
+            currentPath !== '/auth/setup-pending' &&
+            currentPath !== '/auth/callback') {
           try {
             // 1. 슈퍼어드민 체크 (우선)
             const isSuperAdmin = session?.user?.email === 'seah0623@naver.com'

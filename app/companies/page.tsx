@@ -78,6 +78,7 @@ export default function CompaniesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedRegion, setSelectedRegion] = useState('')
   const [deletingCompany, setDeletingCompany] = useState<string | null>(null)
+  const [regions, setRegions] = useState<string[]>([])
   const { toast } = useToast()
 
   // 페이지네이션 상태
@@ -181,26 +182,26 @@ export default function CompaniesPage() {
     fetchCompanies()
   }, [fetchCompanies])
 
-  // 지역 목록 (하드코딩, 실제로는 API에서 가져와야 함)
-  const regions = [
-    '서울',
-    '부산',
-    '대구',
-    '인천',
-    '광주',
-    '대전',
-    '울산',
-    '세종',
-    '경기',
-    '강원',
-    '충북',
-    '충남',
-    '전북',
-    '전남',
-    '경북',
-    '경남',
-    '제주',
-  ]
+  // 지역 목록 조회
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const response = await fetch('/api/regions')
+        const data = await response.json()
+        if (data.success) {
+          setRegions(data.data.allRegions)
+        }
+      } catch (error) {
+        console.error('Failed to fetch regions:', error)
+        // 기본 지역 사용
+        setRegions([
+          '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종',
+          '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'
+        ])
+      }
+    }
+    fetchRegions()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50/40">

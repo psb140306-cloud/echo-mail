@@ -73,10 +73,34 @@ export default function CompanyDetailPage() {
     isActive: true,
   })
 
-  // 업체 정보 조회
+  // 지역 관련 상태
+  const [regions, setRegions] = useState<string[]>([])
+  const [showCustomRegionInput, setShowCustomRegionInput] = useState(false)
+  const [customRegion, setCustomRegion] = useState('')
+
+  // 업체 정보 및 지역 목록 조회
   useEffect(() => {
     fetchCompany()
+    fetchRegions()
   }, [companyId])
+
+  // 지역 목록 조회
+  const fetchRegions = async () => {
+    try {
+      const response = await fetch('/api/regions')
+      const data = await response.json()
+      if (data.success) {
+        setRegions(data.data.allRegions)
+      }
+    } catch (error) {
+      console.error('Failed to fetch regions:', error)
+      // 기본 지역 사용
+      setRegions([
+        '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종',
+        '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'
+      ])
+    }
+  }
 
   const fetchCompany = async () => {
     try {
@@ -180,25 +204,30 @@ export default function CompanyDetailPage() {
     }
   }
 
-  const regions = [
-    '서울',
-    '부산',
-    '대구',
-    '인천',
-    '광주',
-    '대전',
-    '울산',
-    '세종',
-    '경기',
-    '강원',
-    '충북',
-    '충남',
-    '전북',
-    '전남',
-    '경북',
-    '경남',
-    '제주',
-  ]
+  // 지역 선택 핸들러
+  const handleRegionChange = (value: string) => {
+    if (value === '__custom__') {
+      setShowCustomRegionInput(true)
+      setCustomRegion('')
+    } else {
+      setShowCustomRegionInput(false)
+      setFormData({ ...formData, region: value })
+    }
+  }
+
+  // 커스텀 지역 확인
+  const handleCustomRegionConfirm = () => {
+    if (customRegion.trim()) {
+      const newRegion = customRegion.trim()
+      setFormData({ ...formData, region: newRegion })
+      // 지역 목록에 없으면 추가
+      if (!regions.includes(newRegion)) {
+        setRegions([...regions, newRegion])
+      }
+      setShowCustomRegionInput(false)
+      setCustomRegion('')
+    }
+  }
 
   if (loading) {
     return (
@@ -296,19 +325,50 @@ export default function CompanyDetailPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="region">지역 *</Label>
-                    <select
-                      id="region"
-                      value={formData.region}
-                      onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">지역 선택</option>
-                      {regions.map((region) => (
-                        <option key={region} value={region}>
-                          {region}
-                        </option>
-                      ))}
-                    </select>
+                    {showCustomRegionInput ? (
+                      <div className="flex gap-2">
+                        <Input
+                          value={customRegion}
+                          onChange={(e) => setCustomRegion(e.target.value)}
+                          placeholder="지역명을 입력하세요"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleCustomRegionConfirm()
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleCustomRegionConfirm}
+                          disabled={!customRegion.trim()}
+                        >
+                          확인
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowCustomRegionInput(false)}
+                        >
+                          취소
+                        </Button>
+                      </div>
+                    ) : (
+                      <select
+                        id="region"
+                        value={formData.region}
+                        onChange={(e) => handleRegionChange(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <option value="">지역 선택</option>
+                        {regions.map((region) => (
+                          <option key={region} value={region}>
+                            {region}
+                          </option>
+                        ))}
+                        <option value="__custom__">직접 입력</option>
+                      </select>
+                    )}
                   </div>
 
                   <div className="space-y-2">

@@ -124,6 +124,7 @@ export default function DeliveryRulesPage() {
   const [calculationResult, setCalculationResult] = useState<any>(null)
   const [generatingSampleData, setGeneratingSampleData] = useState(false)
   const [isCustomRegion, setIsCustomRegion] = useState(false) // 커스텀 지역 입력 여부
+  const [allRegions, setAllRegions] = useState<string[]>([...DEFAULT_REGIONS]) // 기본 + 커스텀 지역
   const { toast } = useToast()
 
   // 폼 상태
@@ -319,8 +320,8 @@ export default function DeliveryRulesPage() {
       excludeHolidays: rule.excludeHolidays ?? true,
       isActive: rule.isActive,
     })
-    // 수정 시에는 기존 지역이 기본 목록에 없으면 커스텀으로 간주
-    const isCustom = !DEFAULT_REGIONS.includes(rule.region as any)
+    // 수정 시에는 기존 지역이 목록에 없으면 커스텀으로 간주
+    const isCustom = !allRegions.includes(rule.region)
     setIsCustomRegion(isCustom)
     setShowCreateDialog(true)
   }
@@ -337,7 +338,21 @@ export default function DeliveryRulesPage() {
   // 초기 데이터 로드
   useEffect(() => {
     fetchDeliveryRules()
+    fetchRegions()
   }, [])
+
+  // 지역 목록 조회
+  const fetchRegions = async () => {
+    try {
+      const response = await fetch('/api/regions')
+      const data = await response.json()
+      if (data.success) {
+        setAllRegions(data.data.allRegions)
+      }
+    } catch (error) {
+      console.error('Failed to fetch regions:', error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50/40">
@@ -692,7 +707,7 @@ export default function DeliveryRulesPage() {
                       <SelectValue placeholder="지역 선택" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEFAULT_REGIONS.map((region) => (
+                      {allRegions.map((region) => (
                         <SelectItem key={region} value={region}>
                           {region}
                         </SelectItem>

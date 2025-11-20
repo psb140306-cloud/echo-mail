@@ -52,9 +52,9 @@ export default function SetupPendingPage() {
             step: '완료',
           })
 
-          // 대시보드로 리다이렉트
+          // 대시보드로 리다이렉트 (완전한 페이지 전환)
           setTimeout(() => {
-            router.push('/dashboard')
+            window.location.href = '/dashboard'
           }, 1000)
 
           return true
@@ -117,7 +117,7 @@ export default function SetupPendingPage() {
         })
 
         setTimeout(() => {
-          router.push('/dashboard')
+          window.location.href = '/dashboard'
         }, 1000)
       } else {
         throw new Error(result.message || 'Setup failed')
@@ -195,7 +195,7 @@ export default function SetupPendingPage() {
           })
 
           setTimeout(() => {
-            if (isMounted) router.push('/dashboard')
+            if (isMounted) window.location.href = '/dashboard'
           }, 1000)
           return
         } else {
