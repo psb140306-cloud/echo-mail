@@ -310,7 +310,7 @@ export class NotificationService {
       }
 
       // 발송 로그 저장
-      await this.logNotification(request, result)
+      await this.logNotification(request, result, rendered.content)
 
       logger.info('알림 발송 완료', {
         tenantId,
@@ -672,7 +672,8 @@ export class NotificationService {
    */
   private async logNotification(
     request: NotificationRequest,
-    result: NotificationResult
+    result: NotificationResult,
+    renderedMessage?: string
   ): Promise<void> {
     try {
       logger.debug('알림 로그 저장', {
@@ -688,7 +689,7 @@ export class NotificationService {
         data: {
           type: request.type,
           recipient: request.recipient,
-          message: JSON.stringify(request.variables), // message 필드로 수정
+          message: renderedMessage || JSON.stringify(request.variables), // 렌더링된 메시지 또는 변수
           status: result.success ? 'SENT' : 'FAILED',
           errorMessage: result.error,
           companyId: request.companyId,

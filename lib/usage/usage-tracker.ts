@@ -67,33 +67,42 @@ export class UsageTracker {
     try {
       const currentMonth = this.getCurrentMonth()
 
-      // Redis에 실시간 카운터 업데이트
-      const dailyKey = `usage:${tenantId}:${usageType}:${this.getCurrentDay()}`
-      const monthlyKey = `usage:${tenantId}:${usageType}:${currentMonth}`
-      const totalKey = `usage:${tenantId}:${usageType}:total`
+      // Redis가 설정되어 있을 때만 실시간 카운터 업데이트
+      if (redis) {
+        // Redis에 실시간 카운터 업데이트
+        const dailyKey = `usage:${tenantId}:${usageType}:${this.getCurrentDay()}`
+        const monthlyKey = `usage:${tenantId}:${usageType}:${currentMonth}`
+        const totalKey = `usage:${tenantId}:${usageType}:total`
 
-      // 파이프라인으로 한 번에 처리
-      const pipeline = redis.pipeline()
+        // 파이프라인으로 한 번에 처리
+        const pipeline = redis.pipeline()
 
-      // 일별 카운터 (7일 보관)
-      pipeline.incrby(dailyKey, amount)
-      pipeline.expire(dailyKey, 7 * 24 * 60 * 60) // 7일
+        // 일별 카운터 (7일 보관)
+        pipeline.incrby(dailyKey, amount)
+        pipeline.expire(dailyKey, 7 * 24 * 60 * 60) // 7일
 
-      // 월별 카운터 (13개월 보관)
-      pipeline.incrby(monthlyKey, amount)
-      pipeline.expire(monthlyKey, 13 * 30 * 24 * 60 * 60) // 13개월
+        // 월별 카운터 (13개월 보관)
+        pipeline.incrby(monthlyKey, amount)
+        pipeline.expire(monthlyKey, 13 * 30 * 24 * 60 * 60) // 13개월
 
-      // 전체 카운터
-      pipeline.incrby(totalKey, amount)
+        // 전체 카운터
+        pipeline.incrby(totalKey, amount)
 
-      // 최근 사용 시간 업데이트
-      pipeline.set(`usage:${tenantId}:last_activity`, Date.now())
-      pipeline.expire(`usage:${tenantId}:last_activity`, 30 * 24 * 60 * 60) // 30일
+        // 최근 사용 시간 업데이트
+        pipeline.set(`usage:${tenantId}:last_activity`, Date.now())
+        pipeline.expire(`usage:${tenantId}:last_activity`, 30 * 24 * 60 * 60) // 30일
 
-      await pipeline.exec()
+        await pipeline.exec()
+      } else {
+        logger.warn('Redis가 설정되지 않아 실시간 사용량 추적을 건너뜁니다', {
+          tenantId,
+          usageType,
+          amount,
+        })
+      }
 
-      // 메타데이터가 있는 경우 저장 (최근 100개)
-      if (metadata) {
+      // 메타데이터가 있는 경우 저장 (최근 100개) - Redis가 있을 때만
+      if (metadata && redis) {
         const metadataKey = `usage:${tenantId}:${usageType}:metadata`
         const entry = {
           timestamp: Date.now(),
