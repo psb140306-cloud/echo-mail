@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Mail, Search, Inbox, RefreshCw, Trash2, Eye, EyeOff } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
+import { AppHeader } from '@/components/layout/app-header'
 
 interface EmailItem {
   id: string
@@ -274,13 +275,15 @@ export default function MailPage() {
   }, [search])
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Mail className="h-8 w-8" />
-        <h1 className="text-3xl font-bold">메일함</h1>
-      </div>
+    <>
+      <AppHeader />
+      <div className="container mx-auto p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <Mail className="h-8 w-8" />
+          <h1 className="text-3xl font-bold">메일함</h1>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 메일 목록 */}
         <div className="lg:col-span-2">
           <Card>
@@ -591,6 +594,7 @@ export default function MailPage() {
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
