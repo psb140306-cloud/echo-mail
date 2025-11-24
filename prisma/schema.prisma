@@ -202,6 +202,16 @@ model EmailLog {
   recipient  String
   receivedAt DateTime
 
+  // 메일 본문 (메일 뷰어용)
+  body       String? @db.Text // Plain text 본문
+  bodyHtml   String? @db.Text // HTML 본문
+
+  // 메일 상태 (메일 뷰어용)
+  isRead     Boolean @default(false) // 읽음 여부
+  folder     String  @default("INBOX") // 메일함 (INBOX, SENT 등)
+  size       Int?    // 메일 크기 (bytes)
+  isOrder    Boolean @default(false) // 발주 메일 여부 (빠른 필터링용)
+
   // 첨부파일 정보
   hasAttachment Boolean @default(false)
   attachments   Json? // 첨부파일 목록
@@ -232,6 +242,9 @@ model EmailLog {
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, companyId])
+  @@index([tenantId, folder])
+  @@index([tenantId, isRead])
+  @@index([tenantId, isOrder])
   @@index([receivedAt])
   @@index([sender])
   @@index([recipient])

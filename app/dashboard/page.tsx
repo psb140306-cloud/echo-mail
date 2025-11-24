@@ -445,7 +445,7 @@ function DashboardContent() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* 업체 관리 */}
                   <Card>
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
@@ -459,6 +459,23 @@ function DashboardContent() {
                       <p className="text-sm text-muted-foreground mb-4">등록된 발주처 업체</p>
                       <Button size="sm" className="w-full" asChild>
                         <a href="/companies">업체 관리하기</a>
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* 메일함 */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+                      <Mail className="w-5 h-5 mr-2 text-green-600" />
+                      <CardTitle className="text-lg">메일함</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold mb-2">
+                        {loading ? '...' : `${stats.todayEmails || 0}건`}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">오늘 수신된 메일</p>
+                      <Button size="sm" variant="outline" className="w-full" asChild>
+                        <a href="/mail">메일함 보기</a>
                       </Button>
                     </CardContent>
                   </Card>
@@ -485,9 +502,9 @@ function DashboardContent() {
               <TabsContent value="quick-actions" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Button variant="outline" className="p-4 h-auto" asChild>
-                    <a href="/settings/subscription" className="flex flex-col items-center">
-                      <CreditCard className="w-6 h-6 mb-2" />
-                      <span>구독 및 결제 관리</span>
+                    <a href="/mail" className="flex flex-col items-center">
+                      <Mail className="w-6 h-6 mb-2" />
+                      <span>메일함</span>
                     </a>
                   </Button>
                   <Button variant="outline" className="p-4 h-auto" asChild>
@@ -506,6 +523,12 @@ function DashboardContent() {
                     <a href="/holidays" className="flex flex-col items-center">
                       <Calendar className="w-6 h-6 mb-2" />
                       <span>공휴일 관리</span>
+                    </a>
+                  </Button>
+                  <Button variant="outline" className="p-4 h-auto" asChild>
+                    <a href="/settings/subscription" className="flex flex-col items-center">
+                      <CreditCard className="w-6 h-6 mb-2" />
+                      <span>구독 및 결제 관리</span>
                     </a>
                   </Button>
                 </div>

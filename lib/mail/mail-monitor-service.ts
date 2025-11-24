@@ -132,13 +132,18 @@ export class MailMonitorService {
 
         logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 등록된 업체 ${registeredEmails.length}개`)
 
-        // 등록된 업체 이메일에서 온 읽지 않은 메일만 검색
+        // 등록된 업체 이메일에서 온 오늘 도착한 메일 검색 (읽음/읽지않음 무관)
         logger.info(`[MailMonitor] 검색할 이메일 목록:`, { emails: registeredEmails })
+
+        // 오늘 00:00부터 검색
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
         const messages = []
         for (const email of registeredEmails) {
           try {
             const searchCriteria = {
-              unseen: true,
+              since: today,
               from: email,
             }
 
@@ -238,24 +243,49 @@ export class MailMonitorService {
       date,
     })
 
+    let emailLogId: string | undefined
+
     try {
-      // 중복 이메일 체크 (Message-ID 기반)
+      // 중복 이메일 체크 (Message-ID 기반 + 알림 발송 여부 확인)
       const existingEmail = await prisma.emailLog.findFirst({
         where: {
           messageId: messageIdHeader,
           tenantId,
         },
+        include: {
+          notifications: true, // 알림 기록 포함
+        },
       })
 
       if (existingEmail) {
-        logger.warn('[MailMonitor] 이미 처리된 이메일 - 스킵', {
-          messageId: messageIdHeader,
-          existingLogId: existingEmail.id,
-          processedAt: existingEmail.createdAt,
-        })
-        // 이미 처리된 메일도 읽음 처리
-        await this.safeMarkAsRead(client, message.uid)
-        return
+        // 발송 성공한 알림이 있는지 확인
+        const hasSuccessfulNotification = existingEmail.notifications.some(
+          (n) => n.status === 'SENT' || n.status === 'DELIVERED'
+        )
+
+        if (hasSuccessfulNotification) {
+          // 알림 발송 완료 → 스킵
+          logger.info('[중복 방지] 알림 발송 완료된 메일', {
+            messageId: messageIdHeader,
+            existingLogId: existingEmail.id,
+            sentAt: existingEmail.notifications[0].createdAt,
+          })
+
+          // 설정에 따라 읽음 처리
+          const mailConfig = await this.getMailConfig(tenantId)
+          if (mailConfig.autoMarkAsRead) {
+            await this.safeMarkAsRead(client, message.uid)
+          }
+          return
+        } else {
+          // 알림 미발송 → 재처리
+          logger.info('[재시도] 알림 미발송 메일 재처리', {
+            messageId: messageIdHeader,
+            existingLogId: existingEmail.id,
+            previousAttempts: existingEmail.notifications.length,
+          })
+          emailLogId = existingEmail.id // 기존 EmailLog 재사용
+        }
       }
       // 메일 파싱하여 업체 정보 추출
       const emailContent = message.source?.toString() || ''
@@ -272,8 +302,11 @@ export class MailMonitorService {
           uid: message.uid,
           subject,
         })
-        // 읽음 처리
-        await this.safeMarkAsRead(client, message.uid)
+        // 설정에 따라 읽음 처리
+        const mailConfig = await this.getMailConfig(tenantId)
+        if (mailConfig.autoMarkAsRead) {
+          await this.safeMarkAsRead(client, message.uid)
+        }
         return
       }
 
@@ -286,8 +319,11 @@ export class MailMonitorService {
           from: from?.address,
           companyName: parsedData.companyName,
         })
-        // 읽음 처리
-        await this.safeMarkAsRead(client, message.uid)
+        // 설정에 따라 읽음 처리
+        const mailConfig = await this.getMailConfig(tenantId)
+        if (mailConfig.autoMarkAsRead) {
+          await this.safeMarkAsRead(client, message.uid)
+        }
         return
       }
 
@@ -297,19 +333,47 @@ export class MailMonitorService {
         emailReceivedAt: date,
       })
 
-      // EmailLog 생성 (중복 발송 방지용)
-      const emailLog = await prisma.emailLog.create({
-        data: {
-          messageId: messageIdHeader, // 실제 Message-ID 사용
-          sender: from?.address || '',
-          recipient: '', // IMAP에서는 수신자 정보 없음
-          subject: subject || '',
-          receivedAt: date,
-          status: 'MATCHED',
-          companyId: company.id,
-          tenantId,
-        },
-      })
+      // EmailLog 생성 (재처리가 아닌 경우만)
+      let emailLog
+      if (emailLogId) {
+        // 재처리: 기존 EmailLog 사용
+        emailLog = await prisma.emailLog.findUnique({
+          where: { id: emailLogId },
+        })
+        logger.info('[MailMonitor] 기존 EmailLog 재사용', {
+          emailLogId,
+        })
+      } else {
+        // 신규: EmailLog 생성
+        // 메일 본문 추출
+        const emailBody = message.source?.toString() || emailContent
+        const bodyPlain = this.extractPlainText(emailBody)
+        const bodyHtml = this.extractHtmlBody(emailBody)
+        const emailSize = message.size || emailBody.length
+
+        emailLog = await prisma.emailLog.create({
+          data: {
+            messageId: messageIdHeader, // 실제 Message-ID 사용
+            sender: from?.address || '',
+            recipient: '', // IMAP에서는 수신자 정보 없음
+            subject: subject || '',
+            receivedAt: date,
+            body: bodyPlain, // Plain text 본문
+            bodyHtml: bodyHtml, // HTML 본문
+            isRead: false, // 새 메일은 읽지 않음
+            folder: 'INBOX', // 기본 메일함
+            size: emailSize, // 메일 크기
+            isOrder: parsedData.isOrderEmail, // 발주 메일 여부
+            status: 'MATCHED',
+            companyId: company.id,
+            tenantId,
+          },
+        })
+      }
+
+      if (!emailLog) {
+        throw new Error('EmailLog를 찾을 수 없습니다')
+      }
 
       // 알림 발송 (재시도 로직) - 이메일 수신 시간 및 로그 ID 전달
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -345,8 +409,14 @@ export class MailMonitorService {
             })
           }
 
-          // 알림 발송 성공 시 읽음 처리
-          await this.safeMarkAsRead(client, message.uid)
+          // 알림 발송 성공 시 설정에 따라 읽음 처리
+          const mailConfig = await this.getMailConfig(tenantId)
+          if (mailConfig.autoMarkAsRead) {
+            await this.safeMarkAsRead(client, message.uid)
+            logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
+          } else {
+            logger.info('[MailMonitor] 자동 읽음 처리 비활성화 - 스킵', { uid: message.uid })
+          }
           return
         } catch (error) {
           lastError = error instanceof Error ? error : new Error('알림 발송 실패')
@@ -364,8 +434,11 @@ export class MailMonitorService {
       throw lastError || new Error('알림 발송 실패')
     } catch (error) {
       logger.error('[MailMonitor] 메일 처리 최종 실패:', error)
-      // 에러 발생 시에도 읽음 처리하여 무한 루프 방지
-      await this.safeMarkAsRead(client, message.uid)
+      // 에러 발생 시에도 읽음 처리하여 무한 루프 방지 (설정에 따라)
+      const mailConfig = await this.getMailConfig(tenantId)
+      if (mailConfig.autoMarkAsRead) {
+        await this.safeMarkAsRead(client, message.uid)
+      }
       throw error
     }
   }
@@ -522,6 +595,24 @@ export class MailMonitorService {
   }
 
   /**
+   * 테넌트의 메일 설정 조회 (autoMarkAsRead 포함)
+   */
+  private async getMailConfig(tenantId: string): Promise<{
+    autoMarkAsRead: boolean
+  }> {
+    const config = await prisma.systemConfig.findFirst({
+      where: {
+        tenantId,
+        key: 'mailServer.autoMarkAsRead',
+      },
+    })
+
+    return {
+      autoMarkAsRead: config ? JSON.parse(config.value) : true, // 기본값 true
+    }
+  }
+
+  /**
    * 활성화된 테넌트의 메일 설정 조회
    */
   private async getActiveTenantConfigs(): Promise<TenantMailConfig[]> {
@@ -585,6 +676,70 @@ export class MailMonitorService {
     return {
       isRunning: this.isRunning,
       lastCheckTimes: Object.fromEntries(this.lastCheckTimes),
+    }
+  }
+
+  /**
+   * 메일 본문에서 Plain Text 추출
+   */
+  private extractPlainText(emailBody: string): string | null {
+    try {
+      // Content-Type: text/plain 부분 찾기
+      const plainTextMatch = emailBody.match(/Content-Type:\s*text\/plain[\s\S]*?\n\n([\s\S]*?)(?=\n--|\nContent-Type:|$)/i)
+      if (plainTextMatch && plainTextMatch[1]) {
+        // Base64 디코딩이 필요한지 확인
+        if (emailBody.includes('Content-Transfer-Encoding: base64')) {
+          try {
+            return Buffer.from(plainTextMatch[1].trim(), 'base64').toString('utf-8')
+          } catch {
+            return plainTextMatch[1].trim()
+          }
+        }
+        return plainTextMatch[1].trim()
+      }
+
+      // HTML이 있고 plain text가 없으면 HTML에서 텍스트 추출
+      const htmlBody = this.extractHtmlBody(emailBody)
+      if (htmlBody) {
+        return htmlBody.replace(/<[^>]*>/g, '').trim()
+      }
+
+      // 최후의 수단: 전체 본문에서 헤더 제거
+      const bodyStart = emailBody.indexOf('\n\n')
+      if (bodyStart > -1) {
+        return emailBody.substring(bodyStart + 2).trim()
+      }
+
+      return null
+    } catch (error) {
+      logger.error('Plain text 추출 실패:', error)
+      return null
+    }
+  }
+
+  /**
+   * 메일 본문에서 HTML 추출
+   */
+  private extractHtmlBody(emailBody: string): string | null {
+    try {
+      // Content-Type: text/html 부분 찾기
+      const htmlMatch = emailBody.match(/Content-Type:\s*text\/html[\s\S]*?\n\n([\s\S]*?)(?=\n--|\nContent-Type:|$)/i)
+      if (htmlMatch && htmlMatch[1]) {
+        // Base64 디코딩이 필요한지 확인
+        if (emailBody.includes('Content-Transfer-Encoding: base64')) {
+          try {
+            return Buffer.from(htmlMatch[1].trim(), 'base64').toString('utf-8')
+          } catch {
+            return htmlMatch[1].trim()
+          }
+        }
+        return htmlMatch[1].trim()
+      }
+
+      return null
+    } catch (error) {
+      logger.error('HTML 추출 실패:', error)
+      return null
     }
   }
 }
