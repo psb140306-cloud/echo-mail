@@ -228,8 +228,9 @@ export class MailMonitorService {
     const maxRetries = 3
     let lastError: Error | null = null
 
-    // 실제 Message-ID 헤더 추출
-    const messageIdHeader = message.headers?.['message-id']?.[0] || `uid-${message.uid}-${Date.now()}`
+    // 실제 Message-ID 헤더 추출 (없으면 tenantId-uid-수신시간 조합으로 고유 ID 생성)
+    const messageIdHeader = message.headers?.['message-id']?.[0] ||
+      `${tenantId}-uid-${message.uid}-${date.getTime()}`
 
     logger.info('[MailMonitor] 메일 처리 시작', {
       tenantId,
