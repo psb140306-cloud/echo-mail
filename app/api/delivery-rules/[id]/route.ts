@@ -30,11 +30,46 @@ const updateDeliveryRuleSchema = z.object({
     .optional(),
   beforeCutoffDeliveryTime: z.enum(['오전', '오후', '미정']).optional(),
   afterCutoffDeliveryTime: z.enum(['오전', '오후', '미정']).optional(),
+  // 2차 마감 설정
+  cutoffCount: z.number().int().min(1).max(2).optional(),
+  secondCutoffTime: z
+    .string()
+    .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)')
+    .optional(),
+  afterSecondCutoffDays: z
+    .number()
+    .int()
+    .min(0, '배송일은 0 이상이어야 합니다')
+    .max(14, '배송일은 14일 이하여야 합니다')
+    .optional(),
+  afterSecondCutoffDeliveryTime: z.enum(['오전', '오후', '미정']).optional(),
   workingDays: z.array(z.string()).min(1, '최소 1개 이상의 영업일을 선택해야 합니다').optional(),
   customClosedDates: z.array(z.string()).optional(),
   excludeHolidays: z.boolean().optional(),
   isActive: z.boolean().optional(),
-})
+}).refine(
+  (data) => {
+    if (data.cutoffCount === 2) {
+      return !!data.secondCutoffTime && data.afterSecondCutoffDays !== undefined
+    }
+    return true
+  },
+  {
+    message: '2차 마감 설정 시 2차 마감 시간과 배송일은 필수입니다',
+    path: ['secondCutoffTime'],
+  }
+).refine(
+  (data) => {
+    if (data.cutoffCount === 2 && data.secondCutoffTime && data.cutoffTime) {
+      return parseTime(data.secondCutoffTime) > parseTime(data.cutoffTime)
+    }
+    return true
+  },
+  {
+    message: '2차 마감 시간은 1차 마감 시간보다 늦어야 합니다',
+    path: ['secondCutoffTime'],
+  }
+)
 
 interface RouteParams {
   params: {

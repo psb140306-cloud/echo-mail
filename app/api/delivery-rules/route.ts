@@ -1,15 +1,15 @@
-import { NextRequest } from 'next/server'
 import { prisma, TenantContext } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
-import { z } from 'zod'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
 import {
-  createErrorResponse,
-  createSuccessResponse,
-  createPaginatedResponse,
-  parseAndValidate,
+    createErrorResponse,
+    createPaginatedResponse,
+    createSuccessResponse,
+    parseAndValidate,
 } from '@/lib/utils/validation'
-import { withTenantContext } from '@/lib/middleware/tenant-context'
+import type { Prisma } from '@prisma/client'
+import { NextRequest } from 'next/server'
+import { z } from 'zod'
 
 // 납품 규칙 생성 스키마
 const createDeliveryRuleSchema = z.object({
@@ -33,7 +33,42 @@ const createDeliveryRuleSchema = z.object({
   customClosedDates: z.array(z.string()).optional(),
   excludeHolidays: z.boolean().optional(),
   isActive: z.boolean().optional(),
-})
+  // 2차 마감 설정
+  cutoffCount: z.number().int().min(1).max(2).optional(),
+  secondCutoffTime: z
+    .string()
+    .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, '올바른 시간 형식이 아닙니다 (HH:MM)')
+    .optional(),
+  afterSecondCutoffDays: z
+    .number()
+    .int()
+    .min(0, '배송일은 0 이상이어야 합니다')
+    .max(14, '배송일은 14일 이하여야 합니다')
+    .optional(),
+  afterSecondCutoffDeliveryTime: z.enum(['오전', '오후', '미정']).optional(),
+}).refine(
+  (data) => {
+    if (data.cutoffCount === 2) {
+      return !!data.secondCutoffTime && data.afterSecondCutoffDays !== undefined
+    }
+    return true
+  },
+  {
+    message: '2차 마감 설정 시 2차 마감 시간과 배송일은 필수입니다',
+    path: ['secondCutoffTime'],
+  }
+).refine(
+  (data) => {
+    if (data.cutoffCount === 2 && data.secondCutoffTime) {
+      return parseTime(data.secondCutoffTime) > parseTime(data.cutoffTime)
+    }
+    return true
+  },
+  {
+    message: '2차 마감 시간은 1차 마감 시간보다 늦어야 합니다',
+    path: ['secondCutoffTime'],
+  }
+)
 
 // 납품 규칙 목록 조회
 export async function GET(request: NextRequest) {
@@ -143,6 +178,11 @@ export async function POST(request: NextRequest) {
           excludeHolidays: data.excludeHolidays ?? true,
           isActive: data.isActive ?? true,
           tenantId, // 테넌트 ID 추가
+          // 2차 마감 설정
+          cutoffCount: data.cutoffCount || 1,
+          secondCutoffTime: data.secondCutoffTime,
+          afterSecondCutoffDays: data.afterSecondCutoffDays,
+          afterSecondCutoffDeliveryTime: data.afterSecondCutoffDeliveryTime,
         },
       })
 

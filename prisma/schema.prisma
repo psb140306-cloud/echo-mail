@@ -98,6 +98,12 @@ model DeliveryRule {
   beforeCutoffDeliveryTime String @default("오전") // 마감 전 주문 배송 시간 ("오전" or "오후")
   afterCutoffDeliveryTime  String @default("오후") // 마감 후 주문 배송 시간 ("오전" or "오후")
 
+  // 2차 마감 설정 (옵션)
+  cutoffCount               Int     @default(1) // 마감 횟수 (1 or 2)
+  secondCutoffTime          String? // 2차 마감 시간 (HH:mm)
+  afterSecondCutoffDays     Int?    // 2차 마감 후 주문 -> N일 후
+  afterSecondCutoffDeliveryTime String? // 2차 마감 후 주문 배송 시간 ("오전" or "오후")
+
   // 영업일 설정 (유연한 휴무일 관리)
   workingDays       String[] @default(["1", "2", "3", "4", "5"]) // 영업 요일 (0=일요일, 6=토요일)
   customClosedDates String[] @default([]) // 커스텀 휴무일 (YYYY-MM-DD 형식)

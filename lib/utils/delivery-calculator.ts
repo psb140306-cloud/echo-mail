@@ -84,14 +84,86 @@ export class DeliveryCalculator {
       const orderTime = kstComponents.hours * 60 + kstComponents.minutes
       const cutoffTime = this.parseTime(rule.cutoffTime)
 
-      // 마감 전/후 판단 (마감시간 정각은 마감 후로 처리)
-      const isBeforeCutoff = orderTime < cutoffTime
-      const deliveryDays = isBeforeCutoff ? rule.beforeCutoffDays : rule.afterCutoffDays
-      const deliveryTime = isBeforeCutoff ? rule.beforeCutoffDeliveryTime : rule.afterCutoffDeliveryTime
+      // 1. 주문일이 영업일인지 확인
+      const isHoliday =
+        (rule.excludeHolidays &&
+          (await this.isHoliday(options.orderDateTime, options.customHolidays, options.tenantId))) ||
+        false
+      const isWeekend = this.isWeekendKST(options.orderDateTime)
+      const dayOfWeek = new Date(
+        kstComponents.year,
+        kstComponents.month,
+        kstComponents.day
+      ).getDay().toString()
+      const isWorkingDay =
+        !isHoliday &&
+        !rule.customClosedDates.includes(this.formatDateKST(options.orderDateTime)) &&
+        rule.workingDays.includes(dayOfWeek)
+
+      let baseDate = options.orderDateTime
+      let isBeforeCutoff = false
+
+      if (!isWorkingDay) {
+        // 휴무일인 경우: 다음 영업일을 기준일로 설정하고, 마감 전으로 처리
+        baseDate = await this.getNextBusinessDay(options.orderDateTime, rule, options.tenantId)
+        logger.info('휴무일 주문 - 다음 영업일로 이월', {
+          originalDate: this.formatDateKST(options.orderDateTime),
+          nextBusinessDay: this.formatDateKST(baseDate),
+        })
+      }
+
+      // 배송일수 및 시간 결정
+      let deliveryDays: number
+      let deliveryTime: string
+
+      if (rule.cutoffCount === 2 && rule.secondCutoffTime) {
+        // 2차 마감 설정이 있는 경우
+        const secondCutoffTime = this.parseTime(rule.secondCutoffTime)
+
+        if (!isWorkingDay) {
+          // 휴무일인 경우: 다음 영업일 00:00 기준이므로 무조건 1차 마감 전
+          isBeforeCutoff = true
+          deliveryDays = rule.beforeCutoffDays
+          deliveryTime = rule.beforeCutoffDeliveryTime
+        } else if (orderTime < cutoffTime) {
+          // 영업일 1차 마감 전
+          isBeforeCutoff = true
+          deliveryDays = rule.beforeCutoffDays
+          deliveryTime = rule.beforeCutoffDeliveryTime
+        } else if (orderTime < secondCutoffTime) {
+          // 1차 마감 후 ~ 2차 마감 전
+          isBeforeCutoff = true // 2차 마감 기준으로는 전임
+          deliveryDays = rule.afterCutoffDays
+          deliveryTime = rule.afterCutoffDeliveryTime
+        } else {
+          // 2차 마감 후
+          isBeforeCutoff = false
+          deliveryDays = rule.afterSecondCutoffDays ?? rule.afterCutoffDays + 1
+          deliveryTime = rule.afterSecondCutoffDeliveryTime ?? rule.afterCutoffDeliveryTime
+        }
+      } else {
+        // 기존 1차 마감 로직
+        if (!isWorkingDay) {
+          // 휴무일인 경우: 다음 영업일 00:00 기준이므로 무조건 마감 전
+          isBeforeCutoff = true
+          deliveryDays = rule.beforeCutoffDays
+          deliveryTime = rule.beforeCutoffDeliveryTime
+        } else if (orderTime < cutoffTime) {
+          // 영업일 마감 전
+          isBeforeCutoff = true
+          deliveryDays = rule.beforeCutoffDays
+          deliveryTime = rule.beforeCutoffDeliveryTime
+        } else {
+          // 영업일 마감 후
+          isBeforeCutoff = false
+          deliveryDays = rule.afterCutoffDays
+          deliveryTime = rule.afterCutoffDeliveryTime
+        }
+      }
 
       // 영업일 기준으로 배송일 계산
       const deliveryDate = await this.calculateBusinessDate(
-        options.orderDateTime,
+        baseDate,
         deliveryDays,
         rule,
         options.tenantId
@@ -116,9 +188,8 @@ export class DeliveryCalculator {
       logger.info('납품일 계산 완료', {
         region: options.region,
         orderTime: options.orderDateTime.toISOString(),
-        orderMinutes: orderTime,
-        cutoffTime: rule.cutoffTime,
-        cutoffMinutes: cutoffTime,
+        isWorkingDay,
+        baseDate: this.formatDateKST(baseDate),
         isBeforeCutoff,
         deliveryDate: result.deliveryDate.toISOString(),
         businessDaysUsed: result.businessDaysUsed,
@@ -321,24 +392,60 @@ export class DeliveryCalculator {
   }
 
   /**
+   * 특정 날짜가 영업일인지 확인
+   */
+  private async isBusinessDay(date: Date, rule: any, tenantId?: string): Promise<boolean> {
+    const kstComponents = this.getKSTComponents(date)
+    const kstDate = new Date(kstComponents.year, kstComponents.month, kstComponents.day)
+    const dayOfWeek = kstDate.getDay().toString()
+    const dateString = this.formatDateKST(date)
+
+    // 1. 영업 요일 확인
+    if (rule.workingDays && !rule.workingDays.includes(dayOfWeek)) {
+      return false
+    }
+
+    // 2. 커스텀 휴무일 확인
+    if (rule.customClosedDates && rule.customClosedDates.includes(dateString)) {
+      return false
+    }
+
+    // 3. 공휴일 확인
+    if (rule.excludeHolidays && (await this.isHoliday(date, undefined, tenantId))) {
+      return false
+    }
+
+    return true
+  }
+
+  /**
    * 다음 영업일 조회 (한국 시간대 기준)
    */
-  async getNextBusinessDay(date: Date, excludeWeekends: boolean = true): Promise<Date> {
+  async getNextBusinessDay(date: Date, rule?: any, tenantId?: string): Promise<Date> {
     let nextDay = this.toKST(date)
     nextDay.setDate(nextDay.getDate() + 1)
 
-    while (true) {
-      if (excludeWeekends && this.isWeekendKST(nextDay)) {
-        nextDay.setDate(nextDay.getDate() + 1)
-        continue
-      }
+    // 규칙이 없으면 기본 주말/공휴일 제외 로직 사용 (하위 호환성)
+    if (!rule) {
+      while (true) {
+        if (this.isWeekendKST(nextDay)) {
+          nextDay.setDate(nextDay.getDate() + 1)
+          continue
+        }
 
-      if (await this.isHoliday(nextDay)) {
-        nextDay.setDate(nextDay.getDate() + 1)
-        continue
-      }
+        if (await this.isHoliday(nextDay, undefined, tenantId)) {
+          nextDay.setDate(nextDay.getDate() + 1)
+          continue
+        }
 
-      break
+        break
+      }
+      return nextDay
+    }
+
+    // 규칙이 있으면 정교한 로직 사용
+    while (!(await this.isBusinessDay(nextDay, rule, tenantId))) {
+      nextDay.setDate(nextDay.getDate() + 1)
     }
 
     return nextDay
