@@ -135,15 +135,12 @@ export class MailMonitorService {
         // 등록된 업체 이메일에서 온 오늘 도착한 메일 검색 (읽음/읽지않음 무관)
         logger.info(`[MailMonitor] 검색할 이메일 목록:`, { emails: registeredEmails })
 
-        // 오늘 00:00부터 검색
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
+        // 읽지 않은 메일만 검색 (중복 방지)
         const messages = []
         for (const email of registeredEmails) {
           try {
             const searchCriteria = {
-              since: today,
+              unseen: true, // 읽지 않은 메일만
               from: email,
             }
 
@@ -264,18 +261,15 @@ export class MailMonitorService {
         )
 
         if (hasSuccessfulNotification) {
-          // 알림 발송 완료 → 스킵
+          // 알림 발송 완료 → 스킵 및 무조건 읽음 처리
           logger.info('[중복 방지] 알림 발송 완료된 메일', {
             messageId: messageIdHeader,
             existingLogId: existingEmail.id,
             sentAt: existingEmail.notifications[0].createdAt,
           })
 
-          // 설정에 따라 읽음 처리
-          const mailConfig = await this.getMailConfig(tenantId)
-          if (mailConfig.autoMarkAsRead) {
-            await this.safeMarkAsRead(client, message.uid)
-          }
+          // 무조건 읽음 처리 (재검색 방지)
+          await this.safeMarkAsRead(client, message.uid)
           return
         } else {
           // 알림 미발송 → 재처리
@@ -302,11 +296,8 @@ export class MailMonitorService {
           uid: message.uid,
           subject,
         })
-        // 설정에 따라 읽음 처리
-        const mailConfig = await this.getMailConfig(tenantId)
-        if (mailConfig.autoMarkAsRead) {
-          await this.safeMarkAsRead(client, message.uid)
-        }
+        // 무조건 읽음 처리 (재검색 방지)
+        await this.safeMarkAsRead(client, message.uid)
         return
       }
 
@@ -319,11 +310,8 @@ export class MailMonitorService {
           from: from?.address,
           companyName: parsedData.companyName,
         })
-        // 설정에 따라 읽음 처리
-        const mailConfig = await this.getMailConfig(tenantId)
-        if (mailConfig.autoMarkAsRead) {
-          await this.safeMarkAsRead(client, message.uid)
-        }
+        // 무조건 읽음 처리 (재검색 방지)
+        await this.safeMarkAsRead(client, message.uid)
         return
       }
 
@@ -409,14 +397,9 @@ export class MailMonitorService {
             })
           }
 
-          // 알림 발송 성공 시 설정에 따라 읽음 처리
-          const mailConfig = await this.getMailConfig(tenantId)
-          if (mailConfig.autoMarkAsRead) {
-            await this.safeMarkAsRead(client, message.uid)
-            logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
-          } else {
-            logger.info('[MailMonitor] 자동 읽음 처리 비활성화 - 스킵', { uid: message.uid })
-          }
+          // 알림 발송 성공 시 무조건 읽음 처리 (중복 방지)
+          await this.safeMarkAsRead(client, message.uid)
+          logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
           return
         } catch (error) {
           lastError = error instanceof Error ? error : new Error('알림 발송 실패')
@@ -434,11 +417,8 @@ export class MailMonitorService {
       throw lastError || new Error('알림 발송 실패')
     } catch (error) {
       logger.error('[MailMonitor] 메일 처리 최종 실패:', error)
-      // 에러 발생 시에도 읽음 처리하여 무한 루프 방지 (설정에 따라)
-      const mailConfig = await this.getMailConfig(tenantId)
-      if (mailConfig.autoMarkAsRead) {
-        await this.safeMarkAsRead(client, message.uid)
-      }
+      // 에러 발생 시에도 무조건 읽음 처리하여 무한 루프 방지
+      await this.safeMarkAsRead(client, message.uid)
       throw error
     }
   }

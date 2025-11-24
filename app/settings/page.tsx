@@ -38,6 +38,7 @@ interface TenantSettings {
     useSSL: boolean
     checkInterval: number
     enabled: boolean
+    autoMarkAsRead: boolean
   }
   notification: {
     defaultSMSEnabled: boolean
@@ -64,6 +65,7 @@ export default function SettingsPage() {
       useSSL: true,
       checkInterval: 5,
       enabled: false,
+      autoMarkAsRead: true,
     },
     notification: {
       defaultSMSEnabled: true,
@@ -367,6 +369,25 @@ export default function SettingsPage() {
                     }
                   />
                   <Label htmlFor="use-ssl">SSL/TLS 사용</Label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="auto-mark-as-read">처리 완료 후 자동 읽음 처리</Label>
+                    <p className="text-sm text-muted-foreground">
+                      메시지 발송 후 메일을 자동으로 읽음 상태로 변경합니다
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto-mark-as-read"
+                    checked={settings.mailServer.autoMarkAsRead}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        mailServer: { ...settings.mailServer, autoMarkAsRead: checked },
+                      })
+                    }
+                  />
                 </div>
 
                 <Separator />

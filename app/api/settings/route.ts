@@ -21,6 +21,7 @@ const settingsSchema = z.object({
       useSSL: z.boolean(),
       checkInterval: z.number(),
       enabled: z.boolean(),
+      autoMarkAsRead: z.boolean(),
     })
     .optional(),
   sms: z
@@ -69,6 +70,7 @@ const defaultSettings = {
     useSSL: true,
     checkInterval: 5,
     enabled: false,
+    autoMarkAsRead: true,
   },
   sms: {
     provider: 'aligo',

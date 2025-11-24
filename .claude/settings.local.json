@@ -44,7 +44,13 @@
       "Bash(vercel logs:*)",
       "Bash(npx prisma:*)",
       "Bash(xargs cat:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(dir:*)",
+      "Bash(railway login:*)",
+      "Bash(railway:*)",
+      "Bash(export RAILWAY_TOKEN=7f364b85-3b35-4c98-afcc-a320277ed111)",
+      "Bash(set RAILWAY_TOKEN=7f364b85-3b35-4c98-afcc-a320277ed111)",
+      "Bash(manual_migration.sql)"
     ],
     "deny": [],
     "ask": []
