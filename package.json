@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "build": "prisma generate && next build",
     "vercel-build": "prisma migrate deploy && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -28,6 +28,7 @@
     "test:performance:bulk": "jest __tests__/performance/bulk-email-processing.test.ts --runInBand --forceExit",
     "test:performance:concurrency": "jest __tests__/performance/concurrency.test.ts --runInBand --forceExit",
     "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
