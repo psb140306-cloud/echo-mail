@@ -16,8 +16,8 @@ coverage
 .env.local
 .env.development.local
 
-# Logs
-logs
+# Logs (루트 폴더만 제외, app/api/notifications/logs는 포함)
+/logs
 *.log
 
 # OS files
