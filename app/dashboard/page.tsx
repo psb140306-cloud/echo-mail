@@ -380,61 +380,61 @@ function DashboardContent() {
                 {/* 1행: 사용량 카드 (이메일/SMS/카카오톡) */}
                 <div className="grid grid-cols-3 gap-4">
                   {/* 이메일 처리 (월간) */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-blue-200 dark:border-blue-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Mail className="w-5 h-5 mr-2 text-blue-600" />
                       <CardTitle className="text-lg">이메일 처리</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <div>
-                        <div className="text-2xl font-bold mb-1">
+                        <div className="text-2xl font-bold mb-2">
                           {loading ? '...' : usage?.email.current.toLocaleString() || '0'}
                         </div>
                         <p className="text-sm text-muted-foreground">/ {usage?.email.limit.toLocaleString() || '1,000'}건 (월간)</p>
                       </div>
                       <div>
                         <Progress value={usage?.email.percentage || 0} className="h-1.5" />
-                        <p className="text-xs text-muted-foreground mt-1">{usage?.email.percentage?.toFixed(1) || '0'}% 사용</p>
+                        <p className="text-xs text-muted-foreground mt-1.5">{usage?.email.percentage?.toFixed(1) || '0'}% 사용</p>
                       </div>
                     </CardContent>
                   </Card>
 
                   {/* SMS 발송 (월간) */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-blue-200 dark:border-blue-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Smartphone className="w-5 h-5 mr-2 text-green-600" />
                       <CardTitle className="text-lg">SMS 발송</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <div>
-                        <div className="text-2xl font-bold mb-1">
+                        <div className="text-2xl font-bold mb-2">
                           {loading ? '...' : usage?.sms.current.toLocaleString() || '0'}
                         </div>
                         <p className="text-sm text-muted-foreground">/ {usage?.sms.limit.toLocaleString() || '500'}건 (월간)</p>
                       </div>
                       <div>
                         <Progress value={usage?.sms.percentage || 0} className="h-1.5" />
-                        <p className="text-xs text-muted-foreground mt-1">{usage?.sms.percentage?.toFixed(1) || '0'}% 사용</p>
+                        <p className="text-xs text-muted-foreground mt-1.5">{usage?.sms.percentage?.toFixed(1) || '0'}% 사용</p>
                       </div>
                     </CardContent>
                   </Card>
 
                   {/* 카카오톡 발송 (월간) */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-blue-200 dark:border-blue-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <MessageSquare className="w-5 h-5 mr-2 text-yellow-600" />
                       <CardTitle className="text-lg">카카오톡</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <div>
-                        <div className="text-2xl font-bold mb-1">
+                        <div className="text-2xl font-bold mb-2">
                           {loading ? '...' : usage?.kakao.current.toLocaleString() || '0'}
                         </div>
                         <p className="text-sm text-muted-foreground">/ {usage?.kakao.limit.toLocaleString() || '300'}건 (월간)</p>
                       </div>
                       <div>
                         <Progress value={usage?.kakao.percentage || 0} className="h-1.5" />
-                        <p className="text-xs text-muted-foreground mt-1">{usage?.kakao.percentage?.toFixed(1) || '0'}% 사용</p>
+                        <p className="text-xs text-muted-foreground mt-1.5">{usage?.kakao.percentage?.toFixed(1) || '0'}% 사용</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -443,57 +443,57 @@ function DashboardContent() {
                 {/* 2행: 현황 카드 (업체 관리/메일함/알림 현황) */}
                 <div className="grid grid-cols-3 gap-4">
                   {/* 업체 관리 */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-green-200 dark:border-green-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Building className="w-5 h-5 mr-2 text-blue-600" />
                       <CardTitle className="text-lg">업체 관리</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <div>
-                        <div className="text-2xl font-bold mb-1">
+                        <div className="text-2xl font-bold mb-2">
                           {loading ? '...' : `${stats.companies}개`}
                         </div>
                         <p className="text-sm text-muted-foreground">등록된 발주처 업체</p>
                       </div>
-                      <Button size="sm" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/companies">업체 관리하기</a>
                       </Button>
                     </CardContent>
                   </Card>
 
                   {/* 메일함 (오늘) */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-green-200 dark:border-green-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Mail className="w-5 h-5 mr-2 text-green-600" />
                       <CardTitle className="text-lg">메일함 (오늘)</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <div>
-                        <div className="text-2xl font-bold mb-1">
+                        <div className="text-2xl font-bold mb-2">
                           {loading ? '...' : `${stats.todayEmails || 0}건`}
                         </div>
                         <p className="text-sm text-muted-foreground">오늘 수신된 메일</p>
                       </div>
-                      <Button size="sm" variant="outline" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/mail">메일함 보기</a>
                       </Button>
                     </CardContent>
                   </Card>
 
                   {/* 알림 현황 (오늘) */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-green-200 dark:border-green-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Bell className="w-5 h-5 mr-2 text-orange-600" />
                       <CardTitle className="text-lg">알림 현황 (오늘)</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <div>
-                        <div className="text-2xl font-bold mb-1">
+                        <div className="text-2xl font-bold mb-2">
                           {loading ? '...' : `${stats.todayNotifications}건`}
                         </div>
                         <p className="text-sm text-muted-foreground">오늘 발송된 알림</p>
                       </div>
-                      <Button size="sm" variant="outline" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/notifications">알림 관리</a>
                       </Button>
                     </CardContent>
@@ -503,42 +503,42 @@ function DashboardContent() {
                 {/* 3행: 바로가기 카드 (새 업체 등록/배송 규칙/공휴일 관리) */}
                 <div className="grid grid-cols-3 gap-4">
                   {/* 새 업체 등록 */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-purple-200 dark:border-purple-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Building className="w-5 h-5 mr-2 text-indigo-600" />
                       <CardTitle className="text-lg">새 업체 등록</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <p className="text-sm text-muted-foreground">새로운 발주처 업체를 등록합니다</p>
-                      <Button size="sm" variant="outline" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/companies/new">업체 등록하기</a>
                       </Button>
                     </CardContent>
                   </Card>
 
                   {/* 배송 규칙 설정 */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-purple-200 dark:border-purple-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Calendar className="w-5 h-5 mr-2 text-purple-600" />
                       <CardTitle className="text-lg">배송 규칙 설정</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <p className="text-sm text-muted-foreground">배송일 계산 규칙을 설정합니다</p>
-                      <Button size="sm" variant="outline" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/delivery-rules">규칙 설정하기</a>
                       </Button>
                     </CardContent>
                   </Card>
 
                   {/* 공휴일 관리 */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-purple-200 dark:border-purple-800">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <CalendarDays className="w-5 h-5 mr-2 text-red-600" />
                       <CardTitle className="text-lg">공휴일 관리</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <p className="text-sm text-muted-foreground">공휴일 및 휴무일을 관리합니다</p>
-                      <Button size="sm" variant="outline" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/holidays">공휴일 관리</a>
                       </Button>
                     </CardContent>
@@ -548,42 +548,42 @@ function DashboardContent() {
                 {/* 4행: 설정 카드 (구독/결제/팀 관리/시스템 설정) */}
                 <div className="grid grid-cols-3 gap-4">
                   {/* 구독 및 결제 관리 */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-gray-300 dark:border-gray-600">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <CreditCard className="w-5 h-5 mr-2 text-emerald-600" />
                       <CardTitle className="text-lg">구독/결제 관리</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <p className="text-sm text-muted-foreground">구독 플랜과 결제를 관리합니다</p>
-                      <Button size="sm" variant="outline" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/settings/subscription">구독 관리</a>
                       </Button>
                     </CardContent>
                   </Card>
 
                   {/* 팀 관리 */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-gray-300 dark:border-gray-600">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Users className="w-5 h-5 mr-2 text-cyan-600" />
                       <CardTitle className="text-lg">팀 관리</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <p className="text-sm text-muted-foreground">팀원 초대 및 권한을 관리합니다</p>
-                      <Button size="sm" variant="outline" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/settings/team">팀 관리</a>
                       </Button>
                     </CardContent>
                   </Card>
 
                   {/* 시스템 설정 */}
-                  <Card className="h-[160px] flex flex-col">
+                  <Card className="h-[180px] flex flex-col border-2 border-gray-300 dark:border-gray-600">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Settings className="w-5 h-5 mr-2 text-gray-600" />
                       <CardTitle className="text-lg">시스템 설정</CardTitle>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between">
                       <p className="text-sm text-muted-foreground">메일 서버 및 알림 설정을 관리합니다</p>
-                      <Button size="sm" variant="outline" className="w-full" asChild>
+                      <Button size="sm" variant="outline" className="w-full mt-2" asChild>
                         <a href="/settings">설정하기</a>
                       </Button>
                     </CardContent>
