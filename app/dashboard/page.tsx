@@ -373,15 +373,15 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* 메인 컨텐츠 - 2컬럼 그리드 (items-stretch로 양쪽 카드 높이 동일) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* 메인 컨텐츠 - 2컬럼 그리드 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* 왼쪽 영역 - 하나의 카드 컨테이너에 모든 내용 포함 */}
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 h-fit">
             <CardContent className="p-6 space-y-6">
               {/* 1열: 사용량 대시보드 - 3개 카드 */}
               <div className="grid grid-cols-3 gap-4">
                 {/* 이메일 처리 (월간) */}
-                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                   <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <p className="text-sm font-medium">이메일 처리 (월간)</p>
                     <Mail className="w-4 h-4 text-muted-foreground" />
@@ -402,7 +402,7 @@ function DashboardContent() {
                 </div>
 
                 {/* SMS 발송 (월간) */}
-                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                   <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <p className="text-sm font-medium">SMS 발송 (월간)</p>
                     <Smartphone className="w-4 h-4 text-muted-foreground" />
@@ -423,7 +423,7 @@ function DashboardContent() {
                 </div>
 
                 {/* 카카오톡 발송 (월간) */}
-                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                   <div className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <p className="text-sm font-medium">카카오톡 (월간)</p>
                     <MessageSquare className="w-4 h-4 text-muted-foreground" />
@@ -567,8 +567,8 @@ function DashboardContent() {
             </CardContent>
           </Card>
 
-          {/* 오른쪽 영역 - 최근 활동 (왼쪽 카드 컨테이너 높이에 자동 맞춤) */}
-          <Card className="lg:col-span-1 flex flex-col">
+          {/* 오른쪽 영역 - 최근 활동 (왼쪽 컨테이너와 동일한 높이, 스크롤 가능) */}
+          <Card className="lg:col-span-1 h-fit flex flex-col max-h-[600px]">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
