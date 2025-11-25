@@ -46,7 +46,7 @@ dist/
 build/
 out/
 *.log
-logs/
+/logs/
 .next/
 tsconfig.tsbuildinfo
 
