@@ -313,6 +313,12 @@ export class UsageTracker {
     endMonth?: string
   ): Promise<UsageStats[]> {
     try {
+      // Redis가 없으면 빈 배열 반환
+      if (!redis) {
+        logger.warn('Redis가 설정되지 않아 사용량 통계를 조회할 수 없습니다', { tenantId })
+        return []
+      }
+
       const start = startMonth || this.getPreviousMonth(5) // 기본 6개월
       const end = endMonth || this.getCurrentMonth()
 
@@ -366,6 +372,12 @@ export class UsageTracker {
     limit: number
   ): Promise<void> {
     try {
+      // Redis가 없으면 알림 중복 방지 불가, 건너뜀
+      if (!redis) {
+        logger.warn('Redis가 설정되지 않아 사용량 알림 중복 방지를 건너뜁니다', { tenantId, usageType })
+        return
+      }
+
       // 알림 중복 방지 체크 (1시간 쿨다운)
       const alertKey = `usage_alert:${tenantId}:${usageType}:${Math.floor(usagePercentage / 10) * 10}`
       const alertSent = await redis.get(alertKey)
@@ -435,6 +447,12 @@ export class UsageTracker {
    */
   static async resetMonthlyUsage(tenantId: string): Promise<void> {
     try {
+      // Redis가 없으면 건너뜀
+      if (!redis) {
+        logger.warn('Redis가 설정되지 않아 월별 사용량 초기화를 건너뜁니다', { tenantId })
+        return
+      }
+
       const currentMonth = this.getCurrentMonth()
       const keys: string[] = []
 
@@ -460,6 +478,12 @@ export class UsageTracker {
    */
   static async deleteAllUsage(tenantId: string): Promise<void> {
     try {
+      // Redis가 없으면 건너뜀
+      if (!redis) {
+        logger.warn('Redis가 설정되지 않아 전체 사용량 삭제를 건너뜁니다', { tenantId })
+        return
+      }
+
       const pattern = `usage:${tenantId}:*`
       const keys = await redis.keys(pattern)
 
