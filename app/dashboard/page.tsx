@@ -100,6 +100,7 @@ interface ActivityLog {
 // 통계 정보 타입
 interface StatsData {
   companies: number
+  todayEmails: number
   todayNotifications: number
 }
 
@@ -109,7 +110,7 @@ function DashboardContent() {
   const [usage, setUsage] = useState<UsageData | null>(null)
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
   const [activities, setActivities] = useState<ActivityLog[]>([])
-  const [stats, setStats] = useState<StatsData>({ companies: 0, todayNotifications: 0 })
+  const [stats, setStats] = useState<StatsData>({ companies: 0, todayEmails: 0, todayNotifications: 0 })
   const [loading, setLoading] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [hasError, setHasError] = useState(false)
@@ -155,12 +156,19 @@ function DashboardContent() {
           }
         }
 
+        // 오늘 날짜 계산
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const todayStr = today.toISOString().split('T')[0]
+
         // 병렬로 데이터 로딩
-        const [usageRes, subscriptionRes, activitiesRes, companiesRes] = await Promise.all([
+        const [usageRes, subscriptionRes, activitiesRes, companiesRes, todayEmailsRes, todayNotificationsRes] = await Promise.all([
           fetch('/api/subscription/usage', { signal: abortController.signal }),
           fetch('/api/subscription', { signal: abortController.signal }),
           fetch('/api/activities?limit=10', { signal: abortController.signal }),
           fetch('/api/companies?limit=1', { signal: abortController.signal }),
+          fetch(`/api/mail/list?dateFrom=${todayStr}&limit=1`, { signal: abortController.signal }),
+          fetch(`/api/notifications?dateFrom=${todayStr}&limit=1`, { signal: abortController.signal }),
         ])
 
         // 컴포넌트 unmount 체크
@@ -190,13 +198,31 @@ function DashboardContent() {
           setActivities(activityData.data || [])
         }
 
+        // 통계 집계
+        let companiesCount = 0
+        let todayEmailsCount = 0
+        let todayNotificationsCount = 0
+
         if (companiesRes.ok) {
           const companiesData = await companiesRes.json()
-          setStats({
-            companies: companiesData.pagination?.total || 0,
-            todayNotifications: 0,
-          })
+          companiesCount = companiesData.pagination?.total || 0
         }
+
+        if (todayEmailsRes.ok) {
+          const emailsData = await todayEmailsRes.json()
+          todayEmailsCount = emailsData.data?.pagination?.totalCount || 0
+        }
+
+        if (todayNotificationsRes.ok) {
+          const notificationsData = await todayNotificationsRes.json()
+          todayNotificationsCount = notificationsData.data?.pagination?.totalCount || notificationsData.pagination?.total || 0
+        }
+
+        setStats({
+          companies: companiesCount,
+          todayEmails: todayEmailsCount,
+          todayNotifications: todayNotificationsCount,
+        })
       } catch (error) {
         // AbortError는 무시 (정상적인 취소)
         if (error instanceof Error && error.name === 'AbortError') {
@@ -560,8 +586,8 @@ function DashboardContent() {
 
           {/* 최근 활동 */}
           <div>
-            <Card>
-              <CardHeader>
+            <Card className="h-fit">
+              <CardHeader className="pb-3">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
                   최근 활동
@@ -569,41 +595,44 @@ function DashboardContent() {
                 <CardDescription>시스템의 최근 활동 내역</CardDescription>
               </CardHeader>
               <CardContent>
-                {loading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="animate-pulse flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
-                        <div className="flex-1">
-                          <div className="h-3 bg-gray-200 rounded mb-1"></div>
-                          <div className="h-2 bg-gray-100 rounded w-3/4"></div>
+                {/* 최대 높이 제한 및 스크롤 */}
+                <div className="max-h-[320px] overflow-y-auto pr-1">
+                  {loading ? (
+                    <div className="space-y-2">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="animate-pulse flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+                          <div className="flex-1">
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-1"></div>
+                            <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded w-3/4"></div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : activities.length > 0 ? (
-                  <div className="space-y-3">
-                    {activities.map((activity) => (
-                      <div key={activity.id} className="flex items-start space-x-3">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                          {getActivityIcon(activity.type)}
+                      ))}
+                    </div>
+                  ) : activities.length > 0 ? (
+                    <div className="space-y-3">
+                      {activities.map((activity) => (
+                        <div key={activity.id} className="flex items-start space-x-3">
+                          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center shrink-0">
+                            {getActivityIcon(activity.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{activity.action}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{activity.description}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500">
+                              {new Date(activity.timestamp).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{activity.action}</p>
-                          <p className="text-xs text-gray-500 truncate">{activity.description}</p>
-                          <p className="text-xs text-gray-400">
-                            {new Date(activity.timestamp).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <Eye className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500">최근 활동이 없습니다</p>
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <Eye className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">최근 활동이 없습니다</p>
+                    </div>
+                  )}
+                </div>
                 <Button variant="outline" size="sm" className="w-full mt-4" asChild>
                   <a href="/activities">전체 활동 보기</a>
                 </Button>
