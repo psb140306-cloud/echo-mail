@@ -373,13 +373,14 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* 메인 컨텐츠 - 2컬럼 그리드 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* 왼쪽 영역 - 하나의 카드 컨테이너에 모든 내용 포함 */}
-          <Card className="lg:col-span-2 h-fit">
-            <CardContent className="p-6 space-y-6">
-              {/* 1열: 사용량 대시보드 - 3개 카드 */}
-              <div className="grid grid-cols-3 gap-4">
+        {/* 메인 컨텐츠 - 하나의 카드 컨테이너 */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* 왼쪽 영역 - 사용량 + 탭 (2컬럼) */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* 사용량 대시보드 - 3개 카드 */}
+                <div className="grid grid-cols-3 gap-4">
                 {/* 이메일 처리 (월간) */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                   <div className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -564,21 +565,18 @@ function DashboardContent() {
                 </div>
               </TabsContent>
               </Tabs>
-            </CardContent>
-          </Card>
+              </div>
 
-          {/* 오른쪽 영역 - 최근 활동 (왼쪽 컨테이너와 동일한 높이, 스크롤 가능) */}
-          <Card className="lg:col-span-1 h-fit flex flex-col max-h-[600px]">
-              <CardHeader className="pb-3 flex-shrink-0">
-                <CardTitle className="flex items-center">
-                  <Clock className="w-5 h-5 mr-2" />
-                  최근 활동
-                </CardTitle>
-                <CardDescription>시스템의 최근 활동 내역</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-hidden flex flex-col">
-                {/* 스크롤 가능한 활동 목록 */}
-                <div className="flex-1 overflow-y-auto pr-2">
+              {/* 오른쪽 영역 - 최근 활동 (자동 높이, 스크롤 가능) */}
+              <div className="lg:col-span-1 flex flex-col border rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                <div className="p-4 border-b">
+                  <h3 className="flex items-center text-lg font-semibold">
+                    <Clock className="w-5 h-5 mr-2" />
+                    최근 활동
+                  </h3>
+                  <p className="text-sm text-muted-foreground">시스템의 최근 활동 내역</p>
+                </div>
+                <div className="flex-1 overflow-y-auto max-h-[400px] p-4">
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
@@ -615,12 +613,15 @@ function DashboardContent() {
                     </div>
                   )}
                 </div>
-                <Button variant="outline" size="sm" className="w-full mt-4 flex-shrink-0" asChild>
-                  <a href="/activities">전체 활동 보기</a>
-                </Button>
-              </CardContent>
-          </Card>
-        </div>
+                <div className="p-4 border-t">
+                  <Button variant="outline" size="sm" className="w-full" asChild>
+                    <a href="/activities">전체 활동 보기</a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   )
