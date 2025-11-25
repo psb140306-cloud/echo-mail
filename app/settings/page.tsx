@@ -65,7 +65,7 @@ export default function SettingsPage() {
       useSSL: true,
       checkInterval: 5,
       enabled: false,
-      autoMarkAsRead: true,
+      autoMarkAsRead: false,
     },
     notification: {
       defaultSMSEnabled: true,

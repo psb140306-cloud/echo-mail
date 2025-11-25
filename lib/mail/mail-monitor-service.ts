@@ -135,13 +135,17 @@ export class MailMonitorService {
         // 등록된 업체 이메일에서 온 오늘 도착한 메일 검색 (읽음/읽지않음 무관)
         logger.info(`[MailMonitor] 검색할 이메일 목록:`, { emails: registeredEmails })
 
-        // 읽지 않은 메일만 검색 (중복 방지)
+        // 최근 7일 메일 검색 (읽음/안읽음 무관 - DB 기반 중복 체크)
         const messages = []
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
         for (const email of registeredEmails) {
           try {
             const searchCriteria = {
-              unseen: true, // 읽지 않은 메일만
               from: email,
+              since: sevenDaysAgo, // 최근 7일 이내 메일만 (성능 최적화)
+              // unseen 제거: 읽음 처리 실패해도 DB로 중복 방지
             }
 
             logger.info(`[MailMonitor] IMAP 검색 시작:`, { email, searchCriteria })
@@ -228,9 +232,26 @@ export class MailMonitorService {
     const maxRetries = 3
     let lastError: Error | null = null
 
-    // 실제 Message-ID 헤더 추출 (없으면 tenantId-uid-수신시간 조합으로 고유 ID 생성)
-    const messageIdHeader = message.headers?.['message-id']?.[0] ||
-      `${tenantId}-uid-${message.uid}-${date.getTime()}`
+    // autoMarkAsRead 설정 조회
+    const mailConfig = await this.getMailConfig(tenantId)
+
+    // 실제 Message-ID 헤더 추출
+    let messageIdHeader = message.headers?.['message-id']?.[0]
+
+    // Message-ID가 없으면 안정적인 fallback ID 생성 (sender + subject + date + 본문해시)
+    if (!messageIdHeader) {
+      const emailContent = message.source?.toString() || ''
+      const bodyHash = this.generateBodyHash(emailContent)
+      const dateStr = date ? date.toISOString().split('T')[0] : 'unknown'
+      const sender = from?.address || 'unknown'
+      const subjectStr = subject || 'no-subject'
+
+      messageIdHeader = `fallback-${tenantId}-${sender}-${subjectStr}-${dateStr}-${bodyHash}`
+      logger.warn('[MailMonitor] Message-ID 헤더 없음 - fallback ID 사용', {
+        uid: message.uid,
+        fallbackId: messageIdHeader,
+      })
+    }
 
     logger.info('[MailMonitor] 메일 처리 시작', {
       tenantId,
@@ -262,15 +283,17 @@ export class MailMonitorService {
         )
 
         if (hasSuccessfulNotification) {
-          // 알림 발송 완료 → 스킵 및 무조건 읽음 처리
-          logger.info('[중복 방지] 알림 발송 완료된 메일', {
+          // 알림 발송 완료 → 스킵
+          logger.info('[중복 방지] 알림 발송 완료된 메일 - DB 기반 스킵', {
             messageId: messageIdHeader,
             existingLogId: existingEmail.id,
             sentAt: existingEmail.notifications[0].createdAt,
           })
 
-          // 무조건 읽음 처리 (재검색 방지)
-          await this.safeMarkAsRead(client, message.uid)
+          // 설정에 따라 읽음 처리
+          if (mailConfig.autoMarkAsRead) {
+            await this.safeMarkAsRead(client, message.uid)
+          }
           return
         } else {
           // 알림 미발송 → 재처리
@@ -297,8 +320,10 @@ export class MailMonitorService {
           uid: message.uid,
           subject,
         })
-        // 무조건 읽음 처리 (재검색 방지)
-        await this.safeMarkAsRead(client, message.uid)
+        // 설정에 따라 읽음 처리
+        if (mailConfig.autoMarkAsRead) {
+          await this.safeMarkAsRead(client, message.uid)
+        }
         return
       }
 
@@ -311,8 +336,10 @@ export class MailMonitorService {
           from: from?.address,
           companyName: parsedData.companyName,
         })
-        // 무조건 읽음 처리 (재검색 방지)
-        await this.safeMarkAsRead(client, message.uid)
+        // 설정에 따라 읽음 처리
+        if (mailConfig.autoMarkAsRead) {
+          await this.safeMarkAsRead(client, message.uid)
+        }
         return
       }
 
@@ -398,9 +425,13 @@ export class MailMonitorService {
             })
           }
 
-          // 알림 발송 성공 시 무조건 읽음 처리 (중복 방지)
-          await this.safeMarkAsRead(client, message.uid)
-          logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
+          // 설정에 따라 읽음 처리
+          if (mailConfig.autoMarkAsRead) {
+            await this.safeMarkAsRead(client, message.uid)
+            logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
+          } else {
+            logger.info('[MailMonitor] 읽음 처리 스킵 (설정 OFF)', { uid: message.uid })
+          }
           return
         } catch (error) {
           lastError = error instanceof Error ? error : new Error('알림 발송 실패')
@@ -418,8 +449,10 @@ export class MailMonitorService {
       throw lastError || new Error('알림 발송 실패')
     } catch (error) {
       logger.error('[MailMonitor] 메일 처리 최종 실패:', error)
-      // 에러 발생 시에도 무조건 읽음 처리하여 무한 루프 방지
-      await this.safeMarkAsRead(client, message.uid)
+      // 에러 발생 시에도 설정에 따라 읽음 처리
+      if (mailConfig.autoMarkAsRead) {
+        await this.safeMarkAsRead(client, message.uid)
+      }
       throw error
     }
   }
@@ -589,7 +622,7 @@ export class MailMonitorService {
     })
 
     return {
-      autoMarkAsRead: config ? JSON.parse(config.value) : true, // 기본값 true
+      autoMarkAsRead: config ? JSON.parse(config.value) : false, // 기본값 false (사용자 메일함 상태 유지)
     }
   }
 
@@ -722,6 +755,17 @@ export class MailMonitorService {
       logger.error('HTML 추출 실패:', error)
       return null
     }
+  }
+
+  /**
+   * 메일 본문의 해시 생성 (앞 500자 기준)
+   * Message-ID가 없을 때 fallback ID 생성에 사용
+   */
+  private generateBodyHash(emailBody: string): string {
+    const crypto = require('crypto')
+    // 본문 앞 500자만 사용 (성능 및 일관성)
+    const contentToHash = emailBody.substring(0, 500)
+    return crypto.createHash('md5').update(contentToHash).digest('hex').substring(0, 12)
   }
 }
 
