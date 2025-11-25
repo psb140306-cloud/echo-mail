@@ -374,15 +374,15 @@ function DashboardContent() {
         </div>
 
         {/* 메인 컨텐츠 - 3컬럼 그리드 (높이 동기화) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:grid-rows-1">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           {/* 왼쪽 영역 - 사용량 카드 + 탭 섹션 (2컬럼) */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 flex flex-col gap-6">
             {/* 1열: 사용량 대시보드 - 3개 카드 */}
             <div className="grid grid-cols-3 gap-4">
-              {/* 이메일 처리 */}
+              {/* 이메일 처리 (월간) */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">이메일 처리</CardTitle>
+                  <CardTitle className="text-sm font-medium">이메일 처리 (월간)</CardTitle>
                   <Mail className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -400,10 +400,10 @@ function DashboardContent() {
                 </CardContent>
               </Card>
 
-              {/* SMS 발송 */}
+              {/* SMS 발송 (월간) */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">SMS 발송</CardTitle>
+                  <CardTitle className="text-sm font-medium">SMS 발송 (월간)</CardTitle>
                   <Smartphone className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -421,10 +421,10 @@ function DashboardContent() {
                 </CardContent>
               </Card>
 
-              {/* 카카오톡 발송 */}
+              {/* 카카오톡 발송 (월간) */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">카카오톡</CardTitle>
+                  <CardTitle className="text-sm font-medium">카카오톡 (월간)</CardTitle>
                   <MessageSquare className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -471,11 +471,11 @@ function DashboardContent() {
                     </CardContent>
                   </Card>
 
-                  {/* 메일함 */}
+                  {/* 메일함 (오늘) */}
                   <Card>
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Mail className="w-5 h-5 mr-2 text-green-600" />
-                      <CardTitle className="text-lg">메일함</CardTitle>
+                      <CardTitle className="text-lg">메일함 (오늘)</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold mb-2">
@@ -488,11 +488,11 @@ function DashboardContent() {
                     </CardContent>
                   </Card>
 
-                  {/* 알림 발송 현황 */}
+                  {/* 알림 발송 현황 (오늘) */}
                   <Card>
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
                       <Bell className="w-5 h-5 mr-2 text-orange-600" />
-                      <CardTitle className="text-lg">알림 현황</CardTitle>
+                      <CardTitle className="text-lg">알림 현황 (오늘)</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold mb-2">
@@ -567,8 +567,8 @@ function DashboardContent() {
           </div>
 
           {/* 오른쪽 영역 - 최근 활동 (왼쪽 영역과 높이 동일) */}
-          <div className="lg:col-span-1 flex">
-            <Card className="flex-1 flex flex-col">
+          <div className="lg:col-span-1">
+            <Card className="h-full flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
@@ -576,9 +576,9 @@ function DashboardContent() {
                 </CardTitle>
                 <CardDescription>시스템의 최근 활동 내역</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <CardContent className="flex-1 overflow-hidden">
                 {/* 스크롤 가능한 활동 목록 */}
-                <div className="flex-1 overflow-y-auto pr-2">
+                <div className="h-full overflow-y-auto pr-2" style={{ maxHeight: 'calc(100% - 48px)' }}>
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (

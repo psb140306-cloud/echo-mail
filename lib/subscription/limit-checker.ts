@@ -118,11 +118,12 @@ export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
         },
       }),
 
-      // 이번 달 알림 발송량
+      // 이번 달 알림 발송량 (성공한 것만)
       prisma.notificationLog.count({
         where: {
           tenantId,
           createdAt: { gte: startOfMonth },
+          status: 'SENT',
         },
       }),
     ])

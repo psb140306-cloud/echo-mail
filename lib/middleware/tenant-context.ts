@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { prisma } from '@/lib/db'
+import { getKSTStartOfMonth } from '@/lib/utils/date'
 
 const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID ?? 'dev-tenant-id'
 const DEFAULT_TENANT_NAME = process.env.DEFAULT_TENANT_NAME ?? 'Development Tenant'
@@ -396,10 +397,8 @@ export async function checkTenantUsageLimit(
         limit = tenant.maxContacts
         break
       case 'emails':
-        // 이번 달 이메일 처리 수
-        const thisMonth = new Date()
-        thisMonth.setDate(1)
-        thisMonth.setHours(0, 0, 0, 0)
+        // 이번 달 이메일 처리 수 (KST 기준)
+        const thisMonth = getKSTStartOfMonth()
 
         current = await prisma.emailLog.count({
           where: {
@@ -410,10 +409,8 @@ export async function checkTenantUsageLimit(
         limit = tenant.maxEmails
         break
       case 'notifications':
-        // 이번 달 알림 발송 수
-        const currentMonth = new Date()
-        currentMonth.setDate(1)
-        currentMonth.setHours(0, 0, 0, 0)
+        // 이번 달 알림 발송 수 (KST 기준)
+        const currentMonth = getKSTStartOfMonth()
 
         current = await prisma.notificationLog.count({
           where: {

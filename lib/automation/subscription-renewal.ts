@@ -9,6 +9,7 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { TossPaymentService } from '@/lib/payment/toss-payments'
 import { SubscriptionStatus, SubscriptionPlan } from '@prisma/client'
+import { getKSTNow } from '@/lib/utils/date'
 
 export interface RenewalResult {
   subscriptionId: string
@@ -378,13 +379,23 @@ Echo Mail 팀
     logger.info(`${daysAhead}일 후 갱신 예정 알림 발송 시작`)
 
     try {
-      const now = new Date()
-      const targetDate = new Date(now)
-      targetDate.setDate(targetDate.getDate() + daysAhead)
-      targetDate.setHours(23, 59, 59, 999)
+      // KST 기준으로 날짜 계산
+      const kstNow = getKSTNow()
+      const targetDate = new Date(Date.UTC(
+        kstNow.getUTCFullYear(),
+        kstNow.getUTCMonth(),
+        kstNow.getUTCDate() + daysAhead,
+        23, 59, 59, 999
+      ))
+      targetDate.setTime(targetDate.getTime() - 9 * 60 * 60 * 1000) // UTC로 변환
 
-      const startOfDay = new Date(targetDate)
-      startOfDay.setHours(0, 0, 0, 0)
+      const startOfDay = new Date(Date.UTC(
+        kstNow.getUTCFullYear(),
+        kstNow.getUTCMonth(),
+        kstNow.getUTCDate() + daysAhead,
+        0, 0, 0, 0
+      ))
+      startOfDay.setTime(startOfDay.getTime() - 9 * 60 * 60 * 1000) // UTC로 변환
 
       // 갱신 예정 구독 조회
       const upcomingRenewals = await prisma.subscription.findMany({

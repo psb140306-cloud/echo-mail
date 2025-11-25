@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
 import { AsyncLocalStorage } from 'async_hooks'
+import { getKSTStartOfMonth } from '@/lib/utils/date'
 
 // 요청별 테넌트 컨텍스트 저장소 (Race Condition 방지)
 interface TenantContextData {
@@ -248,10 +249,8 @@ export async function checkUsageLimit(
         limit = tenant.maxContacts
         break
       case 'emails':
-        // 현재 월의 이메일 처리 수
-        const startOfMonth = new Date()
-        startOfMonth.setDate(1)
-        startOfMonth.setHours(0, 0, 0, 0)
+        // 현재 월의 이메일 처리 수 (KST 기준)
+        const startOfMonth = getKSTStartOfMonth()
 
         current = await prisma.emailLog.count({
           where: {
@@ -262,10 +261,8 @@ export async function checkUsageLimit(
         limit = tenant.maxEmails
         break
       case 'notifications':
-        // 현재 월의 알림 발송 수
-        const startOfCurrentMonth = new Date()
-        startOfCurrentMonth.setDate(1)
-        startOfCurrentMonth.setHours(0, 0, 0, 0)
+        // 현재 월의 알림 발송 수 (KST 기준)
+        const startOfCurrentMonth = getKSTStartOfMonth()
 
         current = await prisma.notificationLog.count({
           where: {

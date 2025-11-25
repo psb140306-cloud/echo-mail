@@ -2,6 +2,7 @@ import { scheduleQueue, ScheduleJob } from '@/lib/queue'
 import { prisma } from '@/lib/db'
 import { cleanQueue, retryFailedJobs, getQueueStats } from '@/lib/queue'
 import { cache } from '@/lib/redis'
+import { getKSTStartOfDay, getKSTStartOfYesterday } from '@/lib/utils/date'
 
 // 정리 작업
 scheduleQueue.process('cleanup', async (job) => {
@@ -115,12 +116,9 @@ scheduleQueue.process('daily-report', async (job) => {
   console.log('[스케줄] 일일 리포트 생성 시작')
 
   try {
-    const yesterday = new Date()
-    yesterday.setDate(yesterday.getDate() - 1)
-    yesterday.setHours(0, 0, 0, 0)
-
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    // KST 기준 어제/오늘
+    const yesterday = getKSTStartOfYesterday()
+    const today = getKSTStartOfDay()
 
     // 어제 처리된 메일 통계
     const emailStats = await prisma.emailLog.groupBy({

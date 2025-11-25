@@ -5,6 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import { createImapClient } from '@/lib/imap/connection'
 import { parseOrderEmail } from './email-parser'
 import { sendOrderReceivedNotification } from '@/lib/notifications/notification-service'
+import { getKSTStartOfDay } from '@/lib/utils/date'
 
 const prisma = new PrismaClient()
 
@@ -148,10 +149,9 @@ export class MailMonitorService {
         // 등록된 업체 이메일에서 온 오늘 도착한 메일 검색 (읽음/읽지않음 무관)
         logger.info(`[MailMonitor] 검색할 이메일 목록:`, { emails: registeredEmails })
 
-        // 오늘 도착한 읽지 않은 메일만 검색 (DB 기반 중복 체크 병행)
+        // 오늘 도착한 읽지 않은 메일만 검색 (KST 기준, DB 기반 중복 체크 병행)
         const messages = []
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
+        const today = getKSTStartOfDay()
 
         for (const email of registeredEmails) {
           try {

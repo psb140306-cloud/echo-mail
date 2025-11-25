@@ -10,6 +10,7 @@ import { logger } from '@/lib/utils/logger'
 import { TossPaymentService, TossPaymentError } from '@/lib/payment/toss-payments'
 import { SubscriptionPlan, SubscriptionStatus, PLAN_PRICING, PLAN_LIMITS } from './plans'
 import type { Prisma, Tenant, Subscription, Invoice } from '@prisma/client'
+import { getKSTStartOfMonth } from '@/lib/utils/date'
 
 // 구독 생성 요청 인터페이스
 export interface CreateSubscriptionRequest {
@@ -511,10 +512,8 @@ export class SubscriptionService {
       prisma.tenantMember.count({ where: { tenantId, status: 'ACTIVE' } }),
     ])
 
-    // 월간 사용량 조회
-    const thisMonth = new Date()
-    thisMonth.setDate(1)
-    thisMonth.setHours(0, 0, 0, 0)
+    // 월간 사용량 조회 (KST 기준)
+    const thisMonth = getKSTStartOfMonth()
 
     const [emailCount, notificationCount] = await Promise.all([
       prisma.emailLog.count({

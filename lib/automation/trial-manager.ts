@@ -8,6 +8,7 @@
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { SubscriptionStatus } from '@prisma/client'
+import { getKSTStartOfDay, getKSTNow } from '@/lib/utils/date'
 
 export interface TrialExpiryResult {
   tenantId: string
@@ -143,12 +144,23 @@ export class TrialManager {
     logger.info(`${daysAhead}일 후 만료 예정 체험 알림 발송 시작`)
 
     try {
-      const targetDate = new Date()
-      targetDate.setDate(targetDate.getDate() + daysAhead)
-      targetDate.setHours(23, 59, 59, 999)
+      // KST 기준으로 날짜 계산
+      const kstNow = getKSTNow()
+      const targetDate = new Date(Date.UTC(
+        kstNow.getUTCFullYear(),
+        kstNow.getUTCMonth(),
+        kstNow.getUTCDate() + daysAhead,
+        23, 59, 59, 999
+      ))
+      targetDate.setTime(targetDate.getTime() - 9 * 60 * 60 * 1000) // UTC로 변환
 
-      const startOfDay = new Date(targetDate)
-      startOfDay.setHours(0, 0, 0, 0)
+      const startOfDay = new Date(Date.UTC(
+        kstNow.getUTCFullYear(),
+        kstNow.getUTCMonth(),
+        kstNow.getUTCDate() + daysAhead,
+        0, 0, 0, 0
+      ))
+      startOfDay.setTime(startOfDay.getTime() - 9 * 60 * 60 * 1000) // UTC로 변환
 
       // 만료 예정 테넌트 조회
       const upcomingExpiryTenants = await prisma.tenant.findMany({
