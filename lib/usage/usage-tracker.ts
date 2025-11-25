@@ -124,8 +124,7 @@ export class UsageTracker {
         tenantId,
         usageType,
         amount,
-        dailyKey,
-        monthlyKey,
+        currentMonth,
       })
     } catch (error) {
       logger.error('사용량 증가 실패', {
