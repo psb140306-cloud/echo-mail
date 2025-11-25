@@ -373,79 +373,79 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* 메인 컨텐츠 - 3컬럼 그리드 (align-items: start로 상단 정렬) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* 왼쪽 영역 - 사용량 카드 + 탭 섹션 (2컬럼) */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            {/* 1열: 사용량 대시보드 - 3개 카드 */}
-            <div className="grid grid-cols-3 gap-4">
-              {/* 이메일 처리 (월간) */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">이메일 처리 (월간)</CardTitle>
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {loading ? '...' : usage?.email.current.toLocaleString() || '0'}
+        {/* 메인 컨텐츠 - 2컬럼 그리드 (items-stretch로 양쪽 카드 높이 동일) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+          {/* 왼쪽 영역 - 하나의 카드 컨테이너에 모든 내용 포함 */}
+          <Card className="lg:col-span-2">
+            <CardContent className="p-6 space-y-6">
+              {/* 1열: 사용량 대시보드 - 3개 카드 */}
+              <div className="grid grid-cols-3 gap-4">
+                {/* 이메일 처리 (월간) */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <p className="text-sm font-medium">이메일 처리 (월간)</p>
+                    <Mail className="w-4 h-4 text-muted-foreground" />
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    / {usage?.email.limit.toLocaleString() || '1,000'}건
-                  </p>
-                  <Progress value={usage?.email.percentage || 0} className="h-1" />
-                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    {usage?.email.percentage?.toFixed(1) || '0'}% 사용
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {loading ? '...' : usage?.email.current.toLocaleString() || '0'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      / {usage?.email.limit.toLocaleString() || '1,000'}건
+                    </p>
+                    <Progress value={usage?.email.percentage || 0} className="h-1" />
+                    <div className="flex items-center text-xs text-muted-foreground mt-1">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      {usage?.email.percentage?.toFixed(1) || '0'}% 사용
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* SMS 발송 (월간) */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">SMS 발송 (월간)</CardTitle>
-                  <Smartphone className="w-4 h-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {loading ? '...' : usage?.sms.current.toLocaleString() || '0'}
+                {/* SMS 발송 (월간) */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <p className="text-sm font-medium">SMS 발송 (월간)</p>
+                    <Smartphone className="w-4 h-4 text-muted-foreground" />
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    / {usage?.sms.limit.toLocaleString() || '500'}건
-                  </p>
-                  <Progress value={usage?.sms.percentage || 0} className="h-1" />
-                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    {usage?.sms.percentage?.toFixed(1) || '0'}% 사용
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {loading ? '...' : usage?.sms.current.toLocaleString() || '0'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      / {usage?.sms.limit.toLocaleString() || '500'}건
+                    </p>
+                    <Progress value={usage?.sms.percentage || 0} className="h-1" />
+                    <div className="flex items-center text-xs text-muted-foreground mt-1">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      {usage?.sms.percentage?.toFixed(1) || '0'}% 사용
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* 카카오톡 발송 (월간) */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">카카오톡 (월간)</CardTitle>
-                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {loading ? '...' : usage?.kakao.current.toLocaleString() || '0'}
+                {/* 카카오톡 발송 (월간) */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                  <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <p className="text-sm font-medium">카카오톡 (월간)</p>
+                    <MessageSquare className="w-4 h-4 text-muted-foreground" />
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    / {usage?.kakao.limit.toLocaleString() || '300'}건
-                  </p>
-                  <Progress value={usage?.kakao.percentage || 0} className="h-1" />
-                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    {usage?.kakao.percentage?.toFixed(1) || '0'}% 사용
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {loading ? '...' : usage?.kakao.current.toLocaleString() || '0'}
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      / {usage?.kakao.limit.toLocaleString() || '300'}건
+                    </p>
+                    <Progress value={usage?.kakao.percentage || 0} className="h-1" />
+                    <div className="flex items-center text-xs text-muted-foreground mt-1">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      {usage?.kakao.percentage?.toFixed(1) || '0'}% 사용
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-            </div>
-
-            {/* 탭 섹션 */}
-            <Tabs defaultValue="overview" className="w-full">
+              {/* 탭 섹션 */}
+              <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview">개요</TabsTrigger>
                 <TabsTrigger value="quick-actions">빠른 작업</TabsTrigger>
@@ -563,12 +563,12 @@ function DashboardContent() {
                   </Button>
                 </div>
               </TabsContent>
-            </Tabs>
-          </div>
+              </Tabs>
+            </CardContent>
+          </Card>
 
-          {/* 오른쪽 영역 - 최근 활동 (왼쪽 영역 높이에 맞춤: 140px + 24px + 240px = 404px) */}
-          <div className="lg:col-span-1">
-            <Card className="h-[404px] flex flex-col">
+          {/* 오른쪽 영역 - 최근 활동 (왼쪽 카드 컨테이너 높이에 자동 맞춤) */}
+          <Card className="lg:col-span-1 flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
@@ -619,8 +619,7 @@ function DashboardContent() {
                   <a href="/activities">전체 활동 보기</a>
                 </Button>
               </CardContent>
-            </Card>
-          </div>
+          </Card>
         </div>
       </main>
     </div>
