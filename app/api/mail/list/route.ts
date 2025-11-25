@@ -106,7 +106,19 @@ export async function GET(request: NextRequest) {
               select: {
                 id: true,
                 name: true,
+                region: true, // 업체 지역 정보 추가
               },
+            },
+            // 알림 발송 상태 정보 추가
+            notifications: {
+              select: {
+                id: true,
+                type: true,
+                status: true,
+                recipient: true,
+              },
+              orderBy: { createdAt: 'desc' },
+              take: 1, // 최신 알림만
             },
           },
         }),
