@@ -615,7 +615,7 @@ function DashboardContent() {
                     </div>
                   ) : activities.length > 0 ? (
                     <div className="space-y-3">
-                      {activities.map((activity) => (
+                      {activities.slice(0, 8).map((activity) => (
                         <div key={activity.id} className="flex items-start space-x-3">
                           <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center shrink-0">
                             {getActivityIcon(activity.type)}
@@ -629,6 +629,11 @@ function DashboardContent() {
                           </div>
                         </div>
                       ))}
+                      {activities.length > 8 && (
+                        <p className="text-xs text-center text-muted-foreground pt-2 border-t">
+                          더 많은 활동 내역이 있습니다. 전체 활동 보기에서 확인하세요.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-4">
