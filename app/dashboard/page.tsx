@@ -376,7 +376,7 @@ function DashboardContent() {
         {/* 메인 컨텐츠 - 하나의 카드 컨테이너 */}
         <Card>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
               {/* 왼쪽 영역 - 사용량 + 탭 (2컬럼) */}
               <div className="lg:col-span-2 space-y-6">
                 {/* 사용량 대시보드 - 3개 카드 */}
@@ -567,8 +567,8 @@ function DashboardContent() {
               </Tabs>
               </div>
 
-              {/* 오른쪽 영역 - 최근 활동 (왼쪽 영역 높이에 맞춤, 스크롤 가능) */}
-              <div className="lg:col-span-1 h-full flex flex-col border rounded-lg bg-gray-50 dark:bg-gray-800/50 self-stretch">
+              {/* 오른쪽 영역 - 최근 활동 (고정 높이 + 스크롤) */}
+              <div className="lg:col-span-1 flex flex-col border rounded-lg bg-gray-50 dark:bg-gray-800/50 h-[520px]">
                 <div className="p-4 border-b flex-shrink-0">
                   <h3 className="flex items-center text-lg font-semibold">
                     <Clock className="w-5 h-5 mr-2" />
