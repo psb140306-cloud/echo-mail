@@ -29,25 +29,25 @@ async function getStats(tenantId: string) {
     thisMonth.setTime(thisMonth.getTime() - kstOffset) // UTC 기준으로 변환
 
     const [todayStats, monthStats, typeStats, statusStats] = await Promise.all([
-      // 오늘 통계 (성공한 것만)
+      // 오늘 통계 (성공한 것만: SENT 또는 DELIVERED)
       prisma.notificationLog.count({
         where: {
           tenantId,
           createdAt: {
             gte: today,
           },
-          status: 'SENT',
+          status: { in: ['SENT', 'DELIVERED'] },
         },
       }),
 
-      // 이번 달 통계 (성공한 것만)
+      // 이번 달 통계 (성공한 것만: SENT 또는 DELIVERED)
       prisma.notificationLog.count({
         where: {
           tenantId,
           createdAt: {
             gte: thisMonth,
           },
-          status: 'SENT',
+          status: { in: ['SENT', 'DELIVERED'] },
         },
       }),
 
