@@ -566,9 +566,9 @@ function DashboardContent() {
             </Tabs>
           </div>
 
-          {/* 오른쪽 영역 - 최근 활동 (왼쪽 영역과 높이 동일) */}
+          {/* 오른쪽 영역 - 최근 활동 (명시적 높이 지정) */}
           <div className="lg:col-span-1">
-            <Card className="h-full flex flex-col">
+            <Card className="lg:h-[520px] flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
@@ -576,9 +576,9 @@ function DashboardContent() {
                 </CardTitle>
                 <CardDescription>시스템의 최근 활동 내역</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 overflow-hidden">
+              <CardContent className="flex-1 overflow-hidden flex flex-col">
                 {/* 스크롤 가능한 활동 목록 */}
-                <div className="h-full overflow-y-auto pr-2" style={{ maxHeight: 'calc(100% - 48px)' }}>
+                <div className="flex-1 overflow-y-auto pr-2">
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
