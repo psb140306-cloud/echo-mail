@@ -1,11 +1,24 @@
 import { PrismaClient } from '@prisma/client'
 import { ImapFlow } from 'imapflow'
+import { simpleParser, ParsedMail, Attachment } from 'mailparser'
 import { logger } from '@/lib/utils/logger'
 import { createImapClient } from '@/lib/imap/connection'
 import { parseOrderEmail } from './email-parser'
 import { sendOrderReceivedNotification } from '@/lib/notifications/notification-service'
 
 const prisma = new PrismaClient()
+
+// 파싱된 이메일 정보 인터페이스
+interface ParsedEmailContent {
+  textBody: string | null
+  htmlBody: string | null
+  attachments: {
+    filename: string
+    contentType: string
+    size: number
+    content: Buffer
+  }[]
+}
 
 export interface MailCheckResult {
   success: boolean
@@ -362,11 +375,10 @@ export class MailMonitorService {
         })
       } else {
         // 신규: EmailLog 생성
-        // 메일 본문 추출
-        const emailBody = message.source?.toString() || emailContent
-        const bodyPlain = this.extractPlainText(emailBody)
-        const bodyHtml = this.extractHtmlBody(emailBody)
-        const emailSize = message.size || emailBody.length
+        // mailparser를 사용하여 본문 및 첨부파일 파싱
+        const emailSource = message.source
+        const parsedEmail = await this.parseEmailWithMailparser(emailSource)
+        const emailSize = message.size || (emailSource ? emailSource.length : 0)
 
         emailLog = await prisma.emailLog.create({
           data: {
@@ -375,16 +387,31 @@ export class MailMonitorService {
             recipient: '', // IMAP에서는 수신자 정보 없음
             subject: subject || '',
             receivedAt: date,
-            body: bodyPlain, // Plain text 본문
-            bodyHtml: bodyHtml, // HTML 본문
+            body: parsedEmail.textBody, // Plain text 본문
+            bodyHtml: parsedEmail.htmlBody, // HTML 본문
             isRead: false, // 새 메일은 읽지 않음
             folder: 'INBOX', // 기본 메일함
             size: emailSize, // 메일 크기
             isOrder: parsedData.isOrderEmail, // 발주 메일 여부
+            hasAttachment: parsedEmail.attachments.length > 0,
+            attachments: parsedEmail.attachments.length > 0
+              ? parsedEmail.attachments.map((att) => ({
+                  id: `att-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+                  filename: att.filename,
+                  contentType: att.contentType,
+                  size: att.size,
+                }))
+              : [],
             status: 'MATCHED',
             companyId: company.id,
             tenantId,
           },
+        })
+
+        logger.info('[MailMonitor] EmailLog 생성 완료', {
+          emailLogId: emailLog.id,
+          hasBody: !!parsedEmail.textBody || !!parsedEmail.htmlBody,
+          attachmentCount: parsedEmail.attachments.length,
         })
       }
 
@@ -695,66 +722,60 @@ export class MailMonitorService {
   }
 
   /**
-   * 메일 본문에서 Plain Text 추출
+   * mailparser를 사용하여 이메일 파싱 (본문 + 첨부파일)
    */
-  private extractPlainText(emailBody: string): string | null {
-    try {
-      // Content-Type: text/plain 부분 찾기
-      const plainTextMatch = emailBody.match(/Content-Type:\s*text\/plain[\s\S]*?\n\n([\s\S]*?)(?=\n--|\nContent-Type:|$)/i)
-      if (plainTextMatch && plainTextMatch[1]) {
-        // Base64 디코딩이 필요한지 확인
-        if (emailBody.includes('Content-Transfer-Encoding: base64')) {
-          try {
-            return Buffer.from(plainTextMatch[1].trim(), 'base64').toString('utf-8')
-          } catch {
-            return plainTextMatch[1].trim()
-          }
-        }
-        return plainTextMatch[1].trim()
-      }
-
-      // HTML이 있고 plain text가 없으면 HTML에서 텍스트 추출
-      const htmlBody = this.extractHtmlBody(emailBody)
-      if (htmlBody) {
-        return htmlBody.replace(/<[^>]*>/g, '').trim()
-      }
-
-      // 최후의 수단: 전체 본문에서 헤더 제거
-      const bodyStart = emailBody.indexOf('\n\n')
-      if (bodyStart > -1) {
-        return emailBody.substring(bodyStart + 2).trim()
-      }
-
-      return null
-    } catch (error) {
-      logger.error('Plain text 추출 실패:', error)
-      return null
+  private async parseEmailWithMailparser(emailSource: Buffer | undefined): Promise<ParsedEmailContent> {
+    const result: ParsedEmailContent = {
+      textBody: null,
+      htmlBody: null,
+      attachments: [],
     }
-  }
 
-  /**
-   * 메일 본문에서 HTML 추출
-   */
-  private extractHtmlBody(emailBody: string): string | null {
+    if (!emailSource) {
+      logger.warn('[MailMonitor] 이메일 소스가 없습니다')
+      return result
+    }
+
     try {
-      // Content-Type: text/html 부분 찾기
-      const htmlMatch = emailBody.match(/Content-Type:\s*text\/html[\s\S]*?\n\n([\s\S]*?)(?=\n--|\nContent-Type:|$)/i)
-      if (htmlMatch && htmlMatch[1]) {
-        // Base64 디코딩이 필요한지 확인
-        if (emailBody.includes('Content-Transfer-Encoding: base64')) {
-          try {
-            return Buffer.from(htmlMatch[1].trim(), 'base64').toString('utf-8')
-          } catch {
-            return htmlMatch[1].trim()
-          }
-        }
-        return htmlMatch[1].trim()
+      const parsed: ParsedMail = await simpleParser(emailSource)
+
+      // Plain text 본문
+      if (parsed.text) {
+        result.textBody = parsed.text
       }
 
-      return null
+      // HTML 본문
+      if (parsed.html) {
+        result.htmlBody = parsed.html as string
+      }
+
+      // 첨부파일 추출
+      if (parsed.attachments && parsed.attachments.length > 0) {
+        result.attachments = parsed.attachments.map((att: Attachment) => ({
+          filename: att.filename || 'unknown',
+          contentType: att.contentType || 'application/octet-stream',
+          size: att.size || 0,
+          content: att.content,
+        }))
+
+        logger.info('[MailMonitor] 첨부파일 감지', {
+          count: result.attachments.length,
+          files: result.attachments.map((a) => ({ name: a.filename, size: a.size })),
+        })
+      }
+
+      logger.info('[MailMonitor] 이메일 파싱 완료', {
+        hasTextBody: !!result.textBody,
+        textBodyLength: result.textBody?.length || 0,
+        hasHtmlBody: !!result.htmlBody,
+        htmlBodyLength: result.htmlBody?.length || 0,
+        attachmentCount: result.attachments.length,
+      })
+
+      return result
     } catch (error) {
-      logger.error('HTML 추출 실패:', error)
-      return null
+      logger.error('[MailMonitor] mailparser 파싱 실패:', error)
+      return result
     }
   }
 
