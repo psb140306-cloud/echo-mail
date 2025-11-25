@@ -1,15 +1,23 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
-import { Mail, ArrowLeft, Trash2, Building2, MapPin, Bell } from 'lucide-react'
+import { Mail, ArrowLeft, Trash2, Building2, MapPin, Bell, Paperclip, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AppHeader } from '@/components/layout/app-header'
+
+interface Attachment {
+  id: string
+  filename: string
+  contentType: string
+  size: number
+  url?: string
+}
 
 interface EmailDetailResponse {
   success: boolean
@@ -27,6 +35,7 @@ interface EmailDetailResponse {
     size: number | null
     isOrder: boolean
     hasAttachment: boolean
+    attachments: Attachment[]
     status: string
     company: {
       id: string
@@ -47,19 +56,31 @@ interface EmailDetailResponse {
   }
 }
 
-export default function MailDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params)
+// 파일 크기 포맷팅
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+export default function MailDetailPage() {
   const router = useRouter()
+  const params = useParams()
   const { toast } = useToast()
+  const id = params.id as string
 
   const [email, setEmail] = useState<EmailDetailResponse['data'] | null>(null)
   const [loading, setLoading] = useState(true)
 
   // 메일 상세 조회
   const fetchEmailDetail = async () => {
+    if (!id) return
+
     setLoading(true)
     try {
-      const response = await fetch(`/api/mail/${resolvedParams.id}`)
+      const response = await fetch(`/api/mail/${id}`)
       const result: EmailDetailResponse = await response.json()
 
       if (result.success) {
@@ -90,7 +111,7 @@ export default function MailDetailPage({ params }: { params: Promise<{ id: strin
     if (!confirm('메일을 삭제하시겠습니까?')) return
 
     try {
-      const response = await fetch(`/api/mail/${resolvedParams.id}`, {
+      const response = await fetch(`/api/mail/${id}`, {
         method: 'DELETE',
       })
 
@@ -113,9 +134,41 @@ export default function MailDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  // 첨부파일 다운로드
+  const downloadAttachment = async (attachment: Attachment) => {
+    try {
+      // 첨부파일 URL이 있으면 직접 다운로드
+      if (attachment.url) {
+        window.open(attachment.url, '_blank')
+        return
+      }
+
+      // 없으면 API를 통해 다운로드
+      const response = await fetch(`/api/mail/${id}/attachment/${attachment.id}`)
+      if (!response.ok) throw new Error('다운로드 실패')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = attachment.filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('첨부파일 다운로드 실패:', error)
+      toast({
+        title: '오류',
+        description: '첨부파일 다운로드에 실패했습니다.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   useEffect(() => {
     fetchEmailDetail()
-  }, [resolvedParams.id])
+  }, [id])
 
   if (loading) {
     return (
@@ -170,7 +223,7 @@ export default function MailDetailPage({ params }: { params: Promise<{ id: strin
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 메일 본문 */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
                 <div className="space-y-3">
@@ -186,6 +239,12 @@ export default function MailDetailPage({ params }: { params: Promise<{ id: strin
                         )}
                         {email.company && (
                           <Badge variant="outline">{email.company.name}</Badge>
+                        )}
+                        {email.hasAttachment && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Paperclip className="h-3 w-3" />
+                            첨부파일
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -222,6 +281,49 @@ export default function MailDetailPage({ params }: { params: Promise<{ id: strin
                 </div>
               </CardContent>
             </Card>
+
+            {/* 첨부파일 */}
+            {email.attachments && email.attachments.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    첨부파일 ({email.attachments.length}개)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {email.attachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center justify-between bg-muted p-3 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Paperclip className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="text-sm font-medium">
+                              {attachment.filename}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatFileSize(attachment.size)}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => downloadAttachment(attachment)}
+                          className="gap-1"
+                        >
+                          <Download className="h-4 w-4" />
+                          다운로드
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* 사이드바: 알림 내역 및 업체 정보 */}
