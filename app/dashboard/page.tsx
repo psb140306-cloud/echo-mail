@@ -566,9 +566,9 @@ function DashboardContent() {
             </Tabs>
           </div>
 
-          {/* 오른쪽 영역 - 최근 활동 (왼쪽 탭 영역 높이에 맞춤) */}
+          {/* 오른쪽 영역 - 최근 활동 (왼쪽 영역 높이에 맞춤: 140px + 24px + 240px = 404px) */}
           <div className="lg:col-span-1">
-            <Card className="h-[490px] flex flex-col">
+            <Card className="h-[404px] flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
