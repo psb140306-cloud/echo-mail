@@ -168,7 +168,7 @@ function DashboardContent() {
           fetch('/api/activities?limit=10', { signal: abortController.signal }),
           fetch('/api/companies?limit=1', { signal: abortController.signal }),
           fetch(`/api/mail/list?dateFrom=${todayStr}&limit=1`, { signal: abortController.signal }),
-          fetch(`/api/notifications?dateFrom=${todayStr}&limit=1`, { signal: abortController.signal }),
+          fetch('/api/notifications/logs?stats=true', { signal: abortController.signal }),
         ])
 
         // 컴포넌트 unmount 체크
@@ -215,7 +215,8 @@ function DashboardContent() {
 
         if (todayNotificationsRes.ok) {
           const notificationsData = await todayNotificationsRes.json()
-          todayNotificationsCount = notificationsData.data?.pagination?.totalCount || notificationsData.pagination?.total || 0
+          // /api/notifications/logs?stats=true 응답 형식: { success: true, data: { today: number, ... } }
+          todayNotificationsCount = notificationsData.data?.today || 0
         }
 
         setStats({
@@ -462,8 +463,8 @@ function DashboardContent() {
         {/* 주요 기능 & 최근 활동 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 주요 기능 */}
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="overview" className="w-full">
+          <div className="lg:col-span-2 flex flex-col">
+            <Tabs defaultValue="overview" className="w-full flex-1">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview">개요</TabsTrigger>
                 <TabsTrigger value="quick-actions">빠른 작업</TabsTrigger>
@@ -584,19 +585,19 @@ function DashboardContent() {
             </Tabs>
           </div>
 
-          {/* 최근 활동 */}
-          <div>
-            <Card className="h-fit">
-              <CardHeader className="pb-3">
+          {/* 최근 활동 - 오른쪽 사이드바 전체 높이 사용 */}
+          <div className="flex flex-col">
+            <Card className="flex-1 flex flex-col">
+              <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
                   최근 활동
                 </CardTitle>
                 <CardDescription>시스템의 최근 활동 내역</CardDescription>
               </CardHeader>
-              <CardContent>
-                {/* 최대 높이 제한 및 스크롤 */}
-                <div className="max-h-[320px] overflow-y-auto pr-1">
+              <CardContent className="flex-1 flex flex-col min-h-0">
+                {/* 스크롤 가능한 활동 목록 */}
+                <div className="flex-1 overflow-y-auto pr-1">
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
@@ -633,7 +634,7 @@ function DashboardContent() {
                     </div>
                   )}
                 </div>
-                <Button variant="outline" size="sm" className="w-full mt-4" asChild>
+                <Button variant="outline" size="sm" className="w-full mt-4 flex-shrink-0" asChild>
                   <a href="/activities">전체 활동 보기</a>
                 </Button>
               </CardContent>
