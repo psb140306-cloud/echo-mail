@@ -51,7 +51,8 @@
       "Bash(export RAILWAY_TOKEN=7f364b85-3b35-4c98-afcc-a320277ed111)",
       "Bash(set RAILWAY_TOKEN=7f364b85-3b35-4c98-afcc-a320277ed111)",
       "Bash(manual_migration.sql)",
-      "Bash(vercel whoami:*)"
+      "Bash(vercel whoami:*)",
+      "Bash(npx vercel:*)"
     ],
     "deny": [],
     "ask": []
