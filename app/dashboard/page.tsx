@@ -373,98 +373,99 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* 사용량 대시보드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* 이메일 처리 */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">이메일 처리</CardTitle>
-              <Mail className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? '...' : usage?.email.current.toLocaleString() || '0'}
-              </div>
-              <p className="text-xs text-muted-foreground mb-2">
-                / {usage?.email.limit.toLocaleString() || '1,000'}건
-              </p>
-              <Progress value={usage?.email.percentage || 0} className="h-1" />
-              <div className="flex items-center text-xs text-muted-foreground mt-1">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {usage?.email.percentage?.toFixed(1) || '0'}% 사용
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* SMS 발송 */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">SMS 발송</CardTitle>
-              <Smartphone className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? '...' : usage?.sms.current.toLocaleString() || '0'}
-              </div>
-              <p className="text-xs text-muted-foreground mb-2">
-                / {usage?.sms.limit.toLocaleString() || '500'}건
-              </p>
-              <Progress value={usage?.sms.percentage || 0} className="h-1" />
-              <div className="flex items-center text-xs text-muted-foreground mt-1">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {usage?.sms.percentage?.toFixed(1) || '0'}% 사용
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 카카오톡 발송 */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">카카오톡</CardTitle>
-              <MessageSquare className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? '...' : usage?.kakao.current.toLocaleString() || '0'}
-              </div>
-              <p className="text-xs text-muted-foreground mb-2">
-                / {usage?.kakao.limit.toLocaleString() || '300'}건
-              </p>
-              <Progress value={usage?.kakao.percentage || 0} className="h-1" />
-              <div className="flex items-center text-xs text-muted-foreground mt-1">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {usage?.kakao.percentage?.toFixed(1) || '0'}% 사용
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* API 호출 */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">API 호출</CardTitle>
-              <Activity className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? '...' : usage?.api.current.toLocaleString() || '0'}
-              </div>
-              <p className="text-xs text-muted-foreground mb-2">
-                / {usage?.api.limit.toLocaleString() || '10,000'}건
-              </p>
-              <Progress value={usage?.api.percentage || 0} className="h-1" />
-              <div className="flex items-center text-xs text-muted-foreground mt-1">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {usage?.api.percentage?.toFixed(1) || '0'}% 사용
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 주요 기능 & 최근 활동 */}
+        {/* 메인 컨텐츠 - 왼쪽 2/3 + 오른쪽 1/3 레이아웃 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 주요 기능 */}
-          <div className="lg:col-span-2 flex flex-col">
-            <Tabs defaultValue="overview" className="w-full flex-1">
+          {/* 왼쪽 영역 - 사용량 카드 + 탭 섹션 */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* 사용량 대시보드 - 4개 카드 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 이메일 처리 */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">이메일 처리</CardTitle>
+                  <Mail className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {loading ? '...' : usage?.email.current.toLocaleString() || '0'}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    / {usage?.email.limit.toLocaleString() || '1,000'}건
+                  </p>
+                  <Progress value={usage?.email.percentage || 0} className="h-1" />
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    {usage?.email.percentage?.toFixed(1) || '0'}% 사용
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* SMS 발송 */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">SMS 발송</CardTitle>
+                  <Smartphone className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {loading ? '...' : usage?.sms.current.toLocaleString() || '0'}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    / {usage?.sms.limit.toLocaleString() || '500'}건
+                  </p>
+                  <Progress value={usage?.sms.percentage || 0} className="h-1" />
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    {usage?.sms.percentage?.toFixed(1) || '0'}% 사용
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 카카오톡 발송 */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">카카오톡</CardTitle>
+                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {loading ? '...' : usage?.kakao.current.toLocaleString() || '0'}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    / {usage?.kakao.limit.toLocaleString() || '300'}건
+                  </p>
+                  <Progress value={usage?.kakao.percentage || 0} className="h-1" />
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    {usage?.kakao.percentage?.toFixed(1) || '0'}% 사용
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* API 호출 */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">API 호출</CardTitle>
+                  <Activity className="w-4 h-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {loading ? '...' : usage?.api.current.toLocaleString() || '0'}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    / {usage?.api.limit.toLocaleString() || '10,000'}건
+                  </p>
+                  <Progress value={usage?.api.percentage || 0} className="h-1" />
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    {usage?.api.percentage?.toFixed(1) || '0'}% 사용
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* 탭 섹션 */}
+            <Tabs defaultValue="overview" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="overview">개요</TabsTrigger>
                 <TabsTrigger value="quick-actions">빠른 작업</TabsTrigger>
@@ -472,7 +473,7 @@ function DashboardContent() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* 업체 관리 */}
                   <Card>
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2">
@@ -527,7 +528,7 @@ function DashboardContent() {
               </TabsContent>
 
               <TabsContent value="quick-actions" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <Button variant="outline" className="p-4 h-auto" asChild>
                     <a href="/mail" className="flex flex-col items-center">
                       <Mail className="w-6 h-6 mb-2" />
@@ -585,9 +586,9 @@ function DashboardContent() {
             </Tabs>
           </div>
 
-          {/* 최근 활동 - 오른쪽 사이드바 전체 높이 사용 */}
-          <div className="flex flex-col">
-            <Card className="flex-1 flex flex-col">
+          {/* 오른쪽 영역 - 최근 활동 (전체 높이) */}
+          <div className="lg:row-span-1">
+            <Card className="h-full flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
@@ -595,9 +596,9 @@ function DashboardContent() {
                 </CardTitle>
                 <CardDescription>시스템의 최근 활동 내역</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col min-h-0">
+              <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 {/* 스크롤 가능한 활동 목록 */}
-                <div className="flex-1 overflow-y-auto pr-1">
+                <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
