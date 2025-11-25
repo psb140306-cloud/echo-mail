@@ -373,8 +373,8 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* 메인 컨텐츠 - 3컬럼 그리드 (높이 동기화) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* 메인 컨텐츠 - 3컬럼 그리드 (align-items: start로 상단 정렬) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* 왼쪽 영역 - 사용량 카드 + 탭 섹션 (2컬럼) */}
           <div className="lg:col-span-2 flex flex-col gap-6">
             {/* 1열: 사용량 대시보드 - 3개 카드 */}
@@ -566,9 +566,9 @@ function DashboardContent() {
             </Tabs>
           </div>
 
-          {/* 오른쪽 영역 - 최근 활동 (왼쪽 영역과 높이 맞춤) */}
+          {/* 오른쪽 영역 - 최근 활동 (왼쪽 탭 영역 높이에 맞춤) */}
           <div className="lg:col-span-1">
-            <Card className="h-full max-h-[600px] flex flex-col">
+            <Card className="h-[490px] flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
