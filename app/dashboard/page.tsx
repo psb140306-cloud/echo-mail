@@ -373,12 +373,12 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* 메인 컨텐츠 - 왼쪽 2/3 + 오른쪽 1/3 레이아웃 */}
+        {/* 메인 컨텐츠 - 3컬럼 그리드 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 왼쪽 영역 - 사용량 카드 + 탭 섹션 */}
+          {/* 왼쪽 영역 - 사용량 카드 + 탭 섹션 (2컬럼) */}
           <div className="lg:col-span-2 space-y-6">
-            {/* 사용량 대시보드 - 4개 카드 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1열: 사용량 대시보드 - 4개 카드 */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {/* 이메일 처리 */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -586,9 +586,9 @@ function DashboardContent() {
             </Tabs>
           </div>
 
-          {/* 오른쪽 영역 - 최근 활동 (전체 높이) */}
-          <div className="lg:row-span-1">
-            <Card className="h-full flex flex-col">
+          {/* 오른쪽 영역 - 최근 활동 (1열 상단 ~ 2열 하단까지) */}
+          <div className="lg:col-span-1">
+            <Card className="h-full flex flex-col" style={{ minHeight: 'calc(100%)' }}>
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
@@ -596,9 +596,9 @@ function DashboardContent() {
                 </CardTitle>
                 <CardDescription>시스템의 최근 활동 내역</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                {/* 스크롤 가능한 활동 목록 */}
-                <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+              <CardContent className="flex-1 flex flex-col min-h-0">
+                {/* 스크롤 가능한 활동 목록 - 스크롤바 표시 */}
+                <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: '450px' }}>
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
