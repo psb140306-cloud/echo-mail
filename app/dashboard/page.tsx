@@ -373,8 +373,8 @@ function DashboardContent() {
           )}
         </div>
 
-        {/* 메인 컨텐츠 - 3컬럼 그리드 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 메인 컨텐츠 - 3컬럼 그리드 (높이 동기화) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:grid-rows-1">
           {/* 왼쪽 영역 - 사용량 카드 + 탭 섹션 (2컬럼) */}
           <div className="lg:col-span-2 space-y-6">
             {/* 1열: 사용량 대시보드 - 3개 카드 */}
@@ -566,9 +566,9 @@ function DashboardContent() {
             </Tabs>
           </div>
 
-          {/* 오른쪽 영역 - 최근 활동 (1열 상단 ~ 2열 하단까지) */}
-          <div className="lg:col-span-1">
-            <Card className="h-full flex flex-col" style={{ minHeight: 'calc(100%)' }}>
+          {/* 오른쪽 영역 - 최근 활동 (왼쪽 영역과 높이 동일) */}
+          <div className="lg:col-span-1 flex">
+            <Card className="flex-1 flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
@@ -576,9 +576,9 @@ function DashboardContent() {
                 </CardTitle>
                 <CardDescription>시스템의 최근 활동 내역</CardDescription>
               </CardHeader>
-              <CardContent className="flex-1 flex flex-col min-h-0">
-                {/* 스크롤 가능한 활동 목록 - 스크롤바 표시 */}
-                <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: '450px' }}>
+              <CardContent className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {/* 스크롤 가능한 활동 목록 */}
+                <div className="flex-1 overflow-y-auto pr-2">
                   {loading ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
