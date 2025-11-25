@@ -135,17 +135,18 @@ export class MailMonitorService {
         // 등록된 업체 이메일에서 온 오늘 도착한 메일 검색 (읽음/읽지않음 무관)
         logger.info(`[MailMonitor] 검색할 이메일 목록:`, { emails: registeredEmails })
 
-        // 최근 7일 메일 검색 (읽음/안읽음 무관 - DB 기반 중복 체크)
+        // 오늘 도착한 읽지 않은 메일만 검색 (DB 기반 중복 체크 병행)
         const messages = []
-        const sevenDaysAgo = new Date()
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
 
         for (const email of registeredEmails) {
           try {
             const searchCriteria = {
               from: email,
-              since: sevenDaysAgo, // 최근 7일 이내 메일만 (성능 최적화)
-              // unseen 제거: 읽음 처리 실패해도 DB로 중복 방지
+              since: today, // 오늘 도착한 메일만
+              unseen: true, // 읽지 않은 메일만 (1차 필터)
+              // DB 기반 중복 체크도 병행 (2차 필터)
             }
 
             logger.info(`[MailMonitor] IMAP 검색 시작:`, { email, searchCriteria })
