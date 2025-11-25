@@ -400,6 +400,8 @@ export class MailMonitorService {
                   filename: att.filename,
                   contentType: att.contentType,
                   size: att.size,
+                  // Base64로 인코딩된 파일 내용 저장 (10MB 제한)
+                  content: att.size <= 10 * 1024 * 1024 ? att.content.toString('base64') : null,
                 }))
               : [],
             status: 'MATCHED',
