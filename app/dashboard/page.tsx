@@ -377,8 +377,8 @@ function DashboardContent() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 왼쪽 영역 - 사용량 카드 + 탭 섹션 (2컬럼) */}
           <div className="lg:col-span-2 space-y-6">
-            {/* 1열: 사용량 대시보드 - 4개 카드 */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* 1열: 사용량 대시보드 - 3개 카드 */}
+            <div className="grid grid-cols-3 gap-4">
               {/* 이메일 처리 */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -442,26 +442,6 @@ function DashboardContent() {
                 </CardContent>
               </Card>
 
-              {/* API 호출 */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">API 호출</CardTitle>
-                  <Activity className="w-4 h-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {loading ? '...' : usage?.api.current.toLocaleString() || '0'}
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    / {usage?.api.limit.toLocaleString() || '10,000'}건
-                  </p>
-                  <Progress value={usage?.api.percentage || 0} className="h-1" />
-                  <div className="flex items-center text-xs text-muted-foreground mt-1">
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    {usage?.api.percentage?.toFixed(1) || '0'}% 사용
-                  </div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* 탭 섹션 */}
