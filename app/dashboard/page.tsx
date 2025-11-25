@@ -566,9 +566,9 @@ function DashboardContent() {
             </Tabs>
           </div>
 
-          {/* 오른쪽 영역 - 최근 활동 (명시적 높이 지정) */}
-          <div className="lg:col-span-1">
-            <Card className="lg:h-[520px] flex flex-col">
+          {/* 오른쪽 영역 - 최근 활동 (왼쪽 영역과 높이 동기화) */}
+          <div className="lg:col-span-1 flex">
+            <Card className="flex-1 flex flex-col">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center">
                   <Clock className="w-5 h-5 mr-2" />
