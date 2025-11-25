@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
       const where: any = {
         tenantId,
         folder,
+        status: { not: 'IGNORED' }, // 삭제된 메일 제외
       }
 
       // 검색어 조건 (subject, sender, body에서 검색)
