@@ -526,6 +526,8 @@ export class NotificationService {
 
       // 활성 담당자들에게 알림 발송
       for (const contact of company.contacts) {
+        let smsAlreadySent = false // SMS 중복 발송 방지 플래그
+
         // 카카오 알림톡 우선 시도
         if (contact.kakaoEnabled) {
           const kakaoResult = await this.sendNotification({
@@ -542,14 +544,22 @@ export class NotificationService {
 
           results.push(kakaoResult)
 
-          // 카카오 성공 시 SMS 스킵
+          // 카카오 성공 또는 SMS 폴백이 시도된 경우 (성공/실패 무관) SMS 스킵
+          // failoverUsed가 true면 이미 SMS 발송 시도됨
+          // kakaoProvider가 null이면 내부적으로 SMS로 폴백 시도됨
+          if (kakaoResult.success || kakaoResult.failoverUsed || kakaoResult.provider?.includes('SMS')) {
+            smsAlreadySent = true
+          }
+
+          // 카카오 성공 시 완전히 스킵
           if (kakaoResult.success || kakaoResult.failoverUsed) {
             continue
           }
         }
 
         // SMS 발송 (shortDate 사용으로 90바이트 이하 유지)
-        if (contact.smsEnabled) {
+        // 단, 이미 SMS 폴백이 시도된 경우 스킵
+        if (contact.smsEnabled && !smsAlreadySent) {
           const smsResult = await this.sendNotification({
             type: NotificationType.SMS,
             recipient: contact.phone,

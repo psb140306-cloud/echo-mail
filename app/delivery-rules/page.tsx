@@ -729,7 +729,7 @@ export default function DeliveryRulesPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRule ? '배송 규칙 수정' : '새 배송 규칙 추가'}</DialogTitle>
             <DialogDescription>지역별 배송 마감시간과 배송일을 설정하세요</DialogDescription>
@@ -787,65 +787,6 @@ export default function DeliveryRulesPage() {
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="cutoffTime" className="text-right">
-                마감 시간
-              </Label>
-              <Input
-                id="cutoffTime"
-                type="time"
-                value={formData.cutoffTime}
-                onChange={(e) => setFormData({ ...formData, cutoffTime: e.target.value })}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="beforeCutoffDays" className="text-right">
-                마감 전 배송
-              </Label>
-              <div className="col-span-3 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="beforeCutoffDays"
-                    type="number"
-                    min="0"
-                    max="14"
-                    value={formData.beforeCutoffDays}
-                    onChange={(e) =>
-                      setFormData({ ...formData, beforeCutoffDays: parseInt(e.target.value) })
-                    }
-                    className="w-20"
-                    placeholder="0"
-                  />
-                  <span className="text-sm text-muted-foreground">일 후</span>
-                </div>
-                <p className="text-xs text-muted-foreground">0 = 당일 배송, 1 = 익일 배송</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="afterCutoffDays" className="text-right">
-                마감 후 배송
-              </Label>
-              <div className="col-span-3 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="afterCutoffDays"
-                    type="number"
-                    min="0"
-                    max="14"
-                    value={formData.afterCutoffDays}
-                    onChange={(e) =>
-                      setFormData({ ...formData, afterCutoffDays: parseInt(e.target.value) })
-                    }
-                    className="w-20"
-                    placeholder="1"
-                  />
-                  <span className="text-sm text-muted-foreground">일 후</span>
-                </div>
-                <p className="text-xs text-muted-foreground">0 = 당일 배송, 1 = 익일 배송</p>
-              </div>
-            </div>
-
             {/* 마감 횟수 선택 */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="cutoffCount" className="text-right">
@@ -877,6 +818,120 @@ export default function DeliveryRulesPage() {
               </Select>
             </div>
 
+            {/* 1차 마감 설정 */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="cutoffTime" className="text-right">
+                마감 시간
+              </Label>
+              <div className="col-span-3 flex items-center gap-1">
+                <Input
+                  id="cutoffTimeHour"
+                  type="number"
+                  min="0"
+                  max="23"
+                  value={parseInt(formData.cutoffTime.split(':')[0])}
+                  onChange={(e) => {
+                    const hour = Math.min(23, Math.max(0, parseInt(e.target.value) || 0))
+                    const minute = formData.cutoffTime.split(':')[1] || '00'
+                    setFormData({ ...formData, cutoffTime: `${String(hour).padStart(2, '0')}:${minute}` })
+                  }}
+                  className="w-20"
+                />
+                <span className="text-muted-foreground">:</span>
+                <Input
+                  id="cutoffTimeMinute"
+                  type="number"
+                  min="0"
+                  max="59"
+                  value={parseInt(formData.cutoffTime.split(':')[1] || '0')}
+                  onChange={(e) => {
+                    const hour = formData.cutoffTime.split(':')[0] || '12'
+                    const minute = Math.min(59, Math.max(0, parseInt(e.target.value) || 0))
+                    setFormData({ ...formData, cutoffTime: `${hour}:${String(minute).padStart(2, '0')}` })
+                  }}
+                  className="w-20"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="beforeCutoffDays" className="text-right">
+                마감 전 배송
+              </Label>
+              <div className="col-span-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="beforeCutoffDays"
+                    type="number"
+                    min="0"
+                    max="14"
+                    value={formData.beforeCutoffDays}
+                    onChange={(e) =>
+                      setFormData({ ...formData, beforeCutoffDays: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-20"
+                    placeholder="0"
+                  />
+                  <span className="text-sm text-muted-foreground">일 후</span>
+                  <Select
+                    value={formData.beforeCutoffDeliveryTime}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, beforeCutoffDeliveryTime: value })
+                    }
+                  >
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="오전">오전</SelectItem>
+                      <SelectItem value="오후">오후</SelectItem>
+                      <SelectItem value="미정">미정</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">배송</span>
+                </div>
+                <p className="text-xs text-muted-foreground">0 = 당일 배송, 1 = 익일 배송</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="afterCutoffDays" className="text-right">
+                마감 후 배송
+              </Label>
+              <div className="col-span-3 space-y-1">
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="afterCutoffDays"
+                    type="number"
+                    min="0"
+                    max="14"
+                    value={formData.afterCutoffDays}
+                    onChange={(e) =>
+                      setFormData({ ...formData, afterCutoffDays: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-20"
+                    placeholder="1"
+                  />
+                  <span className="text-sm text-muted-foreground">일 후</span>
+                  <Select
+                    value={formData.afterCutoffDeliveryTime}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, afterCutoffDeliveryTime: value })
+                    }
+                  >
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="오전">오전</SelectItem>
+                      <SelectItem value="오후">오후</SelectItem>
+                      <SelectItem value="미정">미정</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">배송</span>
+                </div>
+                <p className="text-xs text-muted-foreground">0 = 당일 배송, 1 = 익일 배송</p>
+              </div>
+            </div>
+
             {/* 2차 마감 설정 (cutoffCount === 2일 때만 표시) */}
             {formData.cutoffCount === 2 && (
               <>
@@ -884,13 +939,35 @@ export default function DeliveryRulesPage() {
                   <Label htmlFor="secondCutoffTime" className="text-right">
                     2차 마감 시간
                   </Label>
-                  <Input
-                    id="secondCutoffTime"
-                    type="time"
-                    value={formData.secondCutoffTime}
-                    onChange={(e) => setFormData({ ...formData, secondCutoffTime: e.target.value })}
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3 flex items-center gap-1">
+                    <Input
+                      id="secondCutoffTimeHour"
+                      type="number"
+                      min="0"
+                      max="23"
+                      value={formData.secondCutoffTime ? parseInt(formData.secondCutoffTime.split(':')[0]) : 14}
+                      onChange={(e) => {
+                        const hour = Math.min(23, Math.max(0, parseInt(e.target.value) || 0))
+                        const minute = formData.secondCutoffTime ? formData.secondCutoffTime.split(':')[1] : '00'
+                        setFormData({ ...formData, secondCutoffTime: `${String(hour).padStart(2, '0')}:${minute}` })
+                      }}
+                      className="w-20"
+                    />
+                    <span className="text-muted-foreground">:</span>
+                    <Input
+                      id="secondCutoffTimeMinute"
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={formData.secondCutoffTime ? parseInt(formData.secondCutoffTime.split(':')[1] || '0') : 0}
+                      onChange={(e) => {
+                        const hour = formData.secondCutoffTime ? formData.secondCutoffTime.split(':')[0] : '14'
+                        const minute = Math.min(59, Math.max(0, parseInt(e.target.value) || 0))
+                        setFormData({ ...formData, secondCutoffTime: `${hour}:${String(minute).padStart(2, '0')}` })
+                      }}
+                      className="w-20"
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="afterSecondCutoffDays" className="text-right">
@@ -914,74 +991,28 @@ export default function DeliveryRulesPage() {
                         placeholder="2"
                       />
                       <span className="text-sm text-muted-foreground">일 후</span>
+                      <Select
+                        value={formData.afterSecondCutoffDeliveryTime}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, afterSecondCutoffDeliveryTime: value })
+                        }
+                      >
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="오전">오전</SelectItem>
+                          <SelectItem value="오후">오후</SelectItem>
+                          <SelectItem value="미정">미정</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground">배송</span>
                     </div>
                     <p className="text-xs text-muted-foreground">0 = 당일 배송, 1 = 익일 배송</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="afterSecondCutoffDeliveryTime" className="text-right">
-                    2차 마감 후 배송
-                  </Label>
-                  <Select
-                    value={formData.afterSecondCutoffDeliveryTime}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, afterSecondCutoffDeliveryTime: value })
-                    }
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="오전">오전</SelectItem>
-                      <SelectItem value="오후">오후</SelectItem>
-                      <SelectItem value="미정">미정</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </>
             )}
-
-            {/* 배송 시간대 선택 */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="beforeCutoffDeliveryTime" className="text-right">
-                마감 전 배송
-              </Label>
-              <Select
-                value={formData.beforeCutoffDeliveryTime}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, beforeCutoffDeliveryTime: value })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="오전">오전</SelectItem>
-                  <SelectItem value="오후">오후</SelectItem>
-                  <SelectItem value="미정">미정</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="afterCutoffDeliveryTime" className="text-right">
-                마감 후 배송
-              </Label>
-              <Select
-                value={formData.afterCutoffDeliveryTime}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, afterCutoffDeliveryTime: value })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="오전">오전</SelectItem>
-                  <SelectItem value="오후">오후</SelectItem>
-                  <SelectItem value="미정">미정</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
             {/* 영업 요일 선택 */}
             <div className="grid grid-cols-4 items-start gap-4">

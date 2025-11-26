@@ -57,7 +57,9 @@
       "Bash(findstr node:*)",
       "Bash(npx tsc:*)",
       "Bash(npx next build)",
-      "Bash(VERCEL_TOKEN=\"0oGkVTnUh51nld1GGk0ohTdh\" npx vercel --prod --force --token=\"0oGkVTnUh51nld1GGk0ohTdh\")"
+      "Bash(VERCEL_TOKEN=\"0oGkVTnUh51nld1GGk0ohTdh\" npx vercel --prod --force --token=\"0oGkVTnUh51nld1GGk0ohTdh\")",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
