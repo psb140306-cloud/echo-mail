@@ -421,62 +421,59 @@ export class MailMonitorService {
         throw new Error('EmailLog를 찾을 수 없습니다')
       }
 
-      // 알림 발송 (재시도 로직) - 이메일 수신 시간 및 로그 ID 전달
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          logger.info('[MailMonitor] 알림 발송 시작', {
+      // 알림 발송 (재시도 제거 - 중복 발송 방지를 위해 1회만 시도)
+      // 타임아웃 시 FAILED로 기록되지만 실제 발송되었을 수 있으므로 재시도하지 않음
+      try {
+        logger.info('[MailMonitor] 알림 발송 시작', {
+          companyId: company.id,
+          companyName: company.name,
+          emailLogId: emailLog.id,
+        })
+
+        const results = await sendOrderReceivedNotification(company.id, date, emailLog.id)
+        const successCount = results.filter((r) => r.success).length
+
+        logger.info('[MailMonitor] 알림 발송 완료', {
+          companyId: company.id,
+          companyName: company.name,
+          totalContacts: results.length,
+          successCount,
+          results: results.map((r) => ({
+            success: r.success,
+            error: r.error,
+            provider: r.provider,
+          })),
+        })
+
+        // 빈 배열 반환 시 경고 (중복 발송 방지로 스킵된 경우)
+        if (results.length === 0) {
+          logger.warn('[MailMonitor] 알림이 발송되지 않음 - 담당자 없음 또는 중복 발송 방지', {
             companyId: company.id,
-            companyName: company.name,
             emailLogId: emailLog.id,
-            attempt,
           })
-
-          const results = await sendOrderReceivedNotification(company.id, date, emailLog.id)
-          const successCount = results.filter((r) => r.success).length
-
-          logger.info('[MailMonitor] 알림 발송 완료', {
-            companyId: company.id,
-            companyName: company.name,
-            totalContacts: results.length,
-            successCount,
-            attempt,
-            results: results.map((r) => ({
-              success: r.success,
-              error: r.error,
-              provider: r.provider,
-            })),
-          })
-
-          // 빈 배열 반환 시 경고 (중복 발송 방지로 스킵된 경우)
-          if (results.length === 0) {
-            logger.warn('[MailMonitor] 알림이 발송되지 않음 - 담당자 없음 또는 중복 발송 방지', {
-              companyId: company.id,
-              emailLogId: emailLog.id,
-            })
-          }
-
-          // 설정에 따라 읽음 처리
-          if (mailConfig.autoMarkAsRead) {
-            await this.safeMarkAsRead(client, message.uid)
-            logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
-          } else {
-            logger.info('[MailMonitor] 읽음 처리 스킵 (설정 OFF)', { uid: message.uid })
-          }
-          return
-        } catch (error) {
-          lastError = error instanceof Error ? error : new Error('알림 발송 실패')
-          logger.warn(`[MailMonitor] 알림 발송 실패 (시도 ${attempt}/${maxRetries}):`, error)
-
-          if (attempt < maxRetries) {
-            // 재시도 전 대기 (exponential backoff)
-            const delay = Math.pow(2, attempt) * 1000
-            await new Promise((resolve) => setTimeout(resolve, delay))
-          }
         }
+
+        // 설정에 따라 읽음 처리
+        if (mailConfig.autoMarkAsRead) {
+          await this.safeMarkAsRead(client, message.uid)
+          logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
+        } else {
+          logger.info('[MailMonitor] 읽음 처리 스킵 (설정 OFF)', { uid: message.uid })
+        }
+        return
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('알림 발송 실패')
+        logger.error('[MailMonitor] 알림 발송 실패 (재시도 없음 - 중복 방지):', error)
       }
 
-      // 모든 재시도 실패
-      throw lastError || new Error('알림 발송 실패')
+      // 알림 발송 실패해도 메일은 처리된 것으로 간주
+      if (lastError) {
+        logger.warn('[MailMonitor] 알림 발송 실패했지만 메일 처리 완료 처리', {
+          companyId: company.id,
+          emailLogId: emailLog.id,
+          error: lastError.message,
+        })
+      }
     } catch (error) {
       logger.error('[MailMonitor] 메일 처리 최종 실패:', error)
       // 에러 발생 시에도 설정에 따라 읽음 처리

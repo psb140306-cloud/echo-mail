@@ -453,20 +453,24 @@ export class NotificationService {
       }
 
       // 중복 발송 체크: emailLogId가 있으면 해당 메일에 대한 발송 이력 확인
+      // 타임아웃/네트워크 오류로 FAILED된 경우에도 실제 발송되었을 수 있으므로
+      // SENT 또는 FAILED 상태 모두 체크하여 재시도 시 중복 발송 방지
       if (emailLogId) {
         const existingNotification = await prisma.notificationLog.findFirst({
           where: {
             emailLogId,
             tenantId: company.tenantId,
-            status: 'SENT',
+            // SENT 또는 FAILED 모두 체크 (타임아웃 시 FAILED지만 실제 발송됨)
+            status: { in: ['SENT', 'FAILED'] },
           },
         })
 
         if (existingNotification) {
-          logger.warn('[중복 발송 방지] 동일 메일에 대한 발송 이력 존재', {
+          logger.warn('[중복 발송 방지] 동일 메일에 대한 발송 이력 존재 (재시도 차단)', {
             emailLogId,
             notificationId: existingNotification.id,
-            sentAt: existingNotification.createdAt,
+            status: existingNotification.status,
+            createdAt: existingNotification.createdAt,
           })
           return [] // 빈 배열 반환하여 중복 발송 방지
         }
