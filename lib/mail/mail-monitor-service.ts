@@ -5,7 +5,7 @@ import { logger } from '@/lib/utils/logger'
 import { createImapClient } from '@/lib/imap/connection'
 import { parseOrderEmail } from './email-parser'
 import { sendOrderReceivedNotification } from '@/lib/notifications/notification-service'
-import { getKSTStartOfDay } from '@/lib/utils/date'
+import { getKSTStartOfDay, isKSTToday, formatKSTDate } from '@/lib/utils/date'
 
 const prisma = new PrismaClient()
 
@@ -248,6 +248,20 @@ export class MailMonitorService {
 
     // autoMarkAsRead 설정 조회
     const mailConfig = await this.getMailConfig(tenantId)
+
+    // [KST 날짜 필터] IMAP since는 날짜만 비교하므로 어제 메일도 잡힐 수 있음
+    // KST 기준 오늘이 아닌 메일은 스킵 (알림 발송 안 함)
+    if (date && !isKSTToday(date)) {
+      logger.info('[MailMonitor] KST 기준 오늘이 아닌 메일 - 스킵', {
+        tenantId,
+        uid: message.uid,
+        from: from?.address,
+        subject,
+        mailDate: date?.toISOString(),
+        mailDateKST: formatKSTDate(date),
+      })
+      return
+    }
 
     // 실제 Message-ID 헤더 추출
     let messageIdHeader = message.headers?.['message-id']?.[0]

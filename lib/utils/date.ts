@@ -143,3 +143,14 @@ export function getKSTMonthEnd(monthStr: string): Date {
   endOfMonth.setTime(endOfMonth.getTime() - KST_OFFSET)
   return endOfMonth
 }
+
+/**
+ * UTC Date가 KST 기준 오늘인지 확인
+ * @param date UTC Date 객체
+ * @returns true면 KST 기준 오늘
+ */
+export function isKSTToday(date: Date): boolean {
+  const todayKST = getKSTToday() // "YYYY-MM-DD"
+  const dateKST = formatKSTDate(date) // "YYYY-MM-DD"
+  return todayKST === dateKST
+}
