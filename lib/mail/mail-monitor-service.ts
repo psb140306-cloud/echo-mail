@@ -252,16 +252,17 @@ export class MailMonitorService {
     // 실제 Message-ID 헤더 추출
     let messageIdHeader = message.headers?.['message-id']?.[0]
 
-    // Message-ID가 없으면 안정적인 fallback ID 생성 (sender + subject + date + 본문해시)
+    // Message-ID가 없으면 안정적인 fallback ID 생성
+    // 중요: bodyHash 대신 UID 사용 (IMAP UID는 같은 메일함에서 고유하고 안정적)
+    // 이전 문제: bodyHash가 IMAP fetch마다 달라져서 같은 메일에 다른 emailLogId 생성
     if (!messageIdHeader) {
-      const emailContent = message.source?.toString() || ''
-      const bodyHash = this.generateBodyHash(emailContent)
       const dateStr = date ? date.toISOString().split('T')[0] : 'unknown'
       const sender = from?.address || 'unknown'
       const subjectStr = subject || 'no-subject'
 
-      messageIdHeader = `fallback-${tenantId}-${sender}-${subjectStr}-${dateStr}-${bodyHash}`
-      logger.warn('[MailMonitor] Message-ID 헤더 없음 - fallback ID 사용', {
+      // UID 기반 fallback ID (안정적)
+      messageIdHeader = `fallback-${tenantId}-uid${message.uid}-${sender}-${dateStr}`
+      logger.warn('[MailMonitor] Message-ID 헤더 없음 - UID 기반 fallback ID 사용', {
         uid: message.uid,
         fallbackId: messageIdHeader,
       })

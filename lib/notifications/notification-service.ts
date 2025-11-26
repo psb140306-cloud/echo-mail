@@ -234,46 +234,10 @@ export class NotificationService {
         limit: limitCheck.limit,
       })
 
-      // [추가 중복 방지] 같은 업체 + 같은 담당자(contactId) + 오늘 + 같은 타입으로 이미 성공 발송이 있으면 스킵
-      // 문제: emailLogId가 달라져도 (bodyHash 변동) 같은 메일에 대해 중복 발송되는 이슈 해결
-      // 이 체크는 "하루에 같은 업체의 같은 담당자에게는 1회만 발송"이라는 비즈니스 규칙 적용
-      if (request.companyId && request.contactId && tenantId) {
-        // 오늘 00:00:00 (KST) 계산
-        const now = new Date()
-        const kstOffset = 9 * 60 * 60 * 1000
-        const kstNow = new Date(now.getTime() + kstOffset)
-        const kstToday = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate())
-        const todayStart = new Date(kstToday.getTime() - kstOffset)
-
-        const todaySuccess = await prisma.notificationLog.findFirst({
-          where: {
-            tenantId,
-            companyId: request.companyId,
-            contactId: request.contactId,
-            type: request.type,
-            status: { in: ['SENT', 'DELIVERED'] },
-            sentAt: { gte: todayStart },
-          },
-          orderBy: { sentAt: 'desc' },
-        })
-
-        if (todaySuccess) {
-          logger.info('[중복 발송 방지] 오늘 같은 업체+담당자에게 이미 발송됨, 스킵', {
-            companyId: request.companyId,
-            contactId: request.contactId,
-            type: request.type,
-            existingId: todaySuccess.id,
-            existingSentAt: todaySuccess.sentAt,
-            todayStart: todayStart.toISOString(),
-          })
-
-          return {
-            success: true,
-            messageId: todaySuccess.providerMessageId || todaySuccess.id,
-            provider: 'SKIPPED(오늘 이미 발송됨)',
-          }
-        }
-      }
+      // [중복 방지 로직 정리 - 2025-11-26]
+      // 1. 근본 원인 해결: fallback ID를 UID 기반으로 변경 (bodyHash 불안정 문제 해결)
+      // 2. emailLogId + contactId 기반 Optimistic Locking이 이제 제대로 작동함
+      // 3. "오늘 업체+담당자" 체크는 제거됨 (하루에 같은 업체에서 여러 발주 가능해야 함)
 
       // [Optimistic Locking] 발송 전에 PENDING 상태로 로그를 먼저 생성
       // 이렇게 하면 두 번째 스케줄러가 실행될 때 이미 로그가 존재하므로 중복 발송 방지
