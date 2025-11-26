@@ -385,6 +385,78 @@ export class NCPSMSProvider implements SMSProvider {
       return false
     }
   }
+
+  /**
+   * 해당 번호로 오늘 이미 메시지를 보냈는지 확인 (NCP SENS API)
+   * GET /sms/v2/services/{serviceId}/messages?requestId={requestId}
+   * @param phoneNumber 수신자 전화번호
+   * @returns true면 이미 발송됨, false면 미발송
+   */
+  async checkMessageSentToday(phoneNumber: string): Promise<boolean> {
+    try {
+      if (this.config.testMode) {
+        logger.info('[NCP] 메시지 발송 이력 조회 시뮬레이션', { phoneNumber })
+        return false
+      }
+
+      if (!this.config.apiSecret || !this.config.serviceId) {
+        logger.warn('[NCP] API Secret 또는 Service ID 미설정')
+        return false
+      }
+
+      const timestamp = Date.now().toString()
+      const method = 'GET'
+      const url = `/sms/v2/services/${this.config.serviceId}/messages`
+      const signature = this.makeSignature(method, url, timestamp)
+
+      // 오늘 00:00:00 (KST) 계산
+      const now = new Date()
+      const kstOffset = 9 * 60 * 60 * 1000
+      const kstNow = new Date(now.getTime() + kstOffset)
+      const kstToday = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate())
+      const startTime = new Date(kstToday.getTime() - kstOffset)
+
+      // 전화번호 정리 (하이픈 제거)
+      const cleanPhone = phoneNumber.replace(/-/g, '')
+
+      // NCP SENS 메시지 조회 API
+      // https://api.ncloud-docs.com/docs/ai-application-service-sens-smsv2#메시지-발송-요청-조회
+      const params = new URLSearchParams({
+        startTime: startTime.toISOString(),
+        to: cleanPhone,
+        pageSize: '1',
+      })
+
+      const response = await fetch(`${this.baseUrl}${url}?${params}`, {
+        method: 'GET',
+        headers: {
+          'x-ncp-apigw-timestamp': timestamp,
+          'x-ncp-iam-access-key': this.config.apiKey,
+          'x-ncp-apigw-signature-v2': signature,
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        logger.error('[NCP] 메시지 조회 실패:', { status: response.status, error: errorText })
+        return false
+      }
+
+      const data = await response.json()
+      const hasSent = data.messages && data.messages.length > 0
+
+      logger.info('[NCP] 오늘 메시지 발송 이력 조회', {
+        phoneNumber: cleanPhone,
+        hasSent,
+        count: data.messages?.length || 0,
+      })
+
+      return hasSent
+    } catch (error) {
+      logger.error('[NCP] 메시지 조회 오류:', error)
+      return false
+    }
+  }
 }
 
 // SMS Provider Factory

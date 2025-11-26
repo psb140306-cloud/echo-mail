@@ -178,6 +178,69 @@ export class SolapiSMSProvider implements SMSProvider {
     }
   }
 
+  /**
+   * 해당 번호로 오늘 이미 메시지를 보냈는지 확인 (Solapi API)
+   * @param phoneNumber 수신자 전화번호
+   * @returns true면 이미 발송됨, false면 미발송
+   */
+  async checkMessageSentToday(phoneNumber: string): Promise<boolean> {
+    try {
+      if (this.config.testMode) {
+        logger.info('[SOLAPI Test Mode] 메시지 발송 이력 조회 시뮬레이션', { phoneNumber })
+        return false // 테스트 모드에서는 항상 미발송으로 처리
+      }
+
+      const date = new Date().toISOString()
+      const salt = Date.now().toString()
+      const signature = this.generateSignature(date, salt)
+
+      // 오늘 00:00:00 (KST) 계산
+      const now = new Date()
+      const kstOffset = 9 * 60 * 60 * 1000 // KST = UTC+9
+      const kstNow = new Date(now.getTime() + kstOffset)
+      const kstToday = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate())
+      const startDate = new Date(kstToday.getTime() - kstOffset).toISOString()
+
+      // Solapi 메시지 조회 API
+      // https://docs.solapi.com/api-reference/messages/getmessagelist
+      const cleanPhone = phoneNumber.replace(/-/g, '')
+      const params = new URLSearchParams({
+        'criteria[to]': cleanPhone,
+        'criteria[startDate]': startDate,
+        limit: '1',
+      })
+
+      const response = await fetch(`${this.baseUrl}/messages/v4/list?${params}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `HMAC-SHA256 apiKey=${this.config.apiKey}, date=${date}, salt=${salt}, signature=${signature}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        logger.error('[SOLAPI] 메시지 조회 실패:', { status: response.status, error: errorText })
+        // API 실패 시 안전하게 false 반환 (발송 허용)
+        return false
+      }
+
+      const data = await response.json()
+      const hasSent = data.messageList && data.messageList.length > 0
+
+      logger.info('[SOLAPI] 오늘 메시지 발송 이력 조회', {
+        phoneNumber: cleanPhone,
+        hasSent,
+        count: data.messageList?.length || 0,
+      })
+
+      return hasSent
+    } catch (error) {
+      logger.error('[SOLAPI] 메시지 조회 오류:', error)
+      // 오류 발생 시 안전하게 false 반환 (발송 허용)
+      return false
+    }
+  }
+
 
   /**
    * 발신번호 등록 (SOLAPI API 사용)

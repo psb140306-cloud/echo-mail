@@ -234,42 +234,129 @@ export class NotificationService {
         limit: limitCheck.limit,
       })
 
-      // [중복 발송 방지] 발송 전에 기존 성공 상태 확인
-      // emailLogId가 있는 경우에만 체크 (자동 발송 메일만 해당)
-      if (request.emailLogId && tenantId) {
-        // contactId가 있으면 더 정확한 조건으로 체크
-        const whereCondition: any = {
-          emailLogId: request.emailLogId,
-          tenantId,
-          type: request.type,
-          status: { in: ['SENT', 'DELIVERED'] },
-        }
+      // [Optimistic Locking] 발송 전에 PENDING 상태로 로그를 먼저 생성
+      // 이렇게 하면 두 번째 스케줄러가 실행될 때 이미 로그가 존재하므로 중복 발송 방지
+      let pendingLogId: string | null = null
 
-        // contactId가 있으면 contactId로 체크 (더 정확), 없으면 recipient로 체크
-        if (request.contactId) {
-          whereCondition.contactId = request.contactId
-        } else {
-          whereCondition.recipient = request.recipient
-        }
+      if (request.emailLogId && request.contactId && tenantId) {
+        try {
+          // 먼저 기존 로그 확인 (PENDING, SENT, DELIVERED 모두 체크)
+          const existingLog = await prisma.notificationLog.findUnique({
+            where: {
+              notification_unique_per_contact: {
+                tenantId,
+                emailLogId: request.emailLogId,
+                contactId: request.contactId,
+                type: request.type,
+              },
+            },
+          })
 
+          if (existingLog) {
+            // 이미 성공한 경우 스킵
+            if (existingLog.status === 'SENT' || existingLog.status === 'DELIVERED') {
+              logger.info('[Optimistic Locking] 이미 성공한 발송 이력 존재, 스킵', {
+                emailLogId: request.emailLogId,
+                existingId: existingLog.id,
+                existingStatus: existingLog.status,
+                contactId: request.contactId,
+              })
+
+              return {
+                success: true,
+                messageId: existingLog.providerMessageId || existingLog.id,
+                provider: 'SKIPPED(이미 발송됨)',
+              }
+            }
+
+            // PENDING 상태인 경우 - 다른 스케줄러가 처리 중
+            if (existingLog.status === 'PENDING') {
+              // 5분 이상 PENDING 상태면 타임아웃으로 간주하고 재처리 허용
+              const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+              if (existingLog.createdAt > fiveMinutesAgo) {
+                logger.info('[Optimistic Locking] 다른 프로세스가 처리 중 (PENDING), 스킵', {
+                  emailLogId: request.emailLogId,
+                  existingId: existingLog.id,
+                  contactId: request.contactId,
+                })
+
+                return {
+                  success: true,
+                  messageId: existingLog.id,
+                  provider: 'SKIPPED(처리 중)',
+                }
+              }
+
+              logger.info('[Optimistic Locking] PENDING 타임아웃, 재처리 시도', {
+                emailLogId: request.emailLogId,
+                existingId: existingLog.id,
+              })
+            }
+
+            // FAILED 상태인 경우 pendingLogId 설정 (나중에 업데이트용)
+            pendingLogId = existingLog.id
+          } else {
+            // 새 로그 생성 (PENDING 상태)
+            const newLog = await prisma.notificationLog.create({
+              data: {
+                type: request.type,
+                recipient: request.recipient,
+                message: 'PENDING',
+                status: 'PENDING',
+                companyId: request.companyId,
+                contactId: request.contactId,
+                tenantId,
+                emailLogId: request.emailLogId,
+              },
+            })
+            pendingLogId = newLog.id
+
+            logger.info('[Optimistic Locking] PENDING 로그 생성', {
+              logId: newLog.id,
+              emailLogId: request.emailLogId,
+              contactId: request.contactId,
+              type: request.type,
+            })
+          }
+        } catch (error) {
+          // unique constraint violation - 다른 프로세스가 먼저 생성함
+          if ((error as any)?.code === 'P2002') {
+            logger.info('[Optimistic Locking] 다른 프로세스가 먼저 로그 생성, 스킵', {
+              emailLogId: request.emailLogId,
+              contactId: request.contactId,
+            })
+
+            return {
+              success: true,
+              provider: 'SKIPPED(다른 프로세스 처리 중)',
+            }
+          }
+          throw error
+        }
+      } else if (request.emailLogId && tenantId) {
+        // contactId가 없는 경우 - 기존 로직 (recipient 기반 체크)
         const existingSuccess = await prisma.notificationLog.findFirst({
-          where: whereCondition,
+          where: {
+            emailLogId: request.emailLogId,
+            tenantId,
+            type: request.type,
+            recipient: request.recipient,
+            status: { in: ['SENT', 'DELIVERED', 'PENDING'] },
+          },
         })
 
         if (existingSuccess) {
-          logger.info('[중복 발송 방지] 이미 성공한 발송 이력 존재, 스킵', {
+          logger.info('[중복 발송 방지] 이미 처리 중이거나 성공한 발송 이력 존재, 스킵', {
             emailLogId: request.emailLogId,
             existingId: existingSuccess.id,
             existingStatus: existingSuccess.status,
-            contactId: request.contactId,
             recipient: request.recipient,
-            type: request.type,
           })
 
           return {
             success: true,
             messageId: existingSuccess.providerMessageId || existingSuccess.id,
-            provider: 'SKIPPED(이미 발송됨)',
+            provider: `SKIPPED(${existingSuccess.status})`,
           }
         }
       }
@@ -411,8 +498,8 @@ export class NotificationService {
         })
       }
 
-      // 발송 로그 저장
-      await this.logNotification(request, result, rendered.content)
+      // 발송 로그 저장 (PENDING → SENT/FAILED 업데이트)
+      await this.logNotification(request, result, rendered.content, pendingLogId)
 
       logger.info('알림 발송 완료', {
         tenantId,
@@ -432,7 +519,7 @@ export class NotificationService {
         error: error instanceof Error ? error.message : '알 수 없는 오류',
       }
 
-      await this.logNotification(request, errorResult)
+      await this.logNotification(request, errorResult, undefined, pendingLogId)
 
       return errorResult
     }
@@ -788,6 +875,20 @@ export class NotificationService {
         provider = await this.getTenantSMSProvider(tenantId)
       }
 
+      // [NCP API 중복 체크] SMS 발송 전에 해당 번호로 오늘 이미 발송했는지 확인
+      if ('checkMessageSentToday' in provider && typeof (provider as any).checkMessageSentToday === 'function') {
+        const alreadySent = await (provider as any).checkMessageSentToday(message.to)
+        if (alreadySent) {
+          logger.info('[NCP API 중복 체크] 오늘 이미 발송된 번호, 스킵', {
+            to: message.to,
+          })
+          return {
+            success: true,
+            provider: 'SKIPPED(NCP API - 오늘 이미 발송됨)',
+          }
+        }
+      }
+
       const result = await provider.sendSMS(message)
 
       if (result.success) {
@@ -897,30 +998,55 @@ export class NotificationService {
   }
 
   /**
-   * 알림 발송 로그 저장 (upsert)
-   * - 복합 유니크 키(tenantId, emailLogId, contactId, type) 기준으로 upsert
+   * 알림 발송 로그 저장 (update 또는 create)
+   * - pendingLogId가 있으면 해당 로그를 update (PENDING → SENT/FAILED)
    * - 상태 전이 규칙: SENT/DELIVERED → 덮어쓰지 않음
    */
   private async logNotification(
     request: NotificationRequest,
     result: NotificationResult,
-    renderedMessage?: string
+    renderedMessage?: string,
+    pendingLogId?: string | null
   ): Promise<void> {
     try {
       const tenantId = request.tenantId || ''
       const newStatus = result.success ? 'SENT' : 'FAILED'
       const errorCode = result.errorCode || (result.error ? classifyError(result.error) : null)
 
-      logger.debug('알림 로그 저장 (upsert)', {
+      logger.debug('알림 로그 저장', {
         type: request.type,
         recipient: request.recipient,
         template: request.templateName,
         success: result.success,
         provider: result.provider,
         errorCode,
+        pendingLogId,
         hasEmailLogId: !!request.emailLogId,
         hasContactId: !!request.contactId,
       })
+
+      // pendingLogId가 있으면 해당 로그를 update
+      if (pendingLogId) {
+        await prisma.notificationLog.update({
+          where: { id: pendingLogId },
+          data: {
+            status: newStatus,
+            sentAt: result.success ? new Date() : null,
+            errorMessage: result.error,
+            errorCode,
+            providerMessageId: result.messageId,
+            message: renderedMessage || undefined,
+            retryCount: { increment: 1 },
+          },
+        })
+
+        logger.info('[로그 저장] PENDING → 상태 업데이트 완료', {
+          logId: pendingLogId,
+          status: newStatus,
+          type: request.type,
+        })
+        return
+      }
 
       // emailLogId와 contactId가 있으면 upsert, 없으면 create
       if (request.emailLogId && request.contactId && tenantId) {
@@ -971,7 +1097,7 @@ export class NotificationService {
             emailLogId: request.emailLogId,
           },
           update: {
-            // FAILED → SENT/FAILED 업데이트 허용
+            // PENDING/FAILED → SENT/FAILED 업데이트 허용
             status: newStatus,
             sentAt: result.success ? new Date() : undefined,
             errorMessage: result.error,
