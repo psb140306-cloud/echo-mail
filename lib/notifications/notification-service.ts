@@ -234,6 +234,36 @@ export class NotificationService {
         limit: limitCheck.limit,
       })
 
+      // [중복 발송 방지] 발송 전에 기존 성공 상태 확인
+      // emailLogId가 있는 경우에만 체크 (자동 발송 메일만 해당)
+      if (request.emailLogId && tenantId) {
+        const existingSuccess = await prisma.notificationLog.findFirst({
+          where: {
+            emailLogId: request.emailLogId,
+            tenantId,
+            type: request.type,
+            recipient: request.recipient,
+            status: { in: ['SENT', 'DELIVERED'] },
+          },
+        })
+
+        if (existingSuccess) {
+          logger.info('[중복 발송 방지] 이미 성공한 발송 이력 존재, 스킵', {
+            emailLogId: request.emailLogId,
+            existingId: existingSuccess.id,
+            existingStatus: existingSuccess.status,
+            recipient: request.recipient,
+            type: request.type,
+          })
+
+          return {
+            success: true,
+            messageId: existingSuccess.providerMessageId || existingSuccess.id,
+            provider: 'SKIPPED(이미 발송됨)',
+          }
+        }
+      }
+
       // 템플릿 렌더링
       const rendered = await renderNotificationTemplate(
         request.templateName,
