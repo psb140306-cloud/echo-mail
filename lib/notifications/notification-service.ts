@@ -237,14 +237,23 @@ export class NotificationService {
       // [중복 발송 방지] 발송 전에 기존 성공 상태 확인
       // emailLogId가 있는 경우에만 체크 (자동 발송 메일만 해당)
       if (request.emailLogId && tenantId) {
+        // contactId가 있으면 더 정확한 조건으로 체크
+        const whereCondition: any = {
+          emailLogId: request.emailLogId,
+          tenantId,
+          type: request.type,
+          status: { in: ['SENT', 'DELIVERED'] },
+        }
+
+        // contactId가 있으면 contactId로 체크 (더 정확), 없으면 recipient로 체크
+        if (request.contactId) {
+          whereCondition.contactId = request.contactId
+        } else {
+          whereCondition.recipient = request.recipient
+        }
+
         const existingSuccess = await prisma.notificationLog.findFirst({
-          where: {
-            emailLogId: request.emailLogId,
-            tenantId,
-            type: request.type,
-            recipient: request.recipient,
-            status: { in: ['SENT', 'DELIVERED'] },
-          },
+          where: whereCondition,
         })
 
         if (existingSuccess) {
@@ -252,6 +261,7 @@ export class NotificationService {
             emailLogId: request.emailLogId,
             existingId: existingSuccess.id,
             existingStatus: existingSuccess.status,
+            contactId: request.contactId,
             recipient: request.recipient,
             type: request.type,
           })
