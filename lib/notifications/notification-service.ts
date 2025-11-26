@@ -34,8 +34,70 @@ export interface NotificationResult {
   success: boolean
   messageId?: string
   error?: string
+  errorCode?: string // 에러 코드 (TIMEOUT, AUTH_ERROR, NETWORK_ERROR 등)
   provider?: string
   failoverUsed?: boolean
+}
+
+// 에러 코드 정의
+export const ErrorCodes = {
+  // 확실한 실패 (재시도 불가)
+  AUTH_ERROR: 'AUTH_ERROR',           // 인증 오류
+  INVALID_PARAMS: 'INVALID_PARAMS',   // 잘못된 파라미터
+  INVALID_PHONE: 'INVALID_PHONE',     // 잘못된 전화번호
+  BLOCKED: 'BLOCKED',                 // 수신 거부
+  QUOTA_EXCEEDED: 'QUOTA_EXCEEDED',   // 할당량 초과
+
+  // 불확실한 실패 (재시도 가능)
+  TIMEOUT: 'TIMEOUT',                 // 타임아웃
+  NETWORK_ERROR: 'NETWORK_ERROR',     // 네트워크 오류
+  SERVER_ERROR: 'SERVER_ERROR',       // 서버 오류 (5xx)
+  UNKNOWN: 'UNKNOWN',                 // 알 수 없는 오류
+} as const
+
+// 재시도 가능한 에러 코드
+const RETRYABLE_ERROR_CODES = [
+  ErrorCodes.TIMEOUT,
+  ErrorCodes.NETWORK_ERROR,
+  ErrorCodes.SERVER_ERROR,
+  ErrorCodes.UNKNOWN,
+]
+
+// 에러 메시지로부터 에러 코드 추출
+function classifyError(error: string | Error): string {
+  const errorMsg = typeof error === 'string' ? error.toLowerCase() : error.message.toLowerCase()
+
+  if (errorMsg.includes('timeout') || errorMsg.includes('timed out') || errorMsg.includes('timedout')) {
+    return ErrorCodes.TIMEOUT
+  }
+  if (errorMsg.includes('auth') || errorMsg.includes('unauthorized') || errorMsg.includes('401')) {
+    return ErrorCodes.AUTH_ERROR
+  }
+  if (errorMsg.includes('invalid') && (errorMsg.includes('phone') || errorMsg.includes('number'))) {
+    return ErrorCodes.INVALID_PHONE
+  }
+  if (errorMsg.includes('invalid') || errorMsg.includes('param') || errorMsg.includes('400')) {
+    return ErrorCodes.INVALID_PARAMS
+  }
+  if (errorMsg.includes('block') || errorMsg.includes('reject') || errorMsg.includes('refuse')) {
+    return ErrorCodes.BLOCKED
+  }
+  if (errorMsg.includes('quota') || errorMsg.includes('limit') || errorMsg.includes('exceeded')) {
+    return ErrorCodes.QUOTA_EXCEEDED
+  }
+  if (errorMsg.includes('network') || errorMsg.includes('connection') || errorMsg.includes('socket')) {
+    return ErrorCodes.NETWORK_ERROR
+  }
+  if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503') || errorMsg.includes('504')) {
+    return ErrorCodes.SERVER_ERROR
+  }
+
+  return ErrorCodes.UNKNOWN
+}
+
+// 재시도 가능 여부 확인
+function isRetryableError(errorCode: string): boolean {
+  return RETRYABLE_ERROR_CODES.includes(errorCode as any)
 }
 
 export interface BulkNotificationRequest {
@@ -431,6 +493,8 @@ export class NotificationService {
 
   /**
    * 발주 접수 알림 발송 (비즈니스 로직)
+   * - 유니크 키 기반 중복 방지
+   * - 불확실 실패만 제한적 재시도 (최대 2회)
    */
   async sendOrderReceivedNotification(
     companyId: string,
@@ -452,29 +516,35 @@ export class NotificationService {
         throw new Error('업체를 찾을 수 없습니다')
       }
 
-      // 중복 발송 체크: emailLogId가 있으면 해당 메일에 대한 발송 이력 확인
-      // 타임아웃/네트워크 오류로 FAILED된 경우에도 실제 발송되었을 수 있으므로
-      // SENT 또는 FAILED 상태 모두 체크하여 재시도 시 중복 발송 방지
-      if (emailLogId) {
-        const existingNotification = await prisma.notificationLog.findFirst({
-          where: {
-            emailLogId,
-            tenantId: company.tenantId,
-            // SENT 또는 FAILED 모두 체크 (타임아웃 시 FAILED지만 실제 발송됨)
-            status: { in: ['SENT', 'FAILED'] },
-          },
-        })
-
-        if (existingNotification) {
-          logger.warn('[중복 발송 방지] 동일 메일에 대한 발송 이력 존재 (재시도 차단)', {
-            emailLogId,
-            notificationId: existingNotification.id,
-            status: existingNotification.status,
-            createdAt: existingNotification.createdAt,
+      // 기존 발송 이력 조회 (담당자별로 확인)
+      // SENT/DELIVERED 상태인 담당자는 스킵, FAILED는 재시도 가능 여부 판단
+      const existingNotifications = emailLogId
+        ? await prisma.notificationLog.findMany({
+            where: {
+              emailLogId,
+              tenantId: company.tenantId,
+            },
           })
-          return [] // 빈 배열 반환하여 중복 발송 방지
+        : []
+
+      // 담당자별 발송 상태 매핑
+      const contactNotificationMap = new Map<string, { status: string; errorCode: string | null; retryCount: number }>()
+      for (const notif of existingNotifications) {
+        if (notif.contactId) {
+          const key = `${notif.contactId}-${notif.type}`
+          contactNotificationMap.set(key, {
+            status: notif.status,
+            errorCode: notif.errorCode,
+            retryCount: notif.retryCount,
+          })
         }
       }
+
+      logger.info('[발주 알림] 기존 발송 이력 확인', {
+        emailLogId,
+        existingCount: existingNotifications.length,
+        contactCount: company.contacts.length,
+      })
 
       // 납품일 계산 (이메일 수신 시간 또는 현재 시간 사용)
       const deliveryResult = await calculateDeliveryDate({
@@ -527,12 +597,13 @@ export class NotificationService {
       }
 
       const results: NotificationResult[] = []
+      const MAX_RETRIES = 2 // 불확실 실패 시 최대 재시도 횟수
 
       // 활성 담당자들에게 알림 발송
       for (const contact of company.contacts) {
         let smsAlreadySent = false // SMS 중복 발송 방지 플래그
 
-        // 디버그: 담당자별 알림 설정 로깅
+        // 담당자별 알림 설정 로깅
         logger.info('[알림 발송] 담당자 처리 시작', {
           contactId: contact.id,
           contactName: contact.name,
@@ -544,6 +615,37 @@ export class NotificationService {
 
         // 카카오 알림톡 우선 시도
         if (contact.kakaoEnabled) {
+          const kakaoKey = `${contact.id}-KAKAO_ALIMTALK`
+          const kakaoExisting = contactNotificationMap.get(kakaoKey)
+
+          // 이미 성공 상태면 스킵
+          if (kakaoExisting && (kakaoExisting.status === 'SENT' || kakaoExisting.status === 'DELIVERED')) {
+            logger.info('[알림 발송] 카카오 이미 성공, 스킵', { contactId: contact.id })
+            continue
+          }
+
+          // FAILED 상태인 경우 재시도 가능 여부 판단
+          if (kakaoExisting && kakaoExisting.status === 'FAILED') {
+            const canRetry = kakaoExisting.errorCode
+              ? isRetryableError(kakaoExisting.errorCode) && kakaoExisting.retryCount < MAX_RETRIES
+              : kakaoExisting.retryCount < MAX_RETRIES // errorCode 없으면 재시도 허용
+
+            if (!canRetry) {
+              logger.info('[알림 발송] 카카오 재시도 불가 (확실한 실패 또는 최대 재시도 초과)', {
+                contactId: contact.id,
+                errorCode: kakaoExisting.errorCode,
+                retryCount: kakaoExisting.retryCount,
+              })
+              continue
+            }
+
+            logger.info('[알림 발송] 카카오 재시도 시도', {
+              contactId: contact.id,
+              errorCode: kakaoExisting.errorCode,
+              retryCount: kakaoExisting.retryCount,
+            })
+          }
+
           const kakaoResult = await this.sendNotification({
             type: NotificationType.KAKAO_ALIMTALK,
             recipient: contact.phone,
@@ -553,36 +655,63 @@ export class NotificationService {
             contactId: contact.id,
             tenantId: company.tenantId,
             enableFailover: contact.smsEnabled,
-            emailLogId, // 이메일 로그 ID 전달
+            emailLogId,
           })
 
           results.push(kakaoResult)
 
-          // 카카오 성공 또는 SMS 폴백이 시도된 경우 (성공/실패 무관) SMS 스킵
-          // failoverUsed가 true면 이미 SMS 발송 시도됨
-          // kakaoProvider가 null이면 내부적으로 SMS로 폴백 시도됨
+          // 카카오 성공 또는 SMS 폴백이 시도된 경우 SMS 스킵
           if (kakaoResult.success || kakaoResult.failoverUsed || kakaoResult.provider?.includes('SMS')) {
             smsAlreadySent = true
           }
 
-          // 카카오 성공 시 완전히 스킵
           if (kakaoResult.success || kakaoResult.failoverUsed) {
             continue
           }
         }
 
-        // SMS 발송 (shortDate 사용으로 90바이트 이하 유지)
-        // 단, 이미 SMS 폴백이 시도된 경우 스킵
+        // SMS 발송
         if (contact.smsEnabled && !smsAlreadySent) {
+          const smsKey = `${contact.id}-SMS`
+          const smsExisting = contactNotificationMap.get(smsKey)
+
+          // 이미 성공 상태면 스킵
+          if (smsExisting && (smsExisting.status === 'SENT' || smsExisting.status === 'DELIVERED')) {
+            logger.info('[알림 발송] SMS 이미 성공, 스킵', { contactId: contact.id })
+            continue
+          }
+
+          // FAILED 상태인 경우 재시도 가능 여부 판단
+          if (smsExisting && smsExisting.status === 'FAILED') {
+            const canRetry = smsExisting.errorCode
+              ? isRetryableError(smsExisting.errorCode) && smsExisting.retryCount < MAX_RETRIES
+              : smsExisting.retryCount < MAX_RETRIES
+
+            if (!canRetry) {
+              logger.info('[알림 발송] SMS 재시도 불가 (확실한 실패 또는 최대 재시도 초과)', {
+                contactId: contact.id,
+                errorCode: smsExisting.errorCode,
+                retryCount: smsExisting.retryCount,
+              })
+              continue
+            }
+
+            logger.info('[알림 발송] SMS 재시도 시도', {
+              contactId: contact.id,
+              errorCode: smsExisting.errorCode,
+              retryCount: smsExisting.retryCount,
+            })
+          }
+
           const smsResult = await this.sendNotification({
             type: NotificationType.SMS,
             recipient: contact.phone,
             templateName: 'ORDER_RECEIVED_SMS',
-            variables, // shortDate가 포함된 variables 사용
+            variables,
             companyId: company.id,
             contactId: contact.id,
             tenantId: company.tenantId,
-            emailLogId, // 이메일 로그 ID 전달
+            emailLogId,
           })
 
           results.push(smsResult)
@@ -621,17 +750,29 @@ export class NotificationService {
 
       const result = await provider.sendSMS(message)
 
-      return {
-        success: result.success,
-        messageId: result.messageId,
-        error: result.error,
-        provider: 'SMS',
+      if (result.success) {
+        return {
+          success: true,
+          messageId: result.messageId,
+          provider: 'SMS',
+        }
+      } else {
+        const errorCode = classifyError(result.error || 'Unknown error')
+        return {
+          success: false,
+          error: result.error,
+          errorCode,
+          provider: 'SMS',
+        }
       }
     } catch (error) {
       logger.error('SMS 발송 오류:', error)
+      const errorMsg = error instanceof Error ? error.message : '알 수 없는 오류'
+      const errorCode = classifyError(errorMsg)
       return {
         success: false,
-        error: error instanceof Error ? error.message : '알 수 없는 오류',
+        error: errorMsg,
+        errorCode,
         provider: 'SMS',
       }
     }
@@ -647,17 +788,29 @@ export class NotificationService {
       }
       const result = await this.kakaoProvider.sendAlimTalk(message)
 
-      return {
-        success: result.success,
-        messageId: result.messageId,
-        error: result.error,
-        provider: 'KakaoAlimTalk',
+      if (result.success) {
+        return {
+          success: true,
+          messageId: result.messageId,
+          provider: 'KakaoAlimTalk',
+        }
+      } else {
+        const errorCode = classifyError(result.error || 'Unknown error')
+        return {
+          success: false,
+          error: result.error,
+          errorCode,
+          provider: 'KakaoAlimTalk',
+        }
       }
     } catch (error) {
       logger.error('카카오 알림톡 발송 오류:', error)
+      const errorMsg = error instanceof Error ? error.message : '알 수 없는 오류'
+      const errorCode = classifyError(errorMsg)
       return {
         success: false,
-        error: error instanceof Error ? error.message : '알 수 없는 오류',
+        error: errorMsg,
+        errorCode,
         provider: 'KakaoAlimTalk',
       }
     }
@@ -675,24 +828,38 @@ export class NotificationService {
       }
       const result = await this.kakaoProvider.sendFriendTalk(message)
 
-      return {
-        success: result.success,
-        messageId: result.messageId,
-        error: result.error,
-        provider: 'KakaoFriendTalk',
+      if (result.success) {
+        return {
+          success: true,
+          messageId: result.messageId,
+          provider: 'KakaoFriendTalk',
+        }
+      } else {
+        const errorCode = classifyError(result.error || 'Unknown error')
+        return {
+          success: false,
+          error: result.error,
+          errorCode,
+          provider: 'KakaoFriendTalk',
+        }
       }
     } catch (error) {
       logger.error('카카오 친구톡 발송 오류:', error)
+      const errorMsg = error instanceof Error ? error.message : '알 수 없는 오류'
+      const errorCode = classifyError(errorMsg)
       return {
         success: false,
-        error: error instanceof Error ? error.message : '알 수 없는 오류',
+        error: errorMsg,
+        errorCode,
         provider: 'KakaoFriendTalk',
       }
     }
   }
 
   /**
-   * 알림 발송 로그 저장
+   * 알림 발송 로그 저장 (upsert)
+   * - 복합 유니크 키(tenantId, emailLogId, contactId, type) 기준으로 upsert
+   * - 상태 전이 규칙: SENT/DELIVERED → 덮어쓰지 않음
    */
   private async logNotification(
     request: NotificationRequest,
@@ -700,28 +867,107 @@ export class NotificationService {
     renderedMessage?: string
   ): Promise<void> {
     try {
-      logger.debug('알림 로그 저장', {
+      const tenantId = request.tenantId || ''
+      const newStatus = result.success ? 'SENT' : 'FAILED'
+      const errorCode = result.errorCode || (result.error ? classifyError(result.error) : null)
+
+      logger.debug('알림 로그 저장 (upsert)', {
         type: request.type,
         recipient: request.recipient,
         template: request.templateName,
         success: result.success,
         provider: result.provider,
+        errorCode,
+        hasEmailLogId: !!request.emailLogId,
+        hasContactId: !!request.contactId,
       })
 
-      // NotificationLog 테이블에 저장
-      await prisma.notificationLog.create({
-        data: {
+      // emailLogId와 contactId가 있으면 upsert, 없으면 create
+      if (request.emailLogId && request.contactId && tenantId) {
+        // 기존 로그 확인
+        const existingLog = await prisma.notificationLog.findUnique({
+          where: {
+            notification_unique_per_contact: {
+              tenantId,
+              emailLogId: request.emailLogId,
+              contactId: request.contactId,
+              type: request.type,
+            },
+          },
+        })
+
+        // 상태 전이 규칙: SENT 또는 DELIVERED면 덮어쓰지 않음
+        if (existingLog && (existingLog.status === 'SENT' || existingLog.status === 'DELIVERED')) {
+          logger.info('[로그 저장] 이미 성공 상태, 덮어쓰지 않음', {
+            existingStatus: existingLog.status,
+            newStatus,
+            notificationId: existingLog.id,
+          })
+          return
+        }
+
+        // upsert 실행
+        await prisma.notificationLog.upsert({
+          where: {
+            notification_unique_per_contact: {
+              tenantId,
+              emailLogId: request.emailLogId,
+              contactId: request.contactId,
+              type: request.type,
+            },
+          },
+          create: {
+            type: request.type,
+            recipient: request.recipient,
+            message: renderedMessage || JSON.stringify(request.variables),
+            status: newStatus,
+            sentAt: result.success ? new Date() : null,
+            errorMessage: result.error,
+            errorCode,
+            providerMessageId: result.messageId,
+            companyId: request.companyId,
+            contactId: request.contactId,
+            tenantId,
+            emailLogId: request.emailLogId,
+          },
+          update: {
+            // FAILED → SENT/FAILED 업데이트 허용
+            status: newStatus,
+            sentAt: result.success ? new Date() : undefined,
+            errorMessage: result.error,
+            errorCode,
+            providerMessageId: result.messageId || undefined,
+            retryCount: { increment: 1 },
+            message: renderedMessage || undefined,
+          },
+        })
+
+        logger.info('[로그 저장] upsert 완료', {
+          tenantId,
+          emailLogId: request.emailLogId,
+          contactId: request.contactId,
           type: request.type,
-          recipient: request.recipient,
-          message: renderedMessage || JSON.stringify(request.variables), // 렌더링된 메시지 또는 변수
-          status: result.success ? 'SENT' : 'FAILED',
-          errorMessage: result.error,
-          companyId: request.companyId,
-          tenantId: request.tenantId || '',
-          emailLogId: request.emailLogId, // 이메일 로그 연결
-          // createdAt 제거 - 자동으로 설정됨
-        },
-      })
+          status: newStatus,
+        })
+      } else {
+        // emailLogId나 contactId가 없는 경우 (수동 발송 등) - 일반 create
+        await prisma.notificationLog.create({
+          data: {
+            type: request.type,
+            recipient: request.recipient,
+            message: renderedMessage || JSON.stringify(request.variables),
+            status: newStatus,
+            sentAt: result.success ? new Date() : null,
+            errorMessage: result.error,
+            errorCode,
+            providerMessageId: result.messageId,
+            companyId: request.companyId,
+            contactId: request.contactId,
+            tenantId,
+            emailLogId: request.emailLogId,
+          },
+        })
+      }
     } catch (error) {
       logger.error('알림 로그 저장 실패:', error)
     }

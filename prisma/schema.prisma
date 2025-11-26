@@ -283,6 +283,12 @@ model NotificationLog {
   maxRetries  Int       @default(3)
   nextRetryAt DateTime?
 
+  // 에러 분류 (재시도 가능 여부 판단)
+  errorCode   String?   // 에러 코드 (TIMEOUT, AUTH_ERROR, NETWORK_ERROR 등)
+
+  // Provider 메시지 ID (중복 발송 방지)
+  providerMessageId String? // Provider에서 반환한 messageId
+
   // 멀티테넌시
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -290,6 +296,8 @@ model NotificationLog {
   // 관련 정보
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
+
+  contactId String?  // 담당자 ID (유니크 키 구성)
 
   emailLogId String?
   emailLog   EmailLog? @relation(fields: [emailLogId], references: [id])
@@ -303,6 +311,10 @@ model NotificationLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 복합 유니크 키: 동일 테넌트, 동일 메일, 동일 담당자, 동일 타입에 대해 하나의 로그만 유지
+  // 이를 통해 upsert 시 중복 생성 방지
+  @@unique([tenantId, emailLogId, contactId, type], name: "notification_unique_per_contact")
+
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, type])
@@ -310,8 +322,10 @@ model NotificationLog {
   @@index([recipient])
   @@index([emailLogId])
   @@index([companyId])
+  @@index([contactId])
   @@index([createdAt])
   @@index([sentAt])
+  @@index([providerMessageId])
   @@map("notification_logs")
 }
 

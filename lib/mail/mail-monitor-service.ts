@@ -421,8 +421,10 @@ export class MailMonitorService {
         throw new Error('EmailLog를 찾을 수 없습니다')
       }
 
-      // 알림 발송 (재시도 제거 - 중복 발송 방지를 위해 1회만 시도)
-      // 타임아웃 시 FAILED로 기록되지만 실제 발송되었을 수 있으므로 재시도하지 않음
+      // 알림 발송 (notification-service에서 upsert 및 재시도 로직 담당)
+      // - 유니크 키 기반으로 중복 생성 방지
+      // - SENT/DELIVERED 상태면 스킵
+      // - FAILED 상태면 재시도 가능 여부 판단 (에러 코드 + retryCount)
       try {
         logger.info('[MailMonitor] 알림 발송 시작', {
           companyId: company.id,
@@ -432,22 +434,25 @@ export class MailMonitorService {
 
         const results = await sendOrderReceivedNotification(company.id, date, emailLog.id)
         const successCount = results.filter((r) => r.success).length
+        const failedCount = results.filter((r) => !r.success).length
 
         logger.info('[MailMonitor] 알림 발송 완료', {
           companyId: company.id,
           companyName: company.name,
           totalContacts: results.length,
           successCount,
+          failedCount,
           results: results.map((r) => ({
             success: r.success,
             error: r.error,
+            errorCode: r.errorCode,
             provider: r.provider,
           })),
         })
 
-        // 빈 배열 반환 시 경고 (중복 발송 방지로 스킵된 경우)
+        // 빈 배열: 담당자 없거나 모두 이미 발송 완료 상태
         if (results.length === 0) {
-          logger.warn('[MailMonitor] 알림이 발송되지 않음 - 담당자 없음 또는 중복 발송 방지', {
+          logger.info('[MailMonitor] 알림 발송 스킵 - 담당자 없음 또는 이미 성공 상태', {
             companyId: company.id,
             emailLogId: emailLog.id,
           })
@@ -463,12 +468,17 @@ export class MailMonitorService {
         return
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('알림 발송 실패')
-        logger.error('[MailMonitor] 알림 발송 실패 (재시도 없음 - 중복 방지):', error)
+        logger.error('[MailMonitor] 알림 발송 중 예외 발생:', {
+          companyId: company.id,
+          emailLogId: emailLog.id,
+          error: lastError.message,
+        })
       }
 
       // 알림 발송 실패해도 메일은 처리된 것으로 간주
+      // (다음 스케줄에서 다시 시도하면 upsert로 재시도됨)
       if (lastError) {
-        logger.warn('[MailMonitor] 알림 발송 실패했지만 메일 처리 완료 처리', {
+        logger.warn('[MailMonitor] 알림 발송 실패, 다음 스케줄에서 재시도 예정', {
           companyId: company.id,
           emailLogId: emailLog.id,
           error: lastError.message,
