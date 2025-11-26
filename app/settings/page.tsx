@@ -69,7 +69,7 @@ export default function SettingsPage() {
     },
     notification: {
       defaultSMSEnabled: true,
-      defaultKakaoEnabled: true,
+      defaultKakaoEnabled: false, // 기본값 false - 카카오 Provider 미설정 시 중복 발송 방지
       notifyOnNewOrder: true,
       notifyOnError: true,
     },

@@ -58,6 +58,23 @@ const settingsSchema = z.object({
       kakaoTemplate: z.string(),
     })
     .optional(),
+  notification: z
+    .object({
+      defaultSMSEnabled: z.boolean(),
+      defaultKakaoEnabled: z.boolean(),
+      notifyOnNewOrder: z.boolean(),
+      notifyOnError: z.boolean(),
+    })
+    .optional(),
+  business: z
+    .object({
+      companyName: z.string(),
+      businessNumber: z.string(),
+      address: z.string(),
+      contactEmail: z.string(),
+      contactPhone: z.string(),
+    })
+    .optional(),
 })
 
 // 기본 설정값
@@ -98,6 +115,19 @@ const defaultSettings = {
     smsTemplate: '[{companyName}] 발주 확인: {orderDate}까지 납품 예정입니다.',
     kakaoTemplate:
       '안녕하세요, {companyName}입니다.\n\n발주가 확인되었습니다.\n납품 예정일: {orderDate}\n\n문의사항이 있으시면 연락 주세요.',
+  },
+  notification: {
+    defaultSMSEnabled: true,
+    defaultKakaoEnabled: false, // 기본값 false - 카카오 Provider 미설정 시 중복 발송 방지
+    notifyOnNewOrder: true,
+    notifyOnError: true,
+  },
+  business: {
+    companyName: '',
+    businessNumber: '',
+    address: '',
+    contactEmail: '',
+    contactPhone: '',
   },
 }
 

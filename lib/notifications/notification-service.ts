@@ -528,6 +528,16 @@ export class NotificationService {
       for (const contact of company.contacts) {
         let smsAlreadySent = false // SMS 중복 발송 방지 플래그
 
+        // 디버그: 담당자별 알림 설정 로깅
+        logger.info('[알림 발송] 담당자 처리 시작', {
+          contactId: contact.id,
+          contactName: contact.name,
+          phone: contact.phone,
+          kakaoEnabled: contact.kakaoEnabled,
+          smsEnabled: contact.smsEnabled,
+          hasKakaoProvider: !!this.kakaoProvider,
+        })
+
         // 카카오 알림톡 우선 시도
         if (contact.kakaoEnabled) {
           const kakaoResult = await this.sendNotification({
