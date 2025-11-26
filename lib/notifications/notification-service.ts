@@ -234,6 +234,47 @@ export class NotificationService {
         limit: limitCheck.limit,
       })
 
+      // [추가 중복 방지] 같은 업체 + 같은 담당자(contactId) + 오늘 + 같은 타입으로 이미 성공 발송이 있으면 스킵
+      // 문제: emailLogId가 달라져도 (bodyHash 변동) 같은 메일에 대해 중복 발송되는 이슈 해결
+      // 이 체크는 "하루에 같은 업체의 같은 담당자에게는 1회만 발송"이라는 비즈니스 규칙 적용
+      if (request.companyId && request.contactId && tenantId) {
+        // 오늘 00:00:00 (KST) 계산
+        const now = new Date()
+        const kstOffset = 9 * 60 * 60 * 1000
+        const kstNow = new Date(now.getTime() + kstOffset)
+        const kstToday = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate())
+        const todayStart = new Date(kstToday.getTime() - kstOffset)
+
+        const todaySuccess = await prisma.notificationLog.findFirst({
+          where: {
+            tenantId,
+            companyId: request.companyId,
+            contactId: request.contactId,
+            type: request.type,
+            status: { in: ['SENT', 'DELIVERED'] },
+            sentAt: { gte: todayStart },
+          },
+          orderBy: { sentAt: 'desc' },
+        })
+
+        if (todaySuccess) {
+          logger.info('[중복 발송 방지] 오늘 같은 업체+담당자에게 이미 발송됨, 스킵', {
+            companyId: request.companyId,
+            contactId: request.contactId,
+            type: request.type,
+            existingId: todaySuccess.id,
+            existingSentAt: todaySuccess.sentAt,
+            todayStart: todayStart.toISOString(),
+          })
+
+          return {
+            success: true,
+            messageId: todaySuccess.providerMessageId || todaySuccess.id,
+            provider: 'SKIPPED(오늘 이미 발송됨)',
+          }
+        }
+      }
+
       // [Optimistic Locking] 발송 전에 PENDING 상태로 로그를 먼저 생성
       // 이렇게 하면 두 번째 스케줄러가 실행될 때 이미 로그가 존재하므로 중복 발송 방지
       let pendingLogId: string | null = null
@@ -875,19 +916,11 @@ export class NotificationService {
         provider = await this.getTenantSMSProvider(tenantId)
       }
 
-      // [NCP API 중복 체크] SMS 발송 전에 해당 번호로 오늘 이미 발송했는지 확인
-      if ('checkMessageSentToday' in provider && typeof (provider as any).checkMessageSentToday === 'function') {
-        const alreadySent = await (provider as any).checkMessageSentToday(message.to)
-        if (alreadySent) {
-          logger.info('[NCP API 중복 체크] 오늘 이미 발송된 번호, 스킵', {
-            to: message.to,
-          })
-          return {
-            success: true,
-            provider: 'SKIPPED(NCP API - 오늘 이미 발송됨)',
-          }
-        }
-      }
+      // NCP API 중복 체크는 너무 광범위하여 제거됨 (2025-11-26)
+      // 문제: "오늘 해당 번호로 발송했으면 스킵" → 다른 업체 발주도 차단됨
+      // 해결: DB 기반 중복 방지에 의존 (notification-service.ts의 Optimistic Locking)
+      // - emailLogId + contactId + type 조합으로 중복 체크
+      // - 같은 메일에 대해 같은 담당자에게만 중복 방지
 
       const result = await provider.sendSMS(message)
 
