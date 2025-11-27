@@ -47,6 +47,8 @@ import {
   AlertCircle,
   Clock,
   Zap,
+  Play,
+  Pause,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { TemplatesTab } from '@/components/notifications/templates-tab'
