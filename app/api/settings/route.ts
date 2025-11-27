@@ -64,6 +64,9 @@ const settingsSchema = z.object({
       defaultKakaoEnabled: z.boolean(),
       notifyOnNewOrder: z.boolean(),
       notifyOnError: z.boolean(),
+      retryEnabled: z.boolean().optional(),
+      retryInterval: z.number().min(5).max(30).optional(), // 분 단위 (5~30분)
+      maxRetries: z.number().min(1).max(3).optional(), // 최대 재시도 횟수 (1~3회)
     })
     .optional(),
   business: z
@@ -121,6 +124,9 @@ const defaultSettings = {
     defaultKakaoEnabled: false, // 기본값 false - 카카오 Provider 미설정 시 중복 발송 방지
     notifyOnNewOrder: true,
     notifyOnError: true,
+    retryEnabled: false, // 기본값 false - 재시도 비활성화
+    retryInterval: 10, // 기본 10분 후 재시도
+    maxRetries: 2, // 기본 최대 2회 재시도
   },
   business: {
     companyName: '',

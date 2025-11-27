@@ -1,5 +1,6 @@
 import { logger } from '@/lib/utils/logger'
 import { mailScheduler } from './mail-scheduler'
+import { notificationRetryScheduler } from './notification-retry-scheduler'
 
 /**
  * 스케줄러 초기화
@@ -11,6 +12,9 @@ export async function initializeSchedulers() {
 
     // 메일 스케줄러 초기화
     await mailScheduler.initialize()
+
+    // 알림 재시도 스케줄러 초기화
+    await notificationRetryScheduler.initialize()
 
     logger.info('[Scheduler] 스케줄러 초기화 완료')
   } catch (error) {
@@ -24,10 +28,12 @@ if (typeof process !== 'undefined') {
   process.on('SIGTERM', () => {
     logger.info('[Scheduler] SIGTERM 수신, 스케줄러 종료')
     mailScheduler.stopAll()
+    notificationRetryScheduler.stop()
   })
 
   process.on('SIGINT', () => {
     logger.info('[Scheduler] SIGINT 수신, 스케줄러 종료')
     mailScheduler.stopAll()
+    notificationRetryScheduler.stop()
   })
 }

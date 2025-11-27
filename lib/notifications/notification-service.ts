@@ -112,11 +112,55 @@ export interface BulkNotificationResult {
   results: NotificationResult[]
 }
 
+// 재시도 설정 인터페이스
+interface RetrySettings {
+  retryEnabled: boolean
+  retryInterval: number // 분 단위
+  maxRetries: number
+}
+
 export class NotificationService {
   private smsProvider: SMSProvider | null = null
   private kakaoProvider: KakaoProvider | null = null
   private isQueueProcessing = false
   private initialized = false
+
+  /**
+   * 테넌트별 재시도 설정 조회
+   */
+  private async getRetrySettings(tenantId: string): Promise<RetrySettings> {
+    try {
+      const configs = await prisma.systemConfig.findMany({
+        where: {
+          tenantId,
+          key: { startsWith: 'notification.' },
+        },
+      })
+
+      const settings: RetrySettings = {
+        retryEnabled: false,
+        retryInterval: 10,
+        maxRetries: 2,
+      }
+
+      configs.forEach((config) => {
+        const key = config.key.split('.')[1]
+        try {
+          const value = JSON.parse(config.value)
+          if (key === 'retryEnabled') settings.retryEnabled = value
+          if (key === 'retryInterval') settings.retryInterval = value
+          if (key === 'maxRetries') settings.maxRetries = value
+        } catch {
+          // 파싱 실패 시 무시
+        }
+      })
+
+      return settings
+    } catch (error) {
+      logger.error('재시도 설정 조회 실패:', error)
+      return { retryEnabled: false, retryInterval: 10, maxRetries: 2 }
+    }
+  }
 
   /**
    * 한국 시간대 기준으로 날짜의 연/월/일/시/분 추출
@@ -996,8 +1040,9 @@ export class NotificationService {
 
   /**
    * 알림 발송 로그 저장 (update 또는 create)
-   * - pendingLogId가 있으면 해당 로그를 update (PENDING → SENT/FAILED)
+   * - pendingLogId가 있으면 해당 로그를 update (PENDING → SENT/FAILED/PENDING_RETRY)
    * - 상태 전이 규칙: SENT/DELIVERED → 덮어쓰지 않음
+   * - 재시도 설정이 활성화되어 있고 재시도 가능한 에러면 PENDING_RETRY 상태로 저장
    */
   private async logNotification(
     request: NotificationRequest,
@@ -1007,8 +1052,43 @@ export class NotificationService {
   ): Promise<void> {
     try {
       const tenantId = request.tenantId || ''
-      const newStatus = result.success ? 'SENT' : 'FAILED'
       const errorCode = result.errorCode || (result.error ? classifyError(result.error) : null)
+
+      // 재시도 설정 조회 (실패한 경우에만)
+      let retrySettings: RetrySettings | null = null
+      if (!result.success && tenantId) {
+        retrySettings = await this.getRetrySettings(tenantId)
+      }
+
+      // 기존 로그의 retryCount 조회 (재시도 횟수 체크용)
+      let currentRetryCount = 0
+      if (pendingLogId) {
+        const existingLog = await prisma.notificationLog.findUnique({
+          where: { id: pendingLogId },
+          select: { retryCount: true },
+        })
+        currentRetryCount = existingLog?.retryCount || 0
+      }
+
+      // 실패 상태 결정: 재시도 가능하면 PENDING_RETRY, 아니면 FAILED
+      let newStatus: string = result.success ? 'SENT' : 'FAILED'
+      let nextRetryAt: Date | null = null
+
+      if (!result.success && retrySettings?.retryEnabled && errorCode) {
+        const canRetry = isRetryableError(errorCode) && currentRetryCount < retrySettings.maxRetries
+        if (canRetry) {
+          newStatus = 'PENDING_RETRY'
+          nextRetryAt = new Date(Date.now() + retrySettings.retryInterval * 60 * 1000)
+
+          logger.info('[재시도 예약] 발송 실패, 재시도 예약됨', {
+            errorCode,
+            retryCount: currentRetryCount + 1,
+            maxRetries: retrySettings.maxRetries,
+            nextRetryAt: nextRetryAt.toISOString(),
+            retryInterval: retrySettings.retryInterval,
+          })
+        }
+      }
 
       logger.debug('알림 로그 저장', {
         type: request.type,
@@ -1017,6 +1097,7 @@ export class NotificationService {
         success: result.success,
         provider: result.provider,
         errorCode,
+        newStatus,
         pendingLogId,
         hasEmailLogId: !!request.emailLogId,
         hasContactId: !!request.contactId,
@@ -1034,6 +1115,8 @@ export class NotificationService {
             providerMessageId: result.messageId,
             message: renderedMessage || undefined,
             retryCount: { increment: 1 },
+            nextRetryAt,
+            maxRetries: retrySettings?.maxRetries ?? 3,
           },
         })
 
@@ -1041,6 +1124,7 @@ export class NotificationService {
           logId: pendingLogId,
           status: newStatus,
           type: request.type,
+          nextRetryAt: nextRetryAt?.toISOString(),
         })
         return
       }
@@ -1092,9 +1176,11 @@ export class NotificationService {
             contactId: request.contactId,
             tenantId,
             emailLogId: request.emailLogId,
+            nextRetryAt,
+            maxRetries: retrySettings?.maxRetries ?? 3,
           },
           update: {
-            // PENDING/FAILED → SENT/FAILED 업데이트 허용
+            // PENDING/FAILED/PENDING_RETRY → SENT/FAILED/PENDING_RETRY 업데이트 허용
             status: newStatus,
             sentAt: result.success ? new Date() : undefined,
             errorMessage: result.error,
@@ -1102,6 +1188,8 @@ export class NotificationService {
             providerMessageId: result.messageId || undefined,
             retryCount: { increment: 1 },
             message: renderedMessage || undefined,
+            nextRetryAt,
+            maxRetries: retrySettings?.maxRetries ?? undefined,
           },
         })
 
@@ -1111,6 +1199,7 @@ export class NotificationService {
           contactId: request.contactId,
           type: request.type,
           status: newStatus,
+          nextRetryAt: nextRetryAt?.toISOString(),
         })
       } else {
         // emailLogId나 contactId가 없는 경우 (수동 발송 등) - 일반 create
@@ -1128,6 +1217,8 @@ export class NotificationService {
             contactId: request.contactId,
             tenantId,
             emailLogId: request.emailLogId,
+            nextRetryAt,
+            maxRetries: retrySettings?.maxRetries ?? 3,
           },
         })
       }

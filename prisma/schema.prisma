@@ -341,6 +341,7 @@ enum NotificationStatus {
   DELIVERED // 전달됨
   FAILED // 실패
   CANCELLED // 취소됨
+  PENDING_RETRY // 재시도 대기 (실패 후 재시도 예정)
 }
 
 // =============================================================================

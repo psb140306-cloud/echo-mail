@@ -25,6 +25,7 @@ import {
   Clock,
   FileText,
   Bell,
+  RefreshCw,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { UsageDisplay } from '@/components/subscription/usage-display'
@@ -45,6 +46,9 @@ interface TenantSettings {
     defaultKakaoEnabled: boolean
     notifyOnNewOrder: boolean
     notifyOnError: boolean
+    retryEnabled: boolean
+    retryInterval: number
+    maxRetries: number
   }
   business: {
     companyName: string
@@ -72,6 +76,9 @@ export default function SettingsPage() {
       defaultKakaoEnabled: false, // 기본값 false - 카카오 Provider 미설정 시 중복 발송 방지
       notifyOnNewOrder: true,
       notifyOnError: true,
+      retryEnabled: false,
+      retryInterval: 10,
+      maxRetries: 2,
     },
     business: {
       companyName: '',
@@ -521,6 +528,96 @@ export default function SettingsPage() {
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* 발송 실패 재시도 설정 */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5" />
+                  발송 실패 재시도
+                </CardTitle>
+                <CardDescription>
+                  알림 발송 실패 시 자동 재시도 설정을 관리합니다
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>자동 재시도 활성화</Label>
+                    <p className="text-sm text-gray-500">
+                      알림 발송 실패 시 설정된 시간 후에 자동으로 재시도합니다
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.notification.retryEnabled}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        notification: { ...settings.notification, retryEnabled: checked },
+                      })
+                    }
+                  />
+                </div>
+
+                {settings.notification.retryEnabled && (
+                  <>
+                    <Separator />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="retry-interval">재시도 간격 (분)</Label>
+                        <Input
+                          id="retry-interval"
+                          type="number"
+                          min="5"
+                          max="30"
+                          value={settings.notification.retryInterval}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              notification: {
+                                ...settings.notification,
+                                retryInterval: Math.min(30, Math.max(5, parseInt(e.target.value) || 10)),
+                              },
+                            })
+                          }
+                        />
+                        <p className="text-xs text-gray-500">5~30분 사이로 설정</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="max-retries">최대 재시도 횟수</Label>
+                        <Input
+                          id="max-retries"
+                          type="number"
+                          min="1"
+                          max="3"
+                          value={settings.notification.maxRetries}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              notification: {
+                                ...settings.notification,
+                                maxRetries: Math.min(3, Math.max(1, parseInt(e.target.value) || 2)),
+                              },
+                            })
+                          }
+                        />
+                        <p className="text-xs text-gray-500">1~3회 사이로 설정</p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
+                      <p className="text-blue-800 dark:text-blue-200">
+                        <strong>설정 요약:</strong> 발송 실패 시{' '}
+                        <strong>{settings.notification.retryInterval}분</strong> 후에 재시도하며,{' '}
+                        최대 <strong>{settings.notification.maxRetries}회</strong>까지 재시도합니다.
+                      </p>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
