@@ -4,16 +4,11 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validati
 import { notificationService } from '@/lib/notifications/notification-service'
 import { notificationQueue } from '@/lib/notifications/queue/notification-queue'
 import { templateManager } from '@/lib/notifications/templates/template-manager'
-import { identifyTenant } from '@/lib/middleware/tenant-context'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
 
-// 알림 시스템 상태 조회
-export async function GET(request: NextRequest) {
+// 알림 시스템 상태 조회 (내부 핸들러)
+async function getNotificationStatus(request: NextRequest) {
   try {
-    const tenant = await identifyTenant(request)
-    if (!tenant) {
-      return createErrorResponse('Tenant not found', 404)
-    }
-
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
@@ -118,14 +113,9 @@ async function handleProviderStatus() {
   }
 }
 
-// 큐 제어
-export async function POST(request: NextRequest) {
+// 큐 제어 (내부 핸들러)
+async function controlNotificationQueue(request: NextRequest) {
   try {
-    const tenant = await identifyTenant(request)
-    if (!tenant) {
-      return createErrorResponse('Tenant not found', 404)
-    }
-
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
@@ -194,4 +184,13 @@ async function handleClearCache() {
     logger.error('캐시 초기화 실패:', error)
     return createErrorResponse('캐시 초기화에 실패했습니다.')
   }
+}
+
+// withTenantContext 미들웨어 적용된 export 함수들
+export async function GET(request: NextRequest) {
+  return withTenantContext(request, async () => getNotificationStatus(request))
+}
+
+export async function POST(request: NextRequest) {
+  return withTenantContext(request, async () => controlNotificationQueue(request))
 }

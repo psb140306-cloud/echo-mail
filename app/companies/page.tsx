@@ -42,10 +42,11 @@ import {
   Users,
   Mail,
   MapPin,
-  ArrowLeft,
   Loader2,
+  Building2,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { AppHeader } from '@/components/layout/app-header'
 
 interface Company {
   id: string
@@ -204,29 +205,20 @@ export default function CompaniesPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">대시보드</span>
+    <>
+      <AppHeader />
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-8 w-8" />
+            <h1 className="text-3xl font-bold">업체 관리</h1>
+          </div>
+          <Button asChild>
+            <Link href="/companies/new">
+              <Plus className="mr-2 h-4 w-4" />새 업체 추가
             </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-between space-x-2">
-            <h1 className="text-lg font-semibold">업체 관리</h1>
-            <Button asChild>
-              <Link href="/companies/new">
-                <Plus className="mr-2 h-4 w-4" />새 업체 추가
-              </Link>
-            </Button>
-          </div>
+          </Button>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container py-6">
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3 mb-6">
           <Card>
@@ -463,7 +455,7 @@ export default function CompaniesPage() {
             )}
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </>
   )
 }

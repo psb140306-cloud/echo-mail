@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient, NotificationType } from '@prisma/client'
-import { identifyTenant } from '@/lib/middleware/tenant-context'
+import { NotificationType } from '@prisma/client'
+import { withTenantContext } from '@/lib/middleware/tenant-context'
+import { TenantContext, prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 
-const prisma = new PrismaClient()
-
-// GET: 템플릿 목록 조회
-async function handleGet(request: NextRequest) {
+// GET: 템플릿 목록 조회 (내부 핸들러)
+async function getTemplates(request: NextRequest) {
   try {
-    const tenant = await identifyTenant(request)
-    if (!tenant) {
-      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: 'Tenant context not found' }, { status: 401 })
     }
 
     const templates = await prisma.messageTemplate.findMany({
       where: {
-        tenantId: tenant.id,
+        tenantId,
       },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     })
@@ -36,12 +37,14 @@ async function handleGet(request: NextRequest) {
   }
 }
 
-// POST: 템플릿 생성
-async function handlePost(request: NextRequest) {
+// POST: 템플릿 생성 (내부 핸들러)
+async function createTemplate(request: NextRequest) {
   try {
-    const tenant = await identifyTenant(request)
-    if (!tenant) {
-      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: 'Tenant context not found' }, { status: 401 })
     }
 
     const body = await request.json()
@@ -58,7 +61,7 @@ async function handlePost(request: NextRequest) {
     // 중복 확인
     const existing = await prisma.messageTemplate.findFirst({
       where: {
-        tenantId: tenant.id,
+        tenantId,
         name,
       },
     })
@@ -77,7 +80,7 @@ async function handlePost(request: NextRequest) {
         subject,
         content,
         variables,
-        tenantId: tenant.id,
+        tenantId,
         isActive: true,
         isDefault: false,
       },
@@ -102,12 +105,14 @@ async function handlePost(request: NextRequest) {
   }
 }
 
-// PUT: 템플릿 수정
-async function handlePut(request: NextRequest) {
+// PUT: 템플릿 수정 (내부 핸들러)
+async function updateTemplate(request: NextRequest) {
   try {
-    const tenant = await identifyTenant(request)
-    if (!tenant) {
-      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: 'Tenant context not found' }, { status: 401 })
     }
 
     const body = await request.json()
@@ -120,7 +125,7 @@ async function handlePut(request: NextRequest) {
     const template = await prisma.messageTemplate.findFirst({
       where: {
         id,
-        tenantId: tenant.id,
+        tenantId,
       },
     })
 
@@ -157,12 +162,14 @@ async function handlePut(request: NextRequest) {
   }
 }
 
-// DELETE: 템플릿 삭제
-async function handleDelete(request: NextRequest) {
+// DELETE: 템플릿 삭제 (내부 핸들러)
+async function deleteTemplate(request: NextRequest) {
   try {
-    const tenant = await identifyTenant(request)
-    if (!tenant) {
-      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 })
+    const tenantContext = TenantContext.getInstance()
+    const tenantId = tenantContext.getTenantId()
+
+    if (!tenantId) {
+      return NextResponse.json({ success: false, error: 'Tenant context not found' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -175,7 +182,7 @@ async function handleDelete(request: NextRequest) {
     const template = await prisma.messageTemplate.findFirst({
       where: {
         id,
-        tenantId: tenant.id,
+        tenantId,
       },
     })
 
@@ -213,7 +220,19 @@ async function handleDelete(request: NextRequest) {
   }
 }
 
-export const GET = handleGet
-export const POST = handlePost
-export const PUT = handlePut
-export const DELETE = handleDelete
+// withTenantContext 미들웨어 적용된 export 함수들
+export async function GET(request: NextRequest) {
+  return withTenantContext(request, async () => getTemplates(request))
+}
+
+export async function POST(request: NextRequest) {
+  return withTenantContext(request, async () => createTemplate(request))
+}
+
+export async function PUT(request: NextRequest) {
+  return withTenantContext(request, async () => updateTemplate(request))
+}
+
+export async function DELETE(request: NextRequest) {
+  return withTenantContext(request, async () => deleteTemplate(request))
+}

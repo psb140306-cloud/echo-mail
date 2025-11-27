@@ -38,7 +38,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import {
-  ArrowLeft,
   MessageCircle,
   Bell,
   TrendingUp,
@@ -55,6 +54,7 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { TemplatesTab } from '@/components/notifications/templates-tab'
 import { LogsTab } from '@/components/notifications/logs-tab'
+import { AppHeader } from '@/components/layout/app-header'
 
 interface NotificationStatus {
   sms: {
@@ -209,46 +209,37 @@ export default function NotificationsPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">대시보드</span>
-            </Link>
+    <>
+      <AppHeader />
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Bell className="h-8 w-8" />
+            <h1 className="text-3xl font-bold">알림 관리</h1>
           </div>
-          <div className="flex flex-1 items-center justify-between space-x-2">
-            <h1 className="text-lg font-semibold">알림 관리</h1>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowTestDialog(true)}>
-                <Send className="mr-2 h-4 w-4" />
-                테스트 발송
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowTestDialog(true)}>
+              <Send className="mr-2 h-4 w-4" />
+              테스트 발송
+            </Button>
+            {status?.queue.processing ? (
+              <Button
+                variant="outline"
+                onClick={() => controlQueue('stop')}
+                className="text-red-600 border-red-200 hover:bg-red-50"
+              >
+                <Pause className="mr-2 h-4 w-4" />큐 중지
               </Button>
-              {status?.queue.processing ? (
-                <Button
-                  variant="outline"
-                  onClick={() => controlQueue('stop')}
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  <Pause className="mr-2 h-4 w-4" />큐 중지
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => controlQueue('start')}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Play className="mr-2 h-4 w-4" />큐 시작
-                </Button>
-              )}
-            </div>
+            ) : (
+              <Button
+                onClick={() => controlQueue('start')}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Play className="mr-2 h-4 w-4" />큐 시작
+              </Button>
+            )}
           </div>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container py-6">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -435,7 +426,6 @@ export default function NotificationsPage() {
             </TabsContent>
           </Tabs>
         )}
-      </main>
 
       {/* Test Notification Dialog */}
       <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
@@ -536,6 +526,7 @@ export default function NotificationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   )
 }
