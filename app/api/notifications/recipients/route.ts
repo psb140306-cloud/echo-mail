@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { withTenantContext, getTenantId } from '@/lib/middleware/tenant-context'
+import { withTenantContext, requireTenant } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
 
 export const dynamic = 'force-dynamic'
@@ -19,10 +19,7 @@ interface RecipientSummary {
 
 async function getRecipients(request: NextRequest) {
   try {
-    const tenantId = getTenantId()
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 400 })
-    }
+    const tenantId = requireTenant()
 
     const { searchParams } = new URL(request.url)
     const filter = searchParams.get('filter') || 'all' // all, failed, blocked
@@ -150,10 +147,7 @@ async function getRecipients(request: NextRequest) {
 // 특정 수신자의 발송 내역 조회
 async function getRecipientHistory(request: NextRequest) {
   try {
-    const tenantId = getTenantId()
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 400 })
-    }
+    const tenantId = requireTenant()
 
     const { searchParams } = new URL(request.url)
     const recipient = searchParams.get('recipient')

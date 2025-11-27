@@ -1,21 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
@@ -24,25 +12,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import {
-  MessageCircle,
-  Bell,
-  Send,
-  Loader2,
-} from 'lucide-react'
+import { Bell, Send, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { TemplatesTab } from '@/components/notifications/templates-tab'
 import { LogsTab } from '@/components/notifications/logs-tab'
@@ -50,34 +21,10 @@ import { StatsTab } from '@/components/notifications/stats-tab'
 import { RecipientsTab } from '@/components/notifications/recipients-tab'
 import { AppHeader } from '@/components/layout/app-header'
 
-interface NotificationStatus {
-  sms: {
-    provider: string
-    balance: number
-    available: boolean
-  }
-  kakao: {
-    provider: string
-    available: boolean
-  }
-  queue: {
-    processing: boolean
-    stats: {
-      pending: number
-      processing: number
-      completed: number
-      failed: number
-      total: number
-    }
-  }
-}
-
 export default function NotificationsPage() {
-  const [status, setStatus] = useState<NotificationStatus | null>(null)
-  const [loading, setLoading] = useState(true)
   const [showTestDialog, setShowTestDialog] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('status')
+  const [activeTab, setActiveTab] = useState('stats')
   const { toast } = useToast()
 
   // 테스트 발송 폼
@@ -91,38 +38,6 @@ export default function NotificationsPage() {
       deliveryTime: '오전',
     },
   })
-
-  // 시스템 상태 조회
-  const fetchNotificationStatus = async (isInitial = false) => {
-    try {
-      // 초기 로드일 때만 로딩 표시 (주기적 갱신 시에는 로딩 표시 안함)
-      if (isInitial) {
-        setLoading(true)
-      }
-      const response = await fetch('/api/notifications/status')
-      const data = await response.json()
-
-      if (data.success) {
-        setStatus(data.data)
-      } else {
-        toast({
-          title: '오류',
-          description: data.error || '상태를 불러오는데 실패했습니다.',
-          variant: 'destructive',
-        })
-      }
-    } catch (error) {
-      toast({
-        title: '오류',
-        description: '네트워크 오류가 발생했습니다.',
-        variant: 'destructive',
-      })
-    } finally {
-      if (isInitial) {
-        setLoading(false)
-      }
-    }
-  }
 
   // 테스트 발송
   const sendTestNotification = async () => {
@@ -163,19 +78,6 @@ export default function NotificationsPage() {
     }
   }
 
-  // 초기 데이터 로드
-  useEffect(() => {
-    fetchNotificationStatus(true) // 초기 로드
-  }, [])
-
-  // 주기적 상태 업데이트 (백그라운드에서 조용히 갱신)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchNotificationStatus(false) // 주기적 갱신 - 로딩 표시 없이
-    }, 30000) // 30초마다
-
-    return () => clearInterval(interval)
-  }, [])
 
   return (
     <>
@@ -191,89 +93,34 @@ export default function NotificationsPage() {
             테스트 발송
           </Button>
         </div>
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="status">시스템 상태</TabsTrigger>
-              <TabsTrigger value="stats">발송 통계</TabsTrigger>
-              <TabsTrigger value="recipients">수신자 관리</TabsTrigger>
-              <TabsTrigger value="templates">템플릿 관리</TabsTrigger>
-              <TabsTrigger value="logs">발송 내역</TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="stats">발송 통계</TabsTrigger>
+            <TabsTrigger value="recipients">수신자 관리</TabsTrigger>
+            <TabsTrigger value="templates">템플릿 관리</TabsTrigger>
+            <TabsTrigger value="logs">발송 내역</TabsTrigger>
+          </TabsList>
 
-            {/* 시스템 상태 탭 */}
-            <TabsContent value="status" className="space-y-6">
-              {/* Provider Status */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">SMS 서비스</CardTitle>
-                    <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-2xl font-bold">
-                          {status?.sms.available ? '사용 가능' : '사용 불가'}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          잔액: {status?.sms.balance === -1 ? '조회 불가 (콘솔 확인)' : `${status?.sms.balance || 0}개`}
-                        </p>
-                      </div>
-                      <Badge variant={status?.sms.available ? 'default' : 'secondary'}>
-                        {status?.sms.provider}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* 발송 통계 탭 */}
+          <TabsContent value="stats" className="space-y-6">
+            <StatsTab />
+          </TabsContent>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">카카오톡 서비스</CardTitle>
-                    <Bell className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-2xl font-bold">
-                          {status?.kakao.available ? '사용 가능' : '사용 불가'}
-                        </div>
-                        <p className="text-xs text-muted-foreground">알림톡/친구톡 지원</p>
-                      </div>
-                      <Badge variant={status?.kakao.available ? 'default' : 'secondary'}>
-                        {status?.kakao.provider}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
+          {/* 수신자 관리 탭 */}
+          <TabsContent value="recipients" className="space-y-6">
+            <RecipientsTab />
+          </TabsContent>
 
-            {/* 발송 통계 탭 */}
-            <TabsContent value="stats" className="space-y-6">
-              <StatsTab />
-            </TabsContent>
+          {/* 템플릿 관리 탭 */}
+          <TabsContent value="templates" className="space-y-6">
+            <TemplatesTab />
+          </TabsContent>
 
-            {/* 수신자 관리 탭 */}
-            <TabsContent value="recipients" className="space-y-6">
-              <RecipientsTab />
-            </TabsContent>
-
-            {/* 템플릿 관리 탭 */}
-            <TabsContent value="templates" className="space-y-6">
-              <TemplatesTab />
-            </TabsContent>
-
-            {/* 발송 내역 탭 */}
-            <TabsContent value="logs" className="space-y-6">
-              <LogsTab />
-            </TabsContent>
-          </Tabs>
-        )}
+          {/* 발송 내역 탭 */}
+          <TabsContent value="logs" className="space-y-6">
+            <LogsTab />
+          </TabsContent>
+        </Tabs>
 
       {/* Test Notification Dialog */}
       <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>

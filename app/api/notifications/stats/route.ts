@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { withTenantContext, getTenantId } from '@/lib/middleware/tenant-context'
+import { withTenantContext, requireTenant } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
-import { startOfDay, endOfDay, subDays, startOfWeek, startOfMonth, format } from 'date-fns'
+import { startOfDay, endOfDay, subDays, startOfMonth, format } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,10 +17,7 @@ interface DailyStats {
 
 async function getNotificationStats(request: NextRequest) {
   try {
-    const tenantId = getTenantId()
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 400 })
-    }
+    const tenantId = requireTenant()
 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || '7days' // 7days, 30days, thisMonth
