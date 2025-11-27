@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -57,13 +56,13 @@ import {
   Trash2,
   MapPin,
   Clock,
-  ArrowLeft,
   Loader2,
   Calendar,
   Calculator,
   HelpCircle,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { AppHeader } from '@/components/layout/app-header'
 import {
   Tooltip,
   TooltipContent,
@@ -404,18 +403,14 @@ export default function DeliveryRulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">대시보드</span>
-            </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-between space-x-2">
-            <h1 className="text-lg font-semibold">배송 규칙 관리</h1>
+    <>
+      <AppHeader />
+      <div className="min-h-screen bg-gray-50/40">
+        {/* Main Content */}
+        <main className="container py-6">
+          {/* Page Header with Actions */}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">배송 규칙 관리</h1>
             <TooltipProvider>
               <div className="flex gap-2">
                 <div className="flex items-center gap-1">
@@ -468,11 +463,6 @@ export default function DeliveryRulesPage() {
               </div>
             </TooltipProvider>
           </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container py-6">
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3 mb-6">
           <Card>
@@ -1242,6 +1232,8 @@ export default function DeliveryRulesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+        </main>
+      </div>
+    </>
   )
 }
