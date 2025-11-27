@@ -715,7 +715,6 @@ export default function DeliveryRulesPage() {
             )}
           </CardContent>
         </Card>
-      </main>
 
       {/* Create/Edit Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
