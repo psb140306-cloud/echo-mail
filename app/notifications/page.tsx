@@ -41,10 +41,7 @@ import {
   MessageCircle,
   Bell,
   TrendingUp,
-  Play,
-  Pause,
   Send,
-  Eye,
   Loader2,
   CheckCircle,
   AlertCircle,
@@ -54,6 +51,8 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { TemplatesTab } from '@/components/notifications/templates-tab'
 import { LogsTab } from '@/components/notifications/logs-tab'
+import { StatsTab } from '@/components/notifications/stats-tab'
+import { RecipientsTab } from '@/components/notifications/recipients-tab'
 import { AppHeader } from '@/components/layout/app-header'
 
 interface NotificationStatus {
@@ -83,6 +82,7 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [showTestDialog, setShowTestDialog] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('status')
   const { toast } = useToast()
 
   // 테스트 발송 폼
@@ -98,9 +98,12 @@ export default function NotificationsPage() {
   })
 
   // 시스템 상태 조회
-  const fetchNotificationStatus = async () => {
+  const fetchNotificationStatus = async (isInitial = false) => {
     try {
-      setLoading(true)
+      // 초기 로드일 때만 로딩 표시 (주기적 갱신 시에는 로딩 표시 안함)
+      if (isInitial) {
+        setLoading(true)
+      }
       const response = await fetch('/api/notifications/status')
       const data = await response.json()
 
@@ -120,38 +123,9 @@ export default function NotificationsPage() {
         variant: 'destructive',
       })
     } finally {
-      setLoading(false)
-    }
-  }
-
-  // 큐 제어
-  const controlQueue = async (action: 'start' | 'stop') => {
-    try {
-      const response = await fetch(`/api/notifications/status?action=${action}-queue`, {
-        method: 'POST',
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        toast({
-          title: '성공',
-          description: data.message,
-        })
-        fetchNotificationStatus()
-      } else {
-        toast({
-          title: '오류',
-          description: data.error,
-          variant: 'destructive',
-        })
+      if (isInitial) {
+        setLoading(false)
       }
-    } catch (error) {
-      toast({
-        title: '오류',
-        description: '네트워크 오류가 발생했습니다.',
-        variant: 'destructive',
-      })
     }
   }
 
@@ -196,13 +170,13 @@ export default function NotificationsPage() {
 
   // 초기 데이터 로드
   useEffect(() => {
-    fetchNotificationStatus()
+    fetchNotificationStatus(true) // 초기 로드
   }, [])
 
-  // 주기적 상태 업데이트
+  // 주기적 상태 업데이트 (백그라운드에서 조용히 갱신)
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchNotificationStatus()
+      fetchNotificationStatus(false) // 주기적 갱신 - 로딩 표시 없이
     }, 30000) // 30초마다
 
     return () => clearInterval(interval)
@@ -217,38 +191,21 @@ export default function NotificationsPage() {
             <Bell className="h-8 w-8" />
             <h1 className="text-3xl font-bold">알림 관리</h1>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowTestDialog(true)}>
-              <Send className="mr-2 h-4 w-4" />
-              테스트 발송
-            </Button>
-            {status?.queue.processing ? (
-              <Button
-                variant="outline"
-                onClick={() => controlQueue('stop')}
-                className="text-red-600 border-red-200 hover:bg-red-50"
-              >
-                <Pause className="mr-2 h-4 w-4" />큐 중지
-              </Button>
-            ) : (
-              <Button
-                onClick={() => controlQueue('start')}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Play className="mr-2 h-4 w-4" />큐 시작
-              </Button>
-            )}
-          </div>
+          <Button variant="outline" onClick={() => setShowTestDialog(true)}>
+            <Send className="mr-2 h-4 w-4" />
+            테스트 발송
+          </Button>
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <Tabs defaultValue="status" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList>
               <TabsTrigger value="status">시스템 상태</TabsTrigger>
-              <TabsTrigger value="queue">큐 관리</TabsTrigger>
+              <TabsTrigger value="stats">발송 통계</TabsTrigger>
+              <TabsTrigger value="recipients">수신자 관리</TabsTrigger>
               <TabsTrigger value="templates">템플릿 관리</TabsTrigger>
               <TabsTrigger value="logs">발송 내역</TabsTrigger>
             </TabsList>
@@ -373,46 +330,14 @@ export default function NotificationsPage() {
               </Card>
             </TabsContent>
 
-            {/* 큐 관리 탭 */}
-            <TabsContent value="queue" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>큐 제어</CardTitle>
-                  <CardDescription>알림 큐의 시작/중지 및 상태를 관리하세요</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h3 className="font-semibold">알림 큐 처리</h3>
-                      <p className="text-sm text-muted-foreground">
-                        현재 상태: {status?.queue.processing ? '실행 중' : '중지됨'}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => fetchNotificationStatus()}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        상태 새로고침
-                      </Button>
-                      {status?.queue.processing ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => controlQueue('stop')}
-                          className="text-red-600 border-red-200 hover:bg-red-50"
-                        >
-                          <Pause className="mr-2 h-4 w-4" />큐 중지
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => controlQueue('start')}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Play className="mr-2 h-4 w-4" />큐 시작
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* 발송 통계 탭 */}
+            <TabsContent value="stats" className="space-y-6">
+              <StatsTab />
+            </TabsContent>
+
+            {/* 수신자 관리 탭 */}
+            <TabsContent value="recipients" className="space-y-6">
+              <RecipientsTab />
             </TabsContent>
 
             {/* 템플릿 관리 탭 */}
