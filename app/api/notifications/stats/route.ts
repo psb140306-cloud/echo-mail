@@ -72,20 +72,18 @@ async function getNotificationStats(request: NextRequest) {
         _count: true,
       }),
 
-      // 일별 통계
-      prisma.$queryRaw<Array<{ date: string; type: string; status: string; count: bigint }>>`
-        SELECT
-          DATE("createdAt") as date,
-          type,
-          status,
-          COUNT(*) as count
-        FROM "notification_logs"
-        WHERE "tenantId" = ${tenantId}
-          AND "createdAt" >= ${startDate}
-          AND "createdAt" <= ${endDate}
-        GROUP BY DATE("createdAt"), type, status
-        ORDER BY date
-      `,
+      // 일별 통계 - Prisma 쿼리로 대체
+      prisma.notificationLog.findMany({
+        where: {
+          tenantId,
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        select: {
+          createdAt: true,
+          type: true,
+          status: true,
+        },
+      }),
 
       // 업체별 발송 통계 (상위 10개)
       prisma.notificationLog.groupBy({
@@ -136,22 +134,21 @@ async function getNotificationStats(request: NextRequest) {
 
     // 실제 데이터 채우기
     dailyData.forEach((row) => {
-      const dateStr = format(new Date(row.date), 'yyyy-MM-dd')
+      const dateStr = format(new Date(row.createdAt), 'yyyy-MM-dd')
       const existing = dailyMap.get(dateStr)
       if (existing) {
-        const count = Number(row.count)
-        existing.total += count
+        existing.total += 1
 
         if (row.type === 'SMS') {
-          existing.sms += count
+          existing.sms += 1
         } else if (row.type === 'KAKAO_ALIMTALK' || row.type === 'KAKAO_FRIENDTALK') {
-          existing.kakao += count
+          existing.kakao += 1
         }
 
         if (row.status === 'SENT' || row.status === 'DELIVERED') {
-          existing.success += count
+          existing.success += 1
         } else if (row.status === 'FAILED') {
-          existing.failed += count
+          existing.failed += 1
         }
       }
     })

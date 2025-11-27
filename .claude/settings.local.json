@@ -60,7 +60,8 @@
       "Bash(VERCEL_TOKEN=\"0oGkVTnUh51nld1GGk0ohTdh\" npx vercel --prod --force --token=\"0oGkVTnUh51nld1GGk0ohTdh\")",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(DATABASE_URL=\"postgresql://postgres:p7%21z%40K9s%23L1h@db.pnbfnxjtjtvftipjfeub.supabase.co:5432/postgres\" npx prisma db push:*)"
+      "Bash(DATABASE_URL=\"postgresql://postgres:p7%21z%40K9s%23L1h@db.pnbfnxjtjtvftipjfeub.supabase.co:5432/postgres\" npx prisma db push:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []
