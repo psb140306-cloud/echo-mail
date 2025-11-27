@@ -40,15 +40,8 @@ import {
 import {
   MessageCircle,
   Bell,
-  TrendingUp,
   Send,
   Loader2,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Zap,
-  Play,
-  Pause,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { TemplatesTab } from '@/components/notifications/templates-tab'
@@ -258,78 +251,6 @@ export default function NotificationsPage() {
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Queue Stats */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>큐 상태</CardTitle>
-                  <CardDescription>알림 큐의 현재 처리 상황을 확인하세요</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-5">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-2">
-                        <Clock className="h-4 w-4 text-orange-500 mr-1" />
-                        <span className="text-sm font-medium">대기</span>
-                      </div>
-                      <div className="text-2xl font-bold text-orange-600">
-                        {status?.queue.stats.pending || 0}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-2">
-                        <Zap className="h-4 w-4 text-blue-500 mr-1" />
-                        <span className="text-sm font-medium">처리중</span>
-                      </div>
-                      <div className="text-2xl font-bold text-blue-600">
-                        {status?.queue.stats.processing || 0}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-2">
-                        <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                        <span className="text-sm font-medium">완료</span>
-                      </div>
-                      <div className="text-2xl font-bold text-green-600">
-                        {status?.queue.stats.completed || 0}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-2">
-                        <AlertCircle className="h-4 w-4 text-red-500 mr-1" />
-                        <span className="text-sm font-medium">실패</span>
-                      </div>
-                      <div className="text-2xl font-bold text-red-600">
-                        {status?.queue.stats.failed || 0}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-2">
-                        <TrendingUp className="h-4 w-4 text-gray-500 mr-1" />
-                        <span className="text-sm font-medium">총계</span>
-                      </div>
-                      <div className="text-2xl font-bold">{status?.queue.stats.total || 0}</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-center">
-                    <Badge
-                      variant={status?.queue.processing ? 'default' : 'secondary'}
-                      className="px-3 py-1"
-                    >
-                      {status?.queue.processing ? (
-                        <>
-                          <Play className="mr-1 h-3 w-3" />큐 처리 중
-                        </>
-                      ) : (
-                        <>
-                          <Pause className="mr-1 h-3 w-3" />큐 중지됨
-                        </>
-                      )}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             {/* 발송 통계 탭 */}
