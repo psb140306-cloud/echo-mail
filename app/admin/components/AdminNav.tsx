@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   HomeIcon,
   CogIcon,
@@ -10,8 +10,11 @@ import {
   UserGroupIcon,
   ChartBarIcon,
   KeyIcon,
-  ServerIcon
+  ServerIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 const navigation = [
   { name: '대시보드', href: '/admin', icon: HomeIcon },
@@ -26,10 +29,23 @@ const navigation = [
 
 export default function AdminNav() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      toast.success('로그아웃 되었습니다')
+      router.push('/auth/login')
+    } catch (error) {
+      console.error('로그아웃 실패:', error)
+      toast.error('로그아웃에 실패했습니다')
+    }
+  }
 
   return (
-    <nav className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0">
-      <div className="p-4">
+    <nav className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 flex flex-col">
+      <div className="p-4 flex-1">
         <h2 className="text-xl font-bold text-red-600 dark:text-red-500 mb-8">
           🛡️ 슈퍼어드민
         </h2>
@@ -57,6 +73,19 @@ export default function AdminNav() {
             )
           })}
         </ul>
+      </div>
+
+      {/* 로그아웃 버튼 */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full
+            hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-700 dark:text-gray-300
+            hover:text-red-600 dark:hover:text-red-400"
+        >
+          <ArrowRightOnRectangleIcon className="h-5 w-5" />
+          <span className="font-medium">로그아웃</span>
+        </button>
       </div>
     </nav>
   )
