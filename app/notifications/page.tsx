@@ -269,7 +269,7 @@ export default function NotificationsPage() {
                           {status?.sms.available ? '사용 가능' : '사용 불가'}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          잔액: {status?.sms.balance || 0}개
+                          잔액: {status?.sms.balance === -1 ? '조회 불가 (콘솔 확인)' : `${status?.sms.balance || 0}개`}
                         </p>
                       </div>
                       <Badge variant={status?.sms.available ? 'default' : 'secondary'}>

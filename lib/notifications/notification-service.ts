@@ -1305,19 +1305,26 @@ export class NotificationService {
   async getStatus() {
     this.initialize()
 
+    // 환경변수에서 실제 provider 이름 가져오기
+    const smsProviderName = process.env.SMS_PROVIDER || 'solapi'
+    const kakaoProviderName = process.env.KAKAO_PROVIDER || 'solapi'
+
     const [smsBalance, queueStats] = await Promise.all([
       this.smsProvider?.getBalance().catch(() => 0) || Promise.resolve(0),
       notificationQueue.getStats(),
     ])
 
+    // NCP는 잔액 API가 없어서 -1 반환 → 사용 가능으로 처리
+    const smsAvailable = smsBalance === -1 ? true : smsBalance > 0
+
     return {
       sms: {
-        provider: 'aligo',
+        provider: smsProviderName,
         balance: smsBalance,
-        available: smsBalance > 0,
+        available: smsAvailable,
       },
       kakao: {
-        provider: 'kakao',
+        provider: kakaoProviderName,
         available: await (this.kakaoProvider?.validateConfig() || Promise.resolve(false)),
       },
       queue: {
