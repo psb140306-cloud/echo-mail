@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,8 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Loader2, Save } from 'lucide-react'
+import { Loader2, Save } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { AppHeader } from '@/components/layout/app-header'
 
 // 기본 지역 목록 (배송 규칙과 동일)
 const DEFAULT_REGIONS = [
@@ -149,24 +149,12 @@ export default function NewCompanyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/companies" className="mr-6 flex items-center space-x-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">업체 목록</span>
-            </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-between space-x-2">
-            <h1 className="text-lg font-semibold">새 업체 추가</h1>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container max-w-2xl py-6">
+    <>
+      <AppHeader />
+      <div className="min-h-screen bg-gray-50/40">
+        {/* Main Content */}
+        <main className="container max-w-2xl py-6">
+          <h1 className="text-2xl font-bold mb-6">새 업체 추가</h1>
         <Card>
           <CardHeader>
             <CardTitle>업체 정보</CardTitle>
@@ -373,7 +361,8 @@ export default function NewCompanyPage() {
             </form>
           </CardContent>
         </Card>
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   )
 }
