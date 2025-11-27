@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dialog'
 import { Bell, Send, Loader2 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { TemplatesTab } from '@/components/notifications/templates-tab'
 import { LogsTab } from '@/components/notifications/logs-tab'
 import { StatsTab } from '@/components/notifications/stats-tab'
 import { RecipientsTab } from '@/components/notifications/recipients-tab'
@@ -97,7 +96,6 @@ export default function NotificationsPage() {
           <TabsList>
             <TabsTrigger value="stats">발송 통계</TabsTrigger>
             <TabsTrigger value="recipients">수신자 관리</TabsTrigger>
-            <TabsTrigger value="templates">템플릿 관리</TabsTrigger>
             <TabsTrigger value="logs">발송 내역</TabsTrigger>
           </TabsList>
 
@@ -109,11 +107,6 @@ export default function NotificationsPage() {
           {/* 수신자 관리 탭 */}
           <TabsContent value="recipients" className="space-y-6">
             <RecipientsTab />
-          </TabsContent>
-
-          {/* 템플릿 관리 탭 */}
-          <TabsContent value="templates" className="space-y-6">
-            <TemplatesTab />
           </TabsContent>
 
           {/* 발송 내역 탭 */}
