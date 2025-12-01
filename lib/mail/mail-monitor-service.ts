@@ -675,8 +675,17 @@ export class MailMonitorService {
       },
     })
 
+    const autoMarkAsRead = config ? JSON.parse(config.value) : true
+
+    logger.info('[MailMonitor] autoMarkAsRead 설정 조회', {
+      tenantId,
+      configFound: !!config,
+      configValue: config?.value,
+      parsedValue: autoMarkAsRead,
+    })
+
     return {
-      autoMarkAsRead: config ? JSON.parse(config.value) : false, // 기본값 false (사용자 메일함 상태 유지)
+      autoMarkAsRead, // 기본값 true (처리된 메일 자동 읽음 처리)
     }
   }
 

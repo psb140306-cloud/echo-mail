@@ -69,7 +69,7 @@ export default function SettingsPage() {
       useSSL: true,
       checkInterval: 5,
       enabled: false,
-      autoMarkAsRead: false,
+      autoMarkAsRead: true, // 기본값 true - 처리된 메일 자동 읽음 처리
     },
     notification: {
       defaultSMSEnabled: true,
