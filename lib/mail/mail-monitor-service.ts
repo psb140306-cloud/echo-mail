@@ -169,6 +169,7 @@ export class MailMonitorService {
               source: true,
               uid: true,
               headers: ['message-id'], // 실제 Message-ID 헤더 가져오기
+              markSeen: false, // 중요: 메일 가져올 때 자동 읽음 처리 방지
             })) {
               logger.info(`[MailMonitor] 메일 발견:`, {
                 uid: message.uid,

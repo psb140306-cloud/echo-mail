@@ -131,6 +131,7 @@ export class ImapClient {
         envelope: true,
         bodyStructure: true,
         source: true,
+        markSeen: false, // 메일 가져올 때 자동 읽음 처리 방지
       })) {
         messages.push(message)
       }
@@ -170,6 +171,7 @@ export class ImapClient {
         envelope: true,
         bodyStructure: true,
         source: true,
+        markSeen: false, // 메일 가져올 때 자동 읽음 처리 방지
       })) {
         messages.push(message)
       }
