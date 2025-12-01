@@ -17,38 +17,37 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 })
       }
 
-      const tenantId = user.user_metadata?.tenantId
+      // DB에서 실제 멤버십 검증 (메타데이터 신뢰하지 않음)
+      const currentMember = await prisma.tenantMember.findFirst({
+        where: {
+          userId: user.id,
+          status: 'ACTIVE',
+        },
+      })
 
-      if (!tenantId) {
-        return NextResponse.json({ error: '테넌트 정보가 필요합니다.' }, { status: 400 })
+      if (!currentMember) {
+        return NextResponse.json({ error: '팀에 소속되어 있지 않습니다.' }, { status: 403 })
       }
+
+      const tenantId = currentMember.tenantId
 
       const { searchParams } = new URL(request.url)
       const page = parseInt(searchParams.get('page') || '1')
       const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
       const skip = (page - 1) * limit
 
-      // 팀 활동 기록 조회
+      // 활동 로그 조회
       const [activities, totalCount] = await Promise.all([
-        prisma.teamActivity.findMany({
+        prisma.activityLog.findMany({
           where: { tenantId },
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                user_metadata: true,
-              },
-            },
-          },
           orderBy: { createdAt: 'desc' },
           skip,
           take: limit,
         }),
-        prisma.teamActivity.count({ where: { tenantId } }),
+        prisma.activityLog.count({ where: { tenantId } }),
       ])
 
-      logger.info('Team activities retrieved', {
+      logger.info('Activity logs retrieved', {
         tenantId,
         count: activities.length,
         totalCount,
@@ -59,14 +58,11 @@ export async function GET(request: NextRequest) {
         success: true,
         data: activities.map(activity => ({
           id: activity.id,
-          type: activity.type,
+          userId: activity.userId,
+          userName: activity.userName || activity.userEmail,
+          action: activity.action,
           description: activity.description,
           metadata: activity.metadata,
-          user: {
-            id: activity.user.id,
-            email: activity.user.email,
-            name: activity.user.user_metadata?.full_name || activity.user.email,
-          },
           createdAt: activity.createdAt.toISOString(),
         })),
         pagination: {
@@ -77,93 +73,12 @@ export async function GET(request: NextRequest) {
         },
       })
     } catch (error) {
-      logger.error('Failed to retrieve team activities', {
+      logger.error('Failed to retrieve activity logs', {
         error: error instanceof Error ? error.message : 'Unknown error',
       })
 
       return NextResponse.json(
-        { error: '팀 활동 기록 조회 중 오류가 발생했습니다.' },
-        { status: 500 }
-      )
-    }
-  })
-}
-
-export async function POST(request: NextRequest) {
-  return withTenantContext(request, async () => {
-    try {
-      const supabase = await createClient()
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-
-      if (authError || !user) {
-        return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 })
-      }
-
-      const tenantId = user.user_metadata?.tenantId
-
-      if (!tenantId) {
-        return NextResponse.json({ error: '테넌트 정보가 필요합니다.' }, { status: 400 })
-      }
-
-      const { type, description, metadata } = await request.json()
-
-      if (!type || !description) {
-        return NextResponse.json({ error: '활동 유형과 설명이 필요합니다.' }, { status: 400 })
-      }
-
-      // 팀 활동 기록 생성
-      const activity = await prisma.teamActivity.create({
-        data: {
-          tenantId,
-          userId: user.id,
-          type,
-          description,
-          metadata: metadata || {},
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              user_metadata: true,
-            },
-          },
-        },
-      })
-
-      logger.info('Team activity logged', {
-        activityId: activity.id,
-        type,
-        tenantId,
-        userId: user.id,
-      })
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: activity.id,
-          type: activity.type,
-          description: activity.description,
-          metadata: activity.metadata,
-          user: {
-            id: activity.user.id,
-            email: activity.user.email,
-            name: activity.user.user_metadata?.full_name || activity.user.email,
-          },
-          createdAt: activity.createdAt.toISOString(),
-        },
-        message: '팀 활동이 기록되었습니다.',
-      })
-    } catch (error) {
-      logger.error('Failed to log team activity', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      })
-
-      return NextResponse.json(
-        { error: '팀 활동 기록 중 오류가 발생했습니다.' },
+        { error: '활동 로그 조회 중 오류가 발생했습니다.' },
         { status: 500 }
       )
     }

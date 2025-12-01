@@ -58,8 +58,6 @@ import {
   Shield,
   User,
   Crown,
-  Settings,
-  Eye,
   UserPlus,
   Activity,
   Loader2,
@@ -73,21 +71,20 @@ import { AppHeader } from '@/components/layout/app-header'
 
 interface TeamMember {
   id: string
+  userId: string
   email: string
   name?: string
-  role: 'OWNER' | 'ADMIN' | 'MANAGER' | 'OPERATOR' | 'VIEWER'
-  status: 'ACTIVE' | 'INVITED' | 'INACTIVE'
+  role: 'OWNER' | 'ADMIN' | 'MEMBER'
+  status: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE'
   invitedAt?: string
   joinedAt?: string
-  lastActive?: string
 }
 
 interface TeamInvitation {
   id: string
   email: string
-  role: 'ADMIN' | 'MANAGER' | 'OPERATOR' | 'VIEWER'
-  status: 'PENDING' | 'EXPIRED' | 'ACCEPTED' | 'DECLINED'
-  invitedBy: string
+  role: 'ADMIN' | 'MEMBER'
+  status: 'PENDING'
   createdAt: string
   expiresAt: string
 }
@@ -102,7 +99,7 @@ interface ActivityLog {
 }
 
 export default function TeamPage() {
-  const { user } = useAuth()
+  useAuth() // 인증 확인
   const { toast } = useToast()
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [invitations, setInvitations] = useState<TeamInvitation[]>([])
@@ -114,7 +111,7 @@ export default function TeamPage() {
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [inviteForm, setInviteForm] = useState({
     email: '',
-    role: 'VIEWER' as const,
+    role: 'MEMBER' as 'ADMIN' | 'MEMBER',
   })
 
   // 데이터 로딩
@@ -129,7 +126,7 @@ export default function TeamPage() {
       const [membersRes, invitationsRes, activitiesRes] = await Promise.all([
         fetch('/api/team/members'),
         fetch('/api/team/invitations'),
-        fetch('/api/team/activities?limit=10'),
+        fetch('/api/team/activity?limit=10'),
       ])
 
       if (membersRes.ok) {
@@ -175,23 +172,23 @@ export default function TeamPage() {
 
       if (data.success) {
         toast({
-          title: '✅ 성공',
+          title: '성공',
           description: '초대 이메일이 발송되었습니다.',
         })
 
         setShowInviteDialog(false)
-        setInviteForm({ email: '', role: 'VIEWER' })
+        setInviteForm({ email: '', role: 'MEMBER' })
         loadTeamData()
       } else {
         toast({
-          title: '❌ 오류',
+          title: '오류',
           description: data.error || '초대 발송에 실패했습니다.',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: '❌ 오류',
+        title: '오류',
         description: '네트워크 오류가 발생했습니다.',
         variant: 'destructive',
       })
@@ -201,11 +198,11 @@ export default function TeamPage() {
   }
 
   // 사용자 역할 변경
-  const changeUserRole = async (userId: string, newRole: string) => {
+  const changeUserRole = async (memberId: string, newRole: string) => {
     try {
-      setActionLoading(`role-${userId}`)
+      setActionLoading(`role-${memberId}`)
 
-      const response = await fetch(`/api/team/members/${userId}/role`, {
+      const response = await fetch(`/api/team/members/${memberId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -217,20 +214,20 @@ export default function TeamPage() {
 
       if (data.success) {
         toast({
-          title: '✅ 성공',
+          title: '성공',
           description: '사용자 역할이 변경되었습니다.',
         })
         loadTeamData()
       } else {
         toast({
-          title: '❌ 오류',
+          title: '오류',
           description: data.error || '역할 변경에 실패했습니다.',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: '❌ 오류',
+        title: '오류',
         description: '네트워크 오류가 발생했습니다.',
         variant: 'destructive',
       })
@@ -252,20 +249,20 @@ export default function TeamPage() {
 
       if (data.success) {
         toast({
-          title: '✅ 성공',
+          title: '성공',
           description: '사용자가 팀에서 제거되었습니다.',
         })
         loadTeamData()
       } else {
         toast({
-          title: '❌ 오류',
+          title: '오류',
           description: data.error || '사용자 제거에 실패했습니다.',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: '❌ 오류',
+        title: '오류',
         description: '네트워크 오류가 발생했습니다.',
         variant: 'destructive',
       })
@@ -287,20 +284,20 @@ export default function TeamPage() {
 
       if (data.success) {
         toast({
-          title: '✅ 성공',
+          title: '성공',
           description: '초대가 취소되었습니다.',
         })
         loadTeamData()
       } else {
         toast({
-          title: '❌ 오류',
+          title: '오류',
           description: data.error || '초대 취소에 실패했습니다.',
           variant: 'destructive',
         })
       }
     } catch (error) {
       toast({
-        title: '❌ 오류',
+        title: '오류',
         description: '네트워크 오류가 발생했습니다.',
         variant: 'destructive',
       })
@@ -313,12 +310,10 @@ export default function TeamPage() {
     const roleConfig = {
       OWNER: { label: '소유자', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', icon: Crown },
       ADMIN: { label: '관리자', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: Shield },
-      MANAGER: { label: '매니저', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: Settings },
-      OPERATOR: { label: '운영자', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: User },
-      VIEWER: { label: '뷰어', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400', icon: Eye },
+      MEMBER: { label: '멤버', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: User },
     }
 
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.VIEWER
+    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.MEMBER
     const Icon = config.icon
 
     return (
@@ -332,7 +327,7 @@ export default function TeamPage() {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       ACTIVE: { label: '활성', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
-      INVITED: { label: '초대됨', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Mail },
+      SUSPENDED: { label: '정지', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: XCircle },
       INACTIVE: { label: '비활성', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400', icon: XCircle },
     }
 
@@ -504,8 +499,8 @@ export default function TeamPage() {
                         <TableCell>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Activity className="w-3 h-3" />
-                            {member.lastActive
-                              ? new Date(member.lastActive).toLocaleDateString('ko-KR')
+                            {member.invitedAt
+                              ? new Date(member.invitedAt).toLocaleDateString('ko-KR')
                               : '-'}
                           </div>
                         </TableCell>
@@ -520,27 +515,24 @@ export default function TeamPage() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>작업</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => changeUserRole(member.id, 'ADMIN')}
-                                  disabled={actionLoading === `role-${member.id}`}
-                                >
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  관리자로 변경
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => changeUserRole(member.id, 'MANAGER')}
-                                  disabled={actionLoading === `role-${member.id}`}
-                                >
-                                  <Settings className="mr-2 h-4 w-4" />
-                                  매니저로 변경
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => changeUserRole(member.id, 'VIEWER')}
-                                  disabled={actionLoading === `role-${member.id}`}
-                                >
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  뷰어로 변경
-                                </DropdownMenuItem>
+                                {member.role !== 'ADMIN' && (
+                                  <DropdownMenuItem
+                                    onClick={() => changeUserRole(member.id, 'ADMIN')}
+                                    disabled={actionLoading === `role-${member.id}`}
+                                  >
+                                    <Shield className="mr-2 h-4 w-4" />
+                                    관리자로 변경
+                                  </DropdownMenuItem>
+                                )}
+                                {member.role !== 'MEMBER' && (
+                                  <DropdownMenuItem
+                                    onClick={() => changeUserRole(member.id, 'MEMBER')}
+                                    disabled={actionLoading === `role-${member.id}`}
+                                  >
+                                    <User className="mr-2 h-4 w-4" />
+                                    멤버로 변경
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSeparator />
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
@@ -747,30 +739,12 @@ export default function TeamPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="VIEWER">
-                    <div className="flex items-center gap-2">
-                      <Eye className="w-4 h-4" />
-                      <div>
-                        <div className="font-medium">뷰어</div>
-                        <div className="text-xs text-muted-foreground">보기만 가능</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="OPERATOR">
+                  <SelectItem value="MEMBER">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4" />
                       <div>
-                        <div className="font-medium">운영자</div>
-                        <div className="text-xs text-muted-foreground">기본 작업 수행</div>
-                      </div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="MANAGER">
-                    <div className="flex items-center gap-2">
-                      <Settings className="w-4 h-4" />
-                      <div>
-                        <div className="font-medium">매니저</div>
-                        <div className="text-xs text-muted-foreground">관리 기능 접근</div>
+                        <div className="font-medium">멤버</div>
+                        <div className="text-xs text-muted-foreground">기본 권한</div>
                       </div>
                     </div>
                   </SelectItem>
@@ -792,7 +766,7 @@ export default function TeamPage() {
               variant="outline"
               onClick={() => {
                 setShowInviteDialog(false)
-                setInviteForm({ email: '', role: 'VIEWER' })
+                setInviteForm({ email: '', role: 'MEMBER' })
               }}
             >
               취소

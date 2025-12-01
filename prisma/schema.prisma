@@ -443,6 +443,7 @@ model Tenant {
   invoices         Invoice[]
   members          TenantMember[] // 팀원 관리
   invitations      TenantInvitation[] // 초대 관리
+  activityLogs     ActivityLog[] // 활동 로그
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -544,6 +545,33 @@ enum InvitationStatus {
   ACCEPTED  // 수락됨
   EXPIRED   // 만료됨
   CANCELLED // 취소됨
+}
+
+// 활동 로그
+model ActivityLog {
+  id          String   @id @default(cuid())
+
+  // 테넌트
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // 사용자 정보
+  userId      String
+  userEmail   String
+  userName    String?
+
+  // 활동 정보
+  action      String   // 'MEMBER_INVITED', 'MEMBER_JOINED', 'MEMBER_REMOVED', 'ROLE_CHANGED' 등
+  description String
+  metadata    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("activity_logs")
 }
 
 enum SubscriptionPlan {

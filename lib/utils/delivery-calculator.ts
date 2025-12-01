@@ -7,6 +7,9 @@ export interface DeliveryCalculationOptions {
   region: string
   orderDateTime: Date
   tenantId: string
+  /**
+   * @deprecated 사용되지 않음. 배송 규칙의 workingDays 설정이 주말 제외 여부를 결정합니다.
+   */
   excludeWeekends?: boolean
   customHolidays?: Date[]
 }
@@ -105,7 +108,7 @@ export class DeliveryCalculator {
 
       if (!isWorkingDay) {
         // 휴무일인 경우: 다음 영업일을 기준일로 설정하고, 마감 전으로 처리
-        baseDate = await this.getNextBusinessDay(options.orderDateTime, rule, options.tenantId)
+        baseDate = await this.getNextBusinessDay(options.orderDateTime, rule, options.tenantId, options.customHolidays)
         logger.info('휴무일 주문 - 다음 영업일로 이월', {
           originalDate: this.formatDateKST(options.orderDateTime),
           nextBusinessDay: this.formatDateKST(baseDate),
@@ -161,19 +164,20 @@ export class DeliveryCalculator {
         }
       }
 
-      // 영업일 기준으로 배송일 계산
+      // 영업일 기준으로 배송일 계산 (customHolidays 전달)
       const deliveryDate = await this.calculateBusinessDate(
         baseDate,
         deliveryDays,
         rule,
-        options.tenantId
+        options.tenantId,
+        options.customHolidays
       )
 
       const result: DeliveryResult = {
         deliveryDate,
         businessDaysUsed: deliveryDays,
         isHoliday: await this.isHoliday(deliveryDate, options.customHolidays, options.tenantId),
-        isWeekend: this.isWeekend(deliveryDate),
+        isWeekend: this.isWeekendKST(deliveryDate),  // KST 기준으로 주말 확인
         deliveryTime,
         rule: {
           region: rule.region,
@@ -210,11 +214,16 @@ export class DeliveryCalculator {
     startDate: Date,
     businessDays: number,
     rule: any, // DeliveryRule with workingDays, customClosedDates, excludeHolidays
-    tenantId: string
+    tenantId: string,
+    customHolidays?: Date[]
   ): Promise<Date> {
     // 한국 시간대로 변환
     let currentDate = this.toKST(startDate)
     let daysAdded = 0
+
+    // 무한 루프 방지: 최대 365일까지만 탐색
+    const maxAttempts = 365
+    let attempts = 0
 
     logger.info('[calculateBusinessDate] 시작', {
       startDate: startDate.toISOString(),
@@ -223,8 +232,9 @@ export class DeliveryCalculator {
       workingDays: rule.workingDays,
     })
 
-    while (daysAdded < businessDays) {
+    while (daysAdded < businessDays && attempts < maxAttempts) {
       currentDate.setDate(currentDate.getDate() + 1)
+      attempts++
 
       // 1. 영업 요일 확인 (workingDays에 포함되지 않으면 스킵)
       const kstComponents = this.getKSTComponents(currentDate)
@@ -232,7 +242,7 @@ export class DeliveryCalculator {
       const dayOfWeek = kstDate.getDay().toString()
       const dateString = this.formatDateKST(currentDate)
 
-      logger.info('[calculateBusinessDate] 날짜 체크', {
+      logger.debug('[calculateBusinessDate] 날짜 체크', {
         dateString,
         dayOfWeek,
         isWorkingDay: rule.workingDays.includes(dayOfWeek),
@@ -240,29 +250,39 @@ export class DeliveryCalculator {
       })
 
       if (!rule.workingDays.includes(dayOfWeek)) {
-        logger.info('[calculateBusinessDate] 영업일 아님 - 스킵')
+        logger.debug('[calculateBusinessDate] 영업일 아님 - 스킵')
         continue
       }
 
       // 2. 커스텀 휴무일 확인
       if (rule.customClosedDates.includes(dateString)) {
-        logger.info('[calculateBusinessDate] 커스텀 휴무일 - 스킵')
+        logger.debug('[calculateBusinessDate] 커스텀 휴무일 - 스킵')
         continue
       }
 
-      // 3. 공휴일 확인 (excludeHolidays가 true일 때만)
-      const isHoliday = rule.excludeHolidays && await this.isHoliday(currentDate, undefined, tenantId)
+      // 3. 공휴일 확인 (excludeHolidays가 true일 때만) - customHolidays 전달
+      const isHoliday = rule.excludeHolidays && await this.isHoliday(currentDate, customHolidays, tenantId)
       if (isHoliday) {
-        logger.info('[calculateBusinessDate] 공휴일 - 스킵')
+        logger.debug('[calculateBusinessDate] 공휴일 - 스킵')
         continue
       }
 
       daysAdded++
-      logger.info('[calculateBusinessDate] 영업일로 카운트', {
+      logger.debug('[calculateBusinessDate] 영업일로 카운트', {
         dateString,
         daysAdded,
         remainingDays: businessDays - daysAdded,
       })
+    }
+
+    // 무한 루프 방지 체크
+    if (attempts >= maxAttempts && daysAdded < businessDays) {
+      logger.error('[calculateBusinessDate] 최대 탐색 일수 초과 - 영업일 부족', {
+        requested: businessDays,
+        found: daysAdded,
+        attempts,
+      })
+      throw new Error(`영업일 계산 실패: ${businessDays}일의 영업일을 찾을 수 없습니다. (영업일 설정을 확인해주세요)`)
     }
 
     logger.info('[calculateBusinessDate] 완료', {
@@ -311,20 +331,25 @@ export class DeliveryCalculator {
 
   /**
    * 공휴일 여부 확인 (한국 시간대 기준)
+   * customHolidays와 DB 공휴일 모두 OR 조건으로 확인
    */
   private async isHoliday(date: Date, customHolidays?: Date[], tenantId?: string): Promise<boolean> {
     // KST 날짜 문자열로 변환 (YYYY-MM-DD)
     const dateString = this.formatDateKST(date)
 
-    // 커스텀 공휴일 확인
-    if (customHolidays) {
-      return customHolidays.some((holiday) => {
+    // 1. 커스텀 공휴일 확인 (있으면 우선 체크, true면 즉시 반환)
+    if (customHolidays && customHolidays.length > 0) {
+      const isCustomHoliday = customHolidays.some((holiday) => {
         const holidayString = this.formatDateKST(holiday)
         return holidayString === dateString
       })
+      if (isCustomHoliday) {
+        return true // 커스텀 공휴일이면 즉시 true
+      }
+      // 커스텀 공휴일이 아니면 DB 공휴일도 확인 (OR 조건)
     }
 
-    // tenantId가 없으면 공휴일 아님
+    // 2. tenantId가 없으면 DB 공휴일 확인 불가
     if (!tenantId) {
       return false
     }
@@ -394,7 +419,7 @@ export class DeliveryCalculator {
   /**
    * 특정 날짜가 영업일인지 확인
    */
-  private async isBusinessDay(date: Date, rule: any, tenantId?: string): Promise<boolean> {
+  private async isBusinessDay(date: Date, rule: any, tenantId?: string, customHolidays?: Date[]): Promise<boolean> {
     const kstComponents = this.getKSTComponents(date)
     const kstDate = new Date(kstComponents.year, kstComponents.month, kstComponents.day)
     const dayOfWeek = kstDate.getDay().toString()
@@ -410,8 +435,8 @@ export class DeliveryCalculator {
       return false
     }
 
-    // 3. 공휴일 확인
-    if (rule.excludeHolidays && (await this.isHoliday(date, undefined, tenantId))) {
+    // 3. 공휴일 확인 (customHolidays 전달)
+    if (rule.excludeHolidays && (await this.isHoliday(date, customHolidays, tenantId))) {
       return false
     }
 
@@ -421,19 +446,24 @@ export class DeliveryCalculator {
   /**
    * 다음 영업일 조회 (한국 시간대 기준)
    */
-  async getNextBusinessDay(date: Date, rule?: any, tenantId?: string): Promise<Date> {
+  async getNextBusinessDay(date: Date, rule?: any, tenantId?: string, customHolidays?: Date[]): Promise<Date> {
     let nextDay = this.toKST(date)
     nextDay.setDate(nextDay.getDate() + 1)
 
+    // 무한 루프 방지
+    const maxAttempts = 365
+    let attempts = 0
+
     // 규칙이 없으면 기본 주말/공휴일 제외 로직 사용 (하위 호환성)
     if (!rule) {
-      while (true) {
+      while (attempts < maxAttempts) {
+        attempts++
         if (this.isWeekendKST(nextDay)) {
           nextDay.setDate(nextDay.getDate() + 1)
           continue
         }
 
-        if (await this.isHoliday(nextDay, undefined, tenantId)) {
+        if (await this.isHoliday(nextDay, customHolidays, tenantId)) {
           nextDay.setDate(nextDay.getDate() + 1)
           continue
         }
@@ -444,8 +474,9 @@ export class DeliveryCalculator {
     }
 
     // 규칙이 있으면 정교한 로직 사용
-    while (!(await this.isBusinessDay(nextDay, rule, tenantId))) {
+    while (!(await this.isBusinessDay(nextDay, rule, tenantId, customHolidays)) && attempts < maxAttempts) {
       nextDay.setDate(nextDay.getDate() + 1)
+      attempts++
     }
 
     return nextDay
@@ -457,7 +488,9 @@ export class DeliveryCalculator {
   async getBusinessDaysBetween(
     startDate: Date,
     endDate: Date,
-    excludeWeekends: boolean = true
+    excludeWeekends: boolean = true,
+    tenantId?: string,
+    customHolidays?: Date[]
   ): Promise<number> {
     let count = 0
     let currentDate = this.toKST(startDate)
@@ -470,7 +503,8 @@ export class DeliveryCalculator {
         continue
       }
 
-      if (await this.isHoliday(currentDate)) {
+      // tenantId와 customHolidays를 전달하여 공휴일 확인
+      if (await this.isHoliday(currentDate, customHolidays, tenantId)) {
         continue
       }
 
@@ -521,10 +555,20 @@ export async function calculateDeliveryDate(
   return deliveryCalculator.calculateDeliveryDate(options)
 }
 
-export async function getNextBusinessDay(date: Date = new Date()): Promise<Date> {
-  return deliveryCalculator.getNextBusinessDay(date)
+export async function getNextBusinessDay(
+  date: Date = new Date(),
+  tenantId?: string,
+  customHolidays?: Date[]
+): Promise<Date> {
+  return deliveryCalculator.getNextBusinessDay(date, undefined, tenantId, customHolidays)
 }
 
-export async function getBusinessDaysBetween(startDate: Date, endDate: Date): Promise<number> {
-  return deliveryCalculator.getBusinessDaysBetween(startDate, endDate)
+export async function getBusinessDaysBetween(
+  startDate: Date,
+  endDate: Date,
+  excludeWeekends: boolean = true,
+  tenantId?: string,
+  customHolidays?: Date[]
+): Promise<number> {
+  return deliveryCalculator.getBusinessDaysBetween(startDate, endDate, excludeWeekends, tenantId, customHolidays)
 }

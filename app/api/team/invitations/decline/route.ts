@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 초대 조회 및 검증
-    const invitation = await prisma.teamInvitation.findFirst({
+    const invitation = await prisma.tenantInvitation.findFirst({
       where: {
         token,
         status: 'PENDING',
@@ -22,13 +22,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '유효하지 않은 초대입니다.' }, { status: 404 })
     }
 
-    // 초대 거절 처리
-    await prisma.teamInvitation.update({
+    // 초대 거절 처리 - 삭제
+    await prisma.tenantInvitation.delete({
       where: { id: invitation.id },
-      data: {
-        status: 'DECLINED',
-        declinedAt: new Date(),
-      },
     })
 
     logger.info('Team invitation declined', {

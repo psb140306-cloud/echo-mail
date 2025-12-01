@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react'
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css'
 import './holidays.css'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
+import { AppHeader } from '@/components/layout/app-header'
 import {
   Dialog,
   DialogContent,
@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ArrowLeft, Calendar as CalendarIcon, Loader2, Download, RefreshCcw, CalendarCheck } from 'lucide-react'
+import { Calendar as CalendarIcon, Loader2, Download, RefreshCcw, CalendarCheck } from 'lucide-react'
 
 interface Holiday {
   id: string
@@ -328,23 +328,11 @@ export default function HolidaysPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">대시보드</span>
-            </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-between space-x-2">
-            <h1 className="text-lg font-semibold">공휴일 관리</h1>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto py-6 space-y-6">
+    <>
+      <AppHeader />
+      <div className="min-h-screen bg-gray-50/40">
+        <main className="container mx-auto py-6 space-y-6">
+          <h1 className="text-2xl font-bold">공휴일 관리</h1>
         {/* 연도 선택 및 액션 버튼 */}
         <Card>
           <CardHeader>
@@ -565,7 +553,8 @@ export default function HolidaysPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   )
 }

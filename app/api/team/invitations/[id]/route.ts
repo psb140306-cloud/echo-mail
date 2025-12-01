@@ -20,28 +20,25 @@ export async function DELETE(
         return NextResponse.json({ error: '인증되지 않은 사용자입니다.' }, { status: 401 })
       }
 
-      const tenantId = user.user_metadata?.tenantId
       const invitationId = params.id
 
-      if (!tenantId) {
-        return NextResponse.json({ error: '테넌트 정보가 필요합니다.' }, { status: 400 })
-      }
-
-      // 사용자 권한 확인 (OWNER, ADMIN만 초대 취소 가능)
-      const teamMember = await prisma.teamMember.findFirst({
+      // DB에서 실제 멤버십 및 권한 검증 (메타데이터 신뢰하지 않음)
+      const tenantMember = await prisma.tenantMember.findFirst({
         where: {
-          tenantId,
           userId: user.id,
+          status: 'ACTIVE',
           role: { in: ['OWNER', 'ADMIN'] },
         },
       })
 
-      if (!teamMember) {
+      if (!tenantMember) {
         return NextResponse.json({ error: '권한이 없습니다.' }, { status: 403 })
       }
 
+      const tenantId = tenantMember.tenantId
+
       // 초대 조회 및 권한 확인
-      const invitation = await prisma.teamInvitation.findFirst({
+      const invitation = await prisma.tenantInvitation.findFirst({
         where: {
           id: invitationId,
           tenantId,
@@ -53,14 +50,9 @@ export async function DELETE(
         return NextResponse.json({ error: '초대를 찾을 수 없습니다.' }, { status: 404 })
       }
 
-      // 초대 취소
-      await prisma.teamInvitation.update({
+      // 초대 삭제 (또는 상태 변경)
+      await prisma.tenantInvitation.delete({
         where: { id: invitationId },
-        data: {
-          status: 'CANCELLED',
-          cancelledAt: new Date(),
-          cancelledBy: user.id,
-        },
       })
 
       logger.info('Team invitation cancelled', {

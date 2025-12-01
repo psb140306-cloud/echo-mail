@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 초대 조회
-    const invitation = await prisma.teamInvitation.findFirst({
+    const invitation = await prisma.tenantInvitation.findFirst({
       where: {
         token,
         status: 'PENDING',
@@ -26,18 +26,24 @@ export async function GET(request: NextRequest) {
             name: true,
           },
         },
-        inviter: {
-          select: {
-            email: true,
-            user_metadata: true,
-          },
-        },
       },
     })
 
     if (!invitation) {
       return NextResponse.json({ error: '유효하지 않거나 만료된 초대입니다.' }, { status: 404 })
     }
+
+    // 초대자 정보 조회 (TenantMember에서 찾기)
+    const inviter = await prisma.tenantMember.findFirst({
+      where: {
+        tenantId: invitation.tenantId,
+        userId: invitation.invitedBy,
+      },
+      select: {
+        userEmail: true,
+        userName: true,
+      },
+    })
 
     logger.info('Invitation validated', {
       invitationId: invitation.id,
@@ -52,7 +58,7 @@ export async function GET(request: NextRequest) {
         email: invitation.email,
         role: invitation.role,
         tenantName: invitation.tenant.name,
-        inviterName: invitation.inviter.user_metadata?.full_name || invitation.inviter.email,
+        inviterName: inviter?.userName || inviter?.userEmail || '팀 관리자',
         expiresAt: invitation.expiresAt.toISOString(),
       },
     })
