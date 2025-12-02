@@ -140,10 +140,10 @@ export default function SettingsPage() {
           description: '설정이 저장되었습니다',
         })
 
-        // 메일 체크 스케줄러 리로드
-        if (settings.mailServer.enabled) {
-          await fetch('/api/scheduler/reload', { method: 'POST' })
-        }
+        // 메일 서버 설정이 변경되었으면 스케줄러 리로드 (활성화/비활성화 모두)
+        // reloadAllSchedules()가 enabled=true인 테넌트만 스케줄 등록하므로
+        // 비활성화 시에도 호출해야 기존 스케줄이 제거됨
+        await fetch('/api/scheduler/reload', { method: 'POST' })
       } else {
         throw new Error('설정 저장 실패')
       }

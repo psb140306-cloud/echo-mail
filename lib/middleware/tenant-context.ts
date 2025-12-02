@@ -233,7 +233,8 @@ export async function withTenantContext<T>(
     // 2. 🔒 인증된 사용자: membership 기반 tenant 필수
     if (authUser) {
       // 🔓 슈퍼어드민 체크 (tenant 없이도 모든 접근 허용)
-      const isSuperAdmin = authUser.email === 'seah0623@naver.com'
+      const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean)
+      const isSuperAdmin = superAdminEmails.includes(authUser.email || '')
 
       if (isSuperAdmin) {
         logger.debug('✅ Super admin access - bypassing tenant check', {

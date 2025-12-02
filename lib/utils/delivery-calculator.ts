@@ -38,10 +38,12 @@ export class DeliveryCalculator {
 
   /**
    * UTC Date를 한국 시간대(KST, UTC+9)로 변환
+   * 주의: toLocaleString 방식은 로컬 타임존에 영향을 받으므로 직접 UTC 오프셋 계산
    */
   private toKST(date: Date): Date {
-    const kstDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }))
-    return kstDate
+    // KST는 UTC+9 (9시간 = 9 * 60 * 60 * 1000 밀리초)
+    const KST_OFFSET = 9 * 60 * 60 * 1000
+    return new Date(date.getTime() + KST_OFFSET)
   }
 
   /**

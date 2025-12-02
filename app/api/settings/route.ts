@@ -9,6 +9,8 @@ import {
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { mailScheduler } from '@/lib/scheduler/mail-scheduler'
+import { hasPermission, Permission, TenantUserRole } from '@/lib/auth/rbac'
+import { createClient } from '@/lib/supabase/server'
 
 // 설정 스키마
 const settingsSchema = z.object({
@@ -19,11 +21,28 @@ const settingsSchema = z.object({
       username: z.string(),
       password: z.string(),
       useSSL: z.boolean(),
-      checkInterval: z.number(),
+      checkInterval: z.number().min(1).max(5),
       enabled: z.boolean(),
       autoMarkAsRead: z.boolean(),
     })
-    .optional(),
+    .optional()
+    .refine(
+      (data) => {
+        // enabled=true일 때만 필수 필드 검증
+        if (data?.enabled) {
+          return (
+            data.host.trim() !== '' &&
+            data.port > 0 &&
+            data.username.trim() !== '' &&
+            data.password.trim() !== ''
+          )
+        }
+        return true
+      },
+      {
+        message: '메일 모니터링을 활성화하려면 호스트, 포트, 사용자명, 비밀번호를 입력해야 합니다.',
+      }
+    ),
   sms: z
     .object({
       provider: z.string(),
@@ -191,6 +210,31 @@ export async function PUT(request: NextRequest) {
       if (!tenantId) {
         logger.error('Tenant context not available in settings PUT')
         return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
+      }
+
+      // RBAC 권한 체크: SYSTEM_SETTINGS 권한 필요
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user) {
+        return createErrorResponse('인증이 필요합니다.', 401)
+      }
+
+      const membership = await prisma.tenantMember.findFirst({
+        where: {
+          tenantId,
+          userId: user.id,
+        },
+      })
+
+      if (!membership) {
+        return createErrorResponse('테넌트 멤버가 아닙니다.', 403)
+      }
+
+      const userRole = membership.role as TenantUserRole
+      if (!hasPermission(userRole, Permission.SYSTEM_SETTINGS)) {
+        logger.warn('설정 변경 권한 없음', { userId: user.id, tenantId, role: userRole })
+        return createErrorResponse('설정을 변경할 권한이 없습니다. ADMIN 이상의 권한이 필요합니다.', 403)
       }
 
       const { data, error } = await parseAndValidate(request, settingsSchema)

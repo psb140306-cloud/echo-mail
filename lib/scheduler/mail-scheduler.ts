@@ -213,15 +213,14 @@ export class MailScheduler {
     const activeConfigs: Array<{ tenantId: string; checkInterval: number }> = []
 
     for (const [tenantId, config] of tenantConfigMap.entries()) {
-      logger.info(
-        `[MailScheduler] 테넌트 ${tenantId} 설정: ` +
-        `enabled=${config.enabled}, ` +
-        `host=${config.host || 'N/A'}, ` +
-        `port=${config.port || 'N/A'}, ` +
-        `username=${config.username || 'N/A'}, ` +
-        `password=${config.password ? '***' : 'N/A'}, ` +
-        `checkInterval=${config.checkInterval || 'N/A'}`
-      )
+      // 보안: 비밀번호, 사용자명 등 민감 정보 로깅 제외
+      logger.debug(`[MailScheduler] 테넌트 ${tenantId} 설정 확인`, {
+        enabled: config.enabled,
+        hasHost: !!config.host,
+        hasPort: !!config.port,
+        hasCredentials: !!(config.username && config.password),
+        checkInterval: config.checkInterval || 'N/A',
+      })
 
       if (
         config.enabled === true &&

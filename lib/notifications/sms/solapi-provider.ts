@@ -424,14 +424,11 @@ export function createSolapiProviderFromEnv(): SolapiSMSProvider {
   const apiSecret = process.env.SOLAPI_API_SECRET
   const sender = process.env.SOLAPI_SENDER || process.env.SOLAPI_SENDER_PHONE || process.env.DEFAULT_SENDER_PHONE
 
-  // 디버깅: 환경 변수 타입 확인
-  logger.info('[SOLAPI] 환경 변수 로드', {
-    apiKeyType: typeof apiKey,
-    apiKeyLength: apiKey?.length,
-    apiSecretType: typeof apiSecret,
-    apiSecretLength: apiSecret?.length,
-    senderType: typeof sender,
-    sender: sender,
+  // 디버깅: 환경 변수 존재 여부만 확인 (보안상 길이/값 노출 금지)
+  logger.debug('[SOLAPI] 환경 변수 로드', {
+    hasApiKey: !!apiKey,
+    hasApiSecret: !!apiSecret,
+    hasSender: !!sender,
   })
 
   if (!apiKey || !apiSecret || !sender) {
