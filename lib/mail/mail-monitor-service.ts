@@ -6,6 +6,7 @@ import { createImapClient } from '@/lib/imap/connection'
 import { parseOrderEmail } from './email-parser'
 import { sendOrderReceivedNotification } from '@/lib/notifications/notification-service'
 import { getKSTStartOfDay, isKSTToday, formatKSTDate } from '@/lib/utils/date'
+import { unregisteredCompanyHandler } from '@/lib/unregistered-company-handler'
 
 const prisma = new PrismaClient()
 
@@ -361,11 +362,61 @@ export class MailMonitorService {
       const company = await this.findCompanyByEmail(tenantId, parsedData)
 
       if (!company) {
-        logger.warn('[MailMonitor] 업체를 찾을 수 없음', {
+        logger.warn('[MailMonitor] 업체를 찾을 수 없음 - 미등록 업체 처리 시작', {
           tenantId,
           from: from?.address,
           companyName: parsedData.companyName,
         })
+
+        // 미등록 업체 처리 (관리자에게 알림)
+        try {
+          const emailContent = message.source?.toString() || ''
+          const result = await unregisteredCompanyHandler.handleUnregisteredEmail(
+            from?.address || '',
+            {
+              subject: subject || '',
+              body: emailContent,
+              attachments: [], // 첨부파일은 별도 처리 필요시 추가
+            }
+          )
+
+          logger.info('[MailMonitor] 미등록 업체 처리 완료', {
+            tenantId,
+            from: from?.address,
+            action: result.action,
+            companyInfo: result.companyInfo ? {
+              email: result.companyInfo.email,
+              companyName: result.companyInfo.companyName,
+              emailCount: result.companyInfo.emailCount,
+            } : null,
+          })
+
+          // EmailLog에 미등록 업체로 기록
+          await prisma.emailLog.create({
+            data: {
+              messageId: messageIdHeader,
+              sender: from?.address || '',
+              recipient: '',
+              subject: subject || '',
+              receivedAt: date,
+              body: emailContent.substring(0, 5000), // 최대 5000자
+              isRead: false,
+              folder: 'INBOX',
+              size: message.size || 0,
+              isOrder: true, // 발주 메일로 감지됨
+              hasAttachment: false,
+              status: 'IGNORED', // 미등록 업체
+              tenantId,
+            },
+          })
+        } catch (error) {
+          logger.error('[MailMonitor] 미등록 업체 처리 실패:', {
+            tenantId,
+            from: from?.address,
+            error: error instanceof Error ? error.message : '알 수 없는 오류',
+          })
+        }
+
         // 설정에 따라 읽음 처리
         if (mailConfig.autoMarkAsRead) {
           await this.safeMarkAsRead(client, message.uid)

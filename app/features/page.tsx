@@ -146,29 +146,29 @@ export default function FeaturesPage() {
                 </div>
               </BentoCard>
 
-              {/* 즉시 알림 발송 */}
+              {/* 자동 알림 발송 */}
               <BentoCard delay={0.1}>
                 <div className="h-full flex flex-col justify-between">
                   <div>
                     <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6">
                       <MessageCircle className="w-7 h-7 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3">즉시 알림 발송</h3>
+                    <h3 className="text-xl font-bold mb-3">자동 알림 발송</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                      SMS/카카오톡으로 1초 이내 담당자에게 알림. 다중 채널 지원과 폴백 기능.
+                      발주 메일 감지 즉시 SMS로 담당자에게 알림. 카카오톡 연동 예정.
                     </p>
                     <ul className="space-y-2 text-xs">
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-                        SMS 문자 발송
+                        NCP SMS 문자 발송
                       </li>
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-                        카카오 알림톡/친구톡
+                        카카오 알림톡 (예정)
                       </li>
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-                        실패 시 SMS 폴백
+                        1~5분 간격 확인
                       </li>
                     </ul>
                   </div>
@@ -375,8 +375,8 @@ export default function FeaturesPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {[
                   { icon: Mail, name: 'Gmail / Naver', desc: 'IMAP 지원 메일' },
-                  { icon: MessageCircle, name: '알리고 / NCP', desc: 'SMS 서비스' },
-                  { icon: MessageCircle, name: '카카오톡', desc: '비즈메시지 API' },
+                  { icon: MessageCircle, name: 'NCP SMS', desc: 'SMS 발송 서비스' },
+                  { icon: MessageCircle, name: '카카오톡', desc: '알림톡 (예정)' },
                   { icon: Lock, name: '토스페이먼츠', desc: '안전한 결제' },
                 ].map((integration, i) => (
                   <div

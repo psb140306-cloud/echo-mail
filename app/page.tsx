@@ -175,9 +175,9 @@ function ModernLandingPage() {
                 </GlassmorphismCard>
                 <GlassmorphismCard className="text-center" hover={false}>
                   <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-                    1초
+                    1~5분
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">평균 알림 속도</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">메일 확인 주기</div>
                 </GlassmorphismCard>
               </div>
             </ScrollReveal>
@@ -226,9 +226,9 @@ function ModernLandingPage() {
                     <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-6">
                       <MessageCircle className="w-7 h-7 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3">즉시 알림 발송</h3>
+                    <h3 className="text-xl font-bold mb-3">자동 알림 발송</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
-                      SMS/카카오톡으로 1초 이내 담당자에게 알림
+                      발주 메일 감지 즉시 SMS로 담당자에게 알림
                     </p>
                   </div>
                 </div>
