@@ -467,7 +467,9 @@ export default function PricingPage() {
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4">지원</h3>
                 <ul className="space-y-3">
                   <li>
-                    <span className="text-gray-400 dark:text-gray-500">도움말 센터 (준비중)</span>
+                    <Link href="/help" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                      도움말 센터
+                    </Link>
                   </li>
                   <li>
                     <span className="text-gray-400 dark:text-gray-500">API 문서 (준비중)</span>
