@@ -703,3 +703,60 @@ enum InvoiceStatus {
   REFUNDED       // 환불됨
 }
 
+// =============================================================================
+// 문의하기
+// =============================================================================
+
+model ContactInquiry {
+  id          String        @id @default(cuid())
+
+  // 문의자 정보
+  name        String
+  email       String
+  phone       String?
+  company     String?
+
+  // 문의 내용
+  type        InquiryType   @default(INQUIRY)
+  subject     String
+  message     String        @db.Text
+
+  // 상태 관리
+  status      InquiryStatus @default(PENDING)
+  assignedTo  String?       // 담당자 이메일
+
+  // 답변
+  reply       String?       @db.Text
+  repliedAt   DateTime?
+  repliedBy   String?       // 답변자 이메일
+
+  // 메타데이터
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("contact_inquiries")
+}
+
+enum InquiryType {
+  INQUIRY       // 일반 문의
+  DEMO          // 데모 요청
+  PARTNERSHIP   // 제휴 문의
+  SUPPORT       // 기술 지원
+  BILLING       // 결제 문의
+  OTHER         // 기타
+}
+
+enum InquiryStatus {
+  PENDING       // 대기중
+  IN_PROGRESS   // 처리중
+  RESOLVED      // 해결됨
+  CLOSED        // 종료
+}
+

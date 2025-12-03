@@ -53,8 +53,19 @@ export default function ContactPage() {
     setLoading(true)
 
     try {
-      // API 호출 시뮬레이션 (실제로는 /api/contact 엔드포인트 필요)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || '문의 접수 중 오류가 발생했습니다.')
+      }
 
       toast({
         title: '✅ 문의가 접수되었습니다',
@@ -74,7 +85,7 @@ export default function ContactPage() {
     } catch (error) {
       toast({
         title: '❌ 오류',
-        description: '문의 접수 중 오류가 발생했습니다.',
+        description: error instanceof Error ? error.message : '문의 접수 중 오류가 발생했습니다.',
         variant: 'destructive',
       })
     } finally {
