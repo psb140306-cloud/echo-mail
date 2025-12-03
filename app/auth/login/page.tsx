@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { WordMarkLink } from '@/components/ui/wordmark-link'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -67,30 +68,34 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4 relative">
+      {/* 테마 토글 */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         {/* 로고/헤더 */}
         <div className="text-center mb-8">
-          <WordMarkLink className="inline-flex flex-col items-center gap-4 mb-2 text-gray-900 no-underline">
+          <WordMarkLink className="inline-flex flex-col items-center gap-4 mb-2 text-gray-900 dark:text-white no-underline">
             <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto">
               <Mail className="w-8 h-8 text-white" />
             </div>
             <span className="text-2xl font-bold text-inherit">Echo Mail</span>
           </WordMarkLink>
-          <p className="text-gray-600">발주 확인 자동 알림 시스템</p>
+          <p className="text-gray-600 dark:text-gray-400">발주 확인 자동 알림 시스템</p>
         </div>
 
         {/* 로그인 폼 */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">로그인</h2>
-            <p className="text-gray-600 text-sm">계정에 로그인하여 Echo Mail을 시작하세요</p>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">로그인</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">계정에 로그인하여 Echo Mail을 시작하세요</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* 이메일 */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700">
+              <Label htmlFor="email" className="text-gray-700 dark:text-gray-300">
                 이메일
               </Label>
               <div className="relative">
@@ -101,7 +106,7 @@ export default function LoginPage() {
                   placeholder="이메일을 입력하세요"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:bg-white focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10 bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500 focus:bg-white dark:focus:bg-gray-600 focus:border-blue-500 focus:ring-blue-500"
                   disabled={loading}
                   required
                 />
@@ -110,7 +115,7 @@ export default function LoginPage() {
 
             {/* 비밀번호 */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700">
+              <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">
                 비밀번호
               </Label>
               <div className="relative">
@@ -121,14 +126,14 @@ export default function LoginPage() {
                   placeholder="비밀번호를 입력하세요"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:bg-white focus:border-blue-500 focus:ring-blue-500"
+                  className="pl-10 pr-10 bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500 focus:bg-white dark:focus:bg-gray-600 focus:border-blue-500 focus:ring-blue-500"
                   disabled={loading}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   disabled={loading}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -162,16 +167,16 @@ export default function LoginPage() {
           {/* 구분선 */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
+              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">또는</span>
+              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">또는</span>
             </div>
           </div>
 
           {/* 회원가입 링크 */}
           <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               아직 계정이 없으신가요?{' '}
               <Link
                 href="/auth/signup"

@@ -28,6 +28,7 @@ import {
   Lock,
   Activity,
 } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function FeaturesPage() {
   return (
@@ -61,6 +62,7 @@ export default function FeaturesPage() {
                 </span>
               </WordMarkLink>
               <div className="flex items-center gap-4">
+                <ThemeToggle />
                 <Button variant="ghost" asChild className="hidden md:inline-flex">
                   <Link href="/pricing">요금제</Link>
                 </Button>
@@ -119,27 +121,27 @@ export default function FeaturesPage() {
                     <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-6">
                       <Mail className="w-7 h-7 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold mb-3">AI 기반 메일 모니터링</h3>
+                    <h3 className="text-2xl font-bold mb-3">자동 메일 모니터링</h3>
                     <p className="text-gray-600 dark:text-gray-300 mb-4">
-                      IMAP 프로토콜로 24/7 실시간 모니터링. 머신러닝으로 발주 메일을 자동 감지하고
+                      IMAP 프로토콜로 24/7 자동 모니터링. 키워드 기반으로 발주 메일을 자동 감지하고
                       분류합니다.
                     </p>
                     <ul className="space-y-2 text-sm">
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                        실시간 메일 수신 감지 (IMAP IDLE)
+                        1~5분 간격 메일 자동 확인
                       </li>
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                        AI 키워드 필터링 (제목/본문)
+                        키워드 필터링 (제목/본문)
                       </li>
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                        첨부파일 자동 검증 및 파싱
+                        첨부파일 유무 확인
                       </li>
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                        발신자 이메일 스마트 매칭
+                        발신자 이메일/도메인 매칭
                       </li>
                     </ul>
                   </div>
@@ -211,22 +213,22 @@ export default function FeaturesPage() {
                     <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center mb-6">
                       <BarChart3 className="w-7 h-7 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold mb-3">실시간 대시보드 & 분석</h3>
+                    <h3 className="text-2xl font-bold mb-3">대시보드 & 발송 이력</h3>
                     <p className="text-gray-600 dark:text-gray-300 mb-4">
-                      발송 현황, 성공률, 업체별 통계를 실시간으로 확인. 데이터 기반 의사결정 지원.
+                      발송 현황, 업체별 통계를 한눈에 확인. 모든 발송 이력을 상세하게 기록합니다.
                     </p>
                     <div className="grid grid-cols-3 gap-4 mt-6">
                       <div className="text-center p-3 bg-white/50 dark:bg-white/5 rounded-xl">
-                        <div className="text-2xl font-bold text-blue-600">98%</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">발송 성공률</div>
+                        <div className="text-2xl font-bold text-blue-600">24/7</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">자동 모니터링</div>
                       </div>
                       <div className="text-center p-3 bg-white/50 dark:bg-white/5 rounded-xl">
-                        <div className="text-2xl font-bold text-green-700">2.3초</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">평균 응답</div>
+                        <div className="text-2xl font-bold text-green-700">1~5분</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">확인 주기</div>
                       </div>
                       <div className="text-center p-3 bg-white/50 dark:bg-white/5 rounded-xl">
-                        <div className="text-2xl font-bold text-purple-600">10K+</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">월 처리</div>
+                        <div className="text-2xl font-bold text-purple-600">SMS</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">즉시 발송</div>
                       </div>
                     </div>
                   </div>
@@ -255,7 +257,7 @@ export default function FeaturesPage() {
                       </li>
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-                        미등록 업체 자동 처리
+                        미등록 업체 로그 기록
                       </li>
                     </ul>
                   </div>
@@ -271,7 +273,7 @@ export default function FeaturesPage() {
                     </div>
                     <h3 className="text-xl font-bold mb-3">보안 & 안정성</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                      엔터프라이즈급 보안과 99.9% 가용성 보장. 데이터 암호화.
+                      안전한 데이터 보호와 멀티테넌트 격리. 역할 기반 접근 제어.
                     </p>
                     <ul className="space-y-2 text-xs">
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
@@ -280,11 +282,11 @@ export default function FeaturesPage() {
                       </li>
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-                        데이터 백업/복구
+                        테넌트 데이터 격리
                       </li>
                       <li className="flex items-center text-gray-600 dark:text-gray-300">
                         <CheckCircle className="w-3 h-3 text-green-500 mr-2" />
-                        24/7 모니터링
+                        역할 기반 권한 관리
                       </li>
                     </ul>
                   </div>
@@ -329,7 +331,7 @@ export default function FeaturesPage() {
                 {
                   icon: Zap,
                   title: '빠른 처리',
-                  desc: '큐 시스템과 비동기 처리로 평균 3초 이내 처리',
+                  desc: '메일 감지 후 즉시 SMS 알림 발송',
                   color: 'from-orange-500 to-red-500',
                 },
                 {
@@ -374,10 +376,10 @@ export default function FeaturesPage() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {[
-                  { icon: Mail, name: 'Gmail / Naver', desc: 'IMAP 지원 메일' },
+                  { icon: Mail, name: 'Gmail / Naver / Daum', desc: 'IMAP 지원 메일' },
                   { icon: MessageCircle, name: 'NCP SMS', desc: 'SMS 발송 서비스' },
                   { icon: MessageCircle, name: '카카오톡', desc: '알림톡 (예정)' },
-                  { icon: Lock, name: '토스페이먼츠', desc: '안전한 결제' },
+                  { icon: Lock, name: '토스페이먼츠', desc: '결제 연동 (예정)' },
                 ].map((integration, i) => (
                   <div
                     key={i}
@@ -397,19 +399,19 @@ export default function FeaturesPage() {
             <GlassmorphismCard className="mb-24">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold mb-4">
-                  <GradientText>검증된 성능</GradientText>
+                  <GradientText>Echo Mail의 특징</GradientText>
                 </h2>
                 <p className="text-xl text-gray-600 dark:text-gray-300">
-                  수치로 증명하는 Echo Mail의 성능
+                  발주 확인 자동화를 위한 핵심 기능
                 </p>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                 {[
-                  { value: '99.9%', label: '시스템 가용성', icon: Activity },
-                  { value: '<200ms', label: '평균 응답 시간', icon: Zap },
-                  { value: '1000+', label: '동시 접속 처리', icon: Users },
-                  { value: '24/7', label: '무중단 모니터링', icon: Globe },
+                  { value: '24/7', label: '자동 모니터링', icon: Activity },
+                  { value: '1~5분', label: '메일 확인 주기', icon: Zap },
+                  { value: 'SMS', label: '즉시 알림 발송', icon: Users },
+                  { value: 'IMAP', label: '표준 프로토콜', icon: Globe },
                 ].map((stat, i) => (
                   <div key={i} className="text-center">
                     <stat.icon className="w-8 h-8 mx-auto mb-3 text-blue-600" />
@@ -460,43 +462,126 @@ export default function FeaturesPage() {
 
         {/* Footer */}
         <footer className="relative z-50 mt-32 border-t border-white/20 backdrop-blur-md">
-          <div className="container mx-auto px-4 py-12">
-            <WordMarkLink className="flex items-center justify-center mb-8 no-underline">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mr-3">
-                <Mail className="w-6 h-6 text-white" />
+          <div className="container mx-auto px-4 py-16">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
+              {/* Logo & Description */}
+              <div className="lg:col-span-2">
+                <WordMarkLink className="flex items-center gap-3 mb-4 no-underline">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                    <Mail className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Echo Mail
+                  </span>
+                </WordMarkLink>
+                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-sm">
+                  발주 확인 메일을 자동으로 모니터링하고 SMS/카카오톡으로 즉시 알림을 발송하는
+                  비즈니스 자동화 솔루션입니다.
+                </p>
+                <div className="flex gap-3">
+                  <a
+                    href="#"
+                    className="w-10 h-10 bg-gray-100 dark:bg-gray-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg flex items-center justify-center transition-colors"
+                    aria-label="GitHub"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="#"
+                    className="w-10 h-10 bg-gray-100 dark:bg-gray-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg flex items-center justify-center transition-colors"
+                    aria-label="Twitter"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                  </a>
+                  <a
+                    href="#"
+                    className="w-10 h-10 bg-gray-100 dark:bg-gray-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg flex items-center justify-center transition-colors"
+                    aria-label="LinkedIn"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                    </svg>
+                  </a>
+                </div>
               </div>
-              <span className="font-bold text-2xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Echo Mail
-              </span>
-            </WordMarkLink>
-            <div className="flex justify-center flex-wrap gap-6 mb-8">
-              <Link
-                href="/features"
-                className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                기능
-              </Link>
-              <Link
-                href="/pricing"
-                className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                요금제
-              </Link>
-              <Link
-                href="/about"
-                className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                회사소개
-              </Link>
-              <Link
-                href="/contact"
-                className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                문의하기
-              </Link>
+
+              {/* Product */}
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">제품</h3>
+                <ul className="space-y-3">
+                  <li>
+                    <Link href="/features" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                      주요 기능
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/pricing" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                      가격 안내
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/contact" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                      문의하기
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Company */}
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">회사</h3>
+                <ul className="space-y-3">
+                  <li>
+                    <span className="text-gray-400 dark:text-gray-500">블로그 (준비중)</span>
+                  </li>
+                  <li>
+                    <span className="text-gray-400 dark:text-gray-500">채용 (준비중)</span>
+                  </li>
+                  <li>
+                    <span className="text-gray-400 dark:text-gray-500">파트너십 (준비중)</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Support */}
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">지원</h3>
+                <ul className="space-y-3">
+                  <li>
+                    <span className="text-gray-400 dark:text-gray-500">도움말 센터 (준비중)</span>
+                  </li>
+                  <li>
+                    <span className="text-gray-400 dark:text-gray-500">API 문서 (준비중)</span>
+                  </li>
+                  <li>
+                    <span className="text-gray-400 dark:text-gray-500">커뮤니티 (준비중)</span>
+                  </li>
+                </ul>
+              </div>
             </div>
-            <div className="text-center text-gray-600 dark:text-gray-400">
-              © 2025 Echo Mail. All rights reserved.
+
+            {/* Bottom Bar */}
+            <div className="pt-8 border-t border-gray-200 dark:border-gray-800">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  © 2025 Echo Mail. All rights reserved.
+                </div>
+                <div className="flex gap-6 text-sm">
+                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    이용약관
+                  </a>
+                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    개인정보처리방침
+                  </a>
+                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    쿠키 정책
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </footer>

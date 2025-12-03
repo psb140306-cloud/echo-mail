@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Loader2, Mail, Lock, Eye, EyeOff, User, Building } from 'lucide-react'
 import { WordMarkLink } from '@/components/ui/wordmark-link'
+import { ThemeToggle } from '@/components/theme-toggle'
 import {
   Select,
   SelectContent,
@@ -158,21 +159,25 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4 relative">
+      {/* 테마 토글 */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         {/* 로고/헤더 */}
         <div className="text-center mb-8">
-          <WordMarkLink className="inline-flex flex-col items-center gap-4 mb-2 text-gray-900 no-underline">
+          <WordMarkLink className="inline-flex flex-col items-center gap-4 mb-2 text-gray-900 dark:text-white no-underline">
             <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto">
               <Mail className="w-8 h-8 text-white" />
             </div>
             <span className="text-2xl font-bold text-inherit">Echo Mail</span>
           </WordMarkLink>
-          <p className="text-gray-600">발주 확인 자동 알림 시스템</p>
+          <p className="text-gray-600 dark:text-gray-400">발주 확인 자동 알림 시스템</p>
         </div>
 
         {/* 회원가입 폼 */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
           {/* 진행 단계 표시 */}
           <div className="flex items-center mb-6">
             <div

@@ -25,6 +25,7 @@ import {
   CheckCircle2,
   Star,
 } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function HomePage() {
   const { user, loading } = useAuth()
@@ -88,6 +89,7 @@ function ModernLandingPage() {
                 </span>
               </WordMarkLink>
               <div className="flex items-center gap-4">
+                <ThemeToggle />
                 <Button variant="ghost" asChild className="hidden md:inline-flex">
                   <a href="/auth/login">로그인</a>
                 </Button>
@@ -406,11 +408,6 @@ function ModernLandingPage() {
                     </a>
                   </li>
                   <li>
-                    <a href="/about" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      서비스 소개
-                    </a>
-                  </li>
-                  <li>
                     <a href="/contact" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                       문의하기
                     </a>
@@ -423,24 +420,13 @@ function ModernLandingPage() {
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4">회사</h3>
                 <ul className="space-y-3">
                   <li>
-                    <a href="/about" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      회사 소개
-                    </a>
+                    <span className="text-gray-400 dark:text-gray-500">블로그 (준비중)</span>
                   </li>
                   <li>
-                    <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      블로그
-                    </a>
+                    <span className="text-gray-400 dark:text-gray-500">채용 (준비중)</span>
                   </li>
                   <li>
-                    <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      채용
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      파트너십
-                    </a>
+                    <span className="text-gray-400 dark:text-gray-500">파트너십 (준비중)</span>
                   </li>
                 </ul>
               </div>
@@ -450,24 +436,15 @@ function ModernLandingPage() {
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4">지원</h3>
                 <ul className="space-y-3">
                   <li>
-                    <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    <a href="/help" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                       도움말 센터
                     </a>
                   </li>
                   <li>
-                    <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      API 문서
-                    </a>
+                    <span className="text-gray-400 dark:text-gray-500">API 문서 (준비중)</span>
                   </li>
                   <li>
-                    <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      커뮤니티
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/contact" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      문의하기
-                    </a>
+                    <span className="text-gray-400 dark:text-gray-500">커뮤니티 (준비중)</span>
                   </li>
                 </ul>
               </div>
@@ -480,13 +457,13 @@ function ModernLandingPage() {
                   © 2025 Echo Mail. All rights reserved.
                 </div>
                 <div className="flex gap-6 text-sm">
-                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <a href="/terms" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     이용약관
                   </a>
-                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <a href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     개인정보처리방침
                   </a>
-                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <a href="/cookies" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     쿠키 정책
                   </a>
                 </div>
