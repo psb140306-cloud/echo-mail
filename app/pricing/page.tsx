@@ -32,6 +32,7 @@ import {
 } from '@/lib/subscription/plans'
 import { WordMarkLink } from '@/components/ui/wordmark-link'
 import { ThemeToggle } from '@/components/theme-toggle'
+import Link from 'next/link'
 
 export default function PricingPage() {
   const [isYearly, setIsYearly] = useState(false)
@@ -488,15 +489,15 @@ export default function PricingPage() {
                   © 2025 Echo Mail. All rights reserved.
                 </div>
                 <div className="flex gap-6 text-sm">
-                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  <Link href="/terms" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     이용약관
-                  </a>
-                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  </Link>
+                  <Link href="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     개인정보처리방침
-                  </a>
-                  <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  </Link>
+                  <Link href="/cookies" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                     쿠키 정책
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>
