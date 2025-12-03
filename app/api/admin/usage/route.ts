@@ -1,29 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db'
+import { requireSuperAdmin } from '@/lib/auth/super-admin'
 
 export const dynamic = 'force-dynamic'
 
 // 슈퍼어드민용 전체 사용량 통계 조회
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    // 사용자 인증 확인
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     // 슈퍼어드민 권한 확인
-    const isDefaultAdmin = user.email === 'seah0623@naver.com'
-    if (!isDefaultAdmin) {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
-    }
+    const authError = await requireSuperAdmin()
+    if (authError) return authError
 
     // 모든 테넌트의 사용량 조회
     const tenants = await prisma.tenant.findMany({

@@ -66,13 +66,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             currentPath !== '/auth/setup-pending' &&
             currentPath !== '/auth/callback') {
           try {
-            // 1. 슈퍼어드민 체크 (우선)
-            const isSuperAdmin = session?.user?.email === 'seah0623@naver.com'
-
-            if (isSuperAdmin) {
-              logger.info('Super admin logged in, redirecting to /admin', { email: session?.user?.email })
-              window.location.href = '/admin'
-              return
+            // 1. 슈퍼어드민 체크 (우선) - API를 통해 확인
+            const adminCheckRes = await fetch('/api/admin/check-access')
+            if (adminCheckRes.ok) {
+              const adminCheck = await adminCheckRes.json()
+              if (adminCheck.isAdmin) {
+                logger.info('Super admin logged in, redirecting to /admin', { email: session?.user?.email })
+                window.location.href = '/admin'
+                return
+              }
             }
 
             // 2. 일반 사용자: Tenant 상태 체크

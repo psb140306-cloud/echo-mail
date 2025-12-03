@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
+import { verifySuperAdmin } from '@/lib/auth/super-admin'
 
 /**
  * 관리자 전용: 특정 사용자에게 Tenant 강제 생성
@@ -27,35 +28,20 @@ export async function POST(
       )
     }
 
-    // 1. 관리자 권한 확인
-    const supabase = await createClient()
+    // 1. 슈퍼어드민 권한 확인
+    const adminResult = await verifySuperAdmin()
 
-    const {
-      data: { user: adminUser },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !adminUser) {
+    if (!adminResult.isAdmin || !adminResult.user) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Unauthorized',
+          error: adminResult.error || 'Forbidden - Admin access required',
         },
-        { status: 401 }
+        { status: adminResult.error?.includes('Unauthorized') ? 401 : 403 }
       )
     }
 
-    // 슈퍼어드민 체크
-    const isDefaultAdmin = adminUser.email === 'seah0623@naver.com'
-    if (!isDefaultAdmin) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Forbidden - Admin access required',
-        },
-        { status: 403 }
-      )
-    }
+    const adminUser = adminResult.user
 
     // 2. 대상 사용자 확인 (Service Role 사용)
     const adminSupabase = createAdminClient()

@@ -1,28 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/db'
+import { requireSuperAdmin } from '@/lib/auth/super-admin'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
-    // 사용자 인증 확인
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // 관리자 권한 확인
-    const isDefaultAdmin = user.email === 'seah0623@naver.com'
-    if (!isDefaultAdmin) {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
-    }
+    // 슈퍼어드민 권한 확인
+    const authError = await requireSuperAdmin()
+    if (authError) return authError
 
     // 1. Supabase auth.users에서 모든 사용자 조회 (service_role 사용)
     const adminSupabase = createAdminClient()

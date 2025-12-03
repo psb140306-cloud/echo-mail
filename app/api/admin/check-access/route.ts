@@ -1,41 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { verifySuperAdmin, requireSuperAdmin } from '@/lib/auth/super-admin'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
+    const result = await verifySuperAdmin()
 
-    if (error || !user) {
-      console.log('[Admin Check API] No user or auth error:', error?.message)
+    if (!result.user) {
       return NextResponse.json(
         { error: 'Unauthorized', isAdmin: false },
         { status: 401 }
       )
     }
 
-    console.log('[Admin Check API] User metadata:', user.user_metadata)
-    console.log('[Admin Check API] User role:', user.user_metadata?.role)
-    console.log('[Admin Check API] Current user email:', user.email)
-
-    // user_metadata.role로 슈퍼어드민 확인
-    const isAdmin = user.user_metadata?.role === 'super_admin'
-
-    // 임시: seah0623@naver.com은 기본적으로 슈퍼어드민으로 처리 (초기 설정용)
-    const isDefaultAdmin = user.email === 'seah0623@naver.com'
-
-    const finalIsAdmin = isAdmin || isDefaultAdmin
-    console.log('[Admin Check API] Is admin (role)?:', isAdmin)
-    console.log('[Admin Check API] Is default admin?:', isDefaultAdmin)
-    console.log('[Admin Check API] Final admin status:', finalIsAdmin)
-
     return NextResponse.json({
-      isAdmin: finalIsAdmin,
-      email: user.email,
-      userId: user.id,
-      role: user.user_metadata?.role || 'user'
+      isAdmin: result.isAdmin,
+      email: result.user.email,
+      userId: result.user.id,
+      role: result.user.role
     })
   } catch (error) {
     console.error('Admin check error:', error)
@@ -49,25 +33,11 @@ export async function GET(req: NextRequest) {
 // 사용자 역할 업데이트 (슈퍼어드민만 가능)
 export async function POST(req: NextRequest) {
   try {
+    // 슈퍼어드민 권한 확인
+    const authError = await requireSuperAdmin()
+    if (authError) return authError
+
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    // 현재 사용자가 슈퍼어드민인지 확인
-    const isAdmin = user.user_metadata?.role === 'super_admin' || user.email === 'seah0623@naver.com'
-
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden - Super admin access required' },
-        { status: 403 }
-      )
-    }
 
     // 요청 바디에서 업데이트할 사용자 정보 가져오기
     const body = await req.json()
