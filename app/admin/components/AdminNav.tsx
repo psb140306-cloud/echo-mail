@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 const navigation = [
   { name: '대시보드', href: '/admin', icon: HomeIcon },
@@ -75,8 +76,12 @@ export default function AdminNav() {
         </ul>
       </div>
 
-      {/* 로그아웃 버튼 */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+      {/* 테마 토글 & 로그아웃 버튼 */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-sm text-gray-600 dark:text-gray-400">테마</span>
+          <ThemeToggle />
+        </div>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full
