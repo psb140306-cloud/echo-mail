@@ -6,6 +6,8 @@ import { createImapClient } from '@/lib/imap/connection'
 import { parseOrderEmail } from './email-parser'
 import { sendOrderReceivedNotification } from '@/lib/notifications/notification-service'
 import { getKSTStartOfDay, isKSTToday, formatKSTDate } from '@/lib/utils/date'
+import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
+import { SubscriptionPlan } from '@/lib/subscription/plans'
 // TODO: 미등록 업체 알림 로직 - 순환 참조 또는 런타임 에러로 인해 임시 비활성화
 // import { unregisteredCompanyHandler } from '@/lib/unregistered-company-handler'
 
@@ -39,6 +41,10 @@ export interface TenantMailConfig {
   password: string
   useSSL: boolean
   enabled: boolean
+  // mailMode 지원을 위한 추가 필드
+  subscriptionPlan: SubscriptionPlan
+  mailMode: 'ORDER_ONLY' | 'FULL_INBOX'
+  effectiveMailMode: 'ORDER_ONLY' | 'FULL_INBOX' // 플랜 제한 적용된 실제 모드
 }
 
 /**
@@ -106,6 +112,8 @@ export class MailMonitorService {
 
   /**
    * 특정 테넌트의 메일 확인
+   * - FULL_INBOX 모드: 모든 메일 수집
+   * - ORDER_ONLY 모드: 등록된 업체 메일만 수집
    */
   async checkTenantMails(config: TenantMailConfig): Promise<MailCheckResult> {
     const errors: string[] = []
@@ -126,52 +134,37 @@ export class MailMonitorService {
       })
 
       await client.connect()
-      logger.info(`[MailMonitor] 테넌트 ${config.tenantId} IMAP 연결 성공`)
+      logger.info(`[MailMonitor] 테넌트 ${config.tenantId} IMAP 연결 성공`, {
+        effectiveMailMode: config.effectiveMailMode,
+      })
 
       // INBOX 열기
       const lock = await client.getMailboxLock('INBOX')
 
       try {
-        // 등록된 업체 이메일 목록 가져오기
-        const registeredEmails = await this.getRegisteredCompanyEmails(config.tenantId)
-
-        if (registeredEmails.length === 0) {
-          logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 등록된 업체 없음`)
-          return {
-            success: true,
-            newMailsCount: 0,
-            processedCount: 0,
-            failedCount: 0,
-            errors: [],
-          }
-        }
-
-        logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 등록된 업체 ${registeredEmails.length}개`)
-
-        // 등록된 업체 이메일에서 온 오늘 도착한 메일 검색 (읽음/읽지않음 무관)
-        logger.info(`[MailMonitor] 검색할 이메일 목록:`, { emails: registeredEmails })
-
-        // 오늘 도착한 읽지 않은 메일만 검색 (KST 기준, DB 기반 중복 체크 병행)
         const messages = []
         const today = getKSTStartOfDay()
 
-        for (const email of registeredEmails) {
+        if (config.effectiveMailMode === 'FULL_INBOX') {
+          // FULL_INBOX 모드: 모든 메일 수집 (등록된 업체 제한 없음)
+          logger.info(`[MailMonitor] FULL_INBOX 모드 - 모든 메일 수집`, {
+            tenantId: config.tenantId,
+          })
+
+          const searchCriteria = {
+            since: today, // 오늘 도착한 메일만
+            unseen: true, // 읽지 않은 메일만
+          }
+
+          logger.info(`[MailMonitor] IMAP 전체 검색 시작:`, { searchCriteria })
+
           try {
-            const searchCriteria = {
-              from: email,
-              since: today, // 오늘 도착한 메일만
-              unseen: true, // 읽지 않은 메일만 (1차 필터)
-              // DB 기반 중복 체크도 병행 (2차 필터)
-            }
-
-            logger.info(`[MailMonitor] IMAP 검색 시작:`, { email, searchCriteria })
-
             for await (const message of client.fetch(searchCriteria, {
               envelope: true,
               source: true,
               uid: true,
-              headers: ['message-id'], // 실제 Message-ID 헤더 가져오기
-              markSeen: false, // 중요: 메일 가져올 때 자동 읽음 처리 방지
+              headers: ['message-id'],
+              markSeen: false,
             })) {
               logger.info(`[MailMonitor] 메일 발견:`, {
                 uid: message.uid,
@@ -181,17 +174,66 @@ export class MailMonitorService {
               messages.push(message)
             }
           } catch (error) {
-            logger.warn(`[MailMonitor] ${email} 검색 실패:`, error)
+            logger.warn(`[MailMonitor] 전체 메일 검색 실패:`, error)
+          }
+        } else {
+          // ORDER_ONLY 모드: 등록된 업체 이메일만 수집 (기존 로직)
+          const registeredEmails = await this.getRegisteredCompanyEmails(config.tenantId)
+
+          if (registeredEmails.length === 0) {
+            logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 등록된 업체 없음`)
+            return {
+              success: true,
+              newMailsCount: 0,
+              processedCount: 0,
+              failedCount: 0,
+              errors: [],
+            }
+          }
+
+          logger.info(`[MailMonitor] ORDER_ONLY 모드 - 등록된 업체 ${registeredEmails.length}개 메일만 수집`, {
+            tenantId: config.tenantId,
+          })
+
+          for (const email of registeredEmails) {
+            try {
+              const searchCriteria = {
+                from: email,
+                since: today,
+                unseen: true,
+              }
+
+              logger.info(`[MailMonitor] IMAP 검색 시작:`, { email, searchCriteria })
+
+              for await (const message of client.fetch(searchCriteria, {
+                envelope: true,
+                source: true,
+                uid: true,
+                headers: ['message-id'],
+                markSeen: false,
+              })) {
+                logger.info(`[MailMonitor] 메일 발견:`, {
+                  uid: message.uid,
+                  from: message.envelope?.from?.[0]?.address,
+                  subject: message.envelope?.subject,
+                })
+                messages.push(message)
+              }
+            } catch (error) {
+              logger.warn(`[MailMonitor] ${email} 검색 실패:`, error)
+            }
           }
         }
 
         newMailsCount = messages.length
-        logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 새 메일 ${newMailsCount}개 발견`)
+        logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 새 메일 ${newMailsCount}개 발견`, {
+          effectiveMailMode: config.effectiveMailMode,
+        })
 
         // 각 메일 처리
         for (const message of messages) {
           try {
-            await this.processEmail(config.tenantId, message, client)
+            await this.processEmail(config.tenantId, message, client, config.effectiveMailMode)
             processedCount++
           } catch (error) {
             failedCount++
@@ -237,11 +279,14 @@ export class MailMonitorService {
 
   /**
    * 개별 이메일 처리 (재시도 로직 포함)
+   * - FULL_INBOX 모드: 발주 메일 여부와 관계없이 모두 저장
+   * - ORDER_ONLY 모드: 발주 메일만 저장, 알림 발송
    */
   private async processEmail(
     tenantId: string,
     message: any,
-    client: ImapFlow
+    client: ImapFlow,
+    effectiveMailMode: 'ORDER_ONLY' | 'FULL_INBOX' = 'ORDER_ONLY'
   ): Promise<void> {
     const from = message.envelope.from?.[0]
     const subject = message.envelope.subject
@@ -347,39 +392,55 @@ export class MailMonitorService {
         receivedDate: date,
       })
 
-      if (!parsedData.isOrderEmail) {
-        logger.info('[MailMonitor] 발주 메일이 아님 - 스킵', {
+      // FULL_INBOX 모드: 모든 메일 저장 (발주 여부 무관)
+      // ORDER_ONLY 모드: 발주 메일만 저장
+      if (effectiveMailMode === 'ORDER_ONLY' && !parsedData.isOrderEmail) {
+        logger.info('[MailMonitor] ORDER_ONLY 모드 - 발주 메일이 아님, 스킵', {
           uid: message.uid,
           subject,
         })
-        // 설정에 따라 읽음 처리
         if (mailConfig.autoMarkAsRead) {
           await this.safeMarkAsRead(client, message.uid)
         }
         return
       }
 
-      // 발주 메일인 경우 업체 찾기
-      const company = await this.findCompanyByEmail(tenantId, parsedData)
+      // 업체 찾기 (발주 메일인 경우만 매칭 시도)
+      let company = null
+      if (parsedData.isOrderEmail) {
+        company = await this.findCompanyByEmail(tenantId, parsedData)
 
-      if (!company) {
-        logger.warn('[MailMonitor] 업체를 찾을 수 없음', {
-          tenantId,
-          from: from?.address,
-          companyName: parsedData.companyName,
+        if (company) {
+          logger.info('[MailMonitor] 업체 매칭 성공', {
+            companyId: company.id,
+            companyName: company.name,
+            emailReceivedAt: date,
+          })
+        } else if (effectiveMailMode === 'ORDER_ONLY') {
+          // ORDER_ONLY 모드에서 업체 매칭 실패 시 스킵
+          logger.warn('[MailMonitor] ORDER_ONLY 모드 - 업체를 찾을 수 없음, 스킵', {
+            tenantId,
+            from: from?.address,
+            companyName: parsedData.companyName,
+          })
+          if (mailConfig.autoMarkAsRead) {
+            await this.safeMarkAsRead(client, message.uid)
+          }
+          return
+        } else {
+          // FULL_INBOX 모드에서는 업체 매칭 실패해도 저장 진행
+          logger.info('[MailMonitor] FULL_INBOX 모드 - 업체 매칭 실패, 일반 메일로 저장', {
+            tenantId,
+            from: from?.address,
+          })
+        }
+      } else {
+        // 발주 메일이 아닌 경우 (FULL_INBOX 모드에서만 여기에 도달)
+        logger.info('[MailMonitor] FULL_INBOX 모드 - 일반 메일 저장', {
+          uid: message.uid,
+          subject,
         })
-        // 설정에 따라 읽음 처리
-        if (mailConfig.autoMarkAsRead) {
-          await this.safeMarkAsRead(client, message.uid)
-        }
-        return
       }
-
-      logger.info('[MailMonitor] 업체 매칭 성공', {
-        companyId: company.id,
-        companyName: company.name,
-        emailReceivedAt: date,
-      })
 
       // EmailLog 생성 (재처리가 아닌 경우만)
       let emailLog
@@ -397,6 +458,9 @@ export class MailMonitorService {
         const emailSource = message.source
         const parsedEmail = await this.parseEmailWithMailparser(emailSource)
         const emailSize = message.size || (emailSource ? emailSource.length : 0)
+
+        // 상태 결정: 업체 매칭되면 MATCHED, 아니면 RECEIVED
+        const status = company ? 'MATCHED' : 'RECEIVED'
 
         emailLog = await prisma.emailLog.create({
           data: {
@@ -422,14 +486,17 @@ export class MailMonitorService {
                   content: att.size <= 10 * 1024 * 1024 ? att.content.toString('base64') : null,
                 }))
               : [],
-            status: 'MATCHED',
-            companyId: company.id,
+            status,
+            companyId: company?.id || null, // 업체 없으면 null
             tenantId,
           },
         })
 
         logger.info('[MailMonitor] EmailLog 생성 완료', {
           emailLogId: emailLog.id,
+          isOrder: parsedData.isOrderEmail,
+          hasCompany: !!company,
+          status,
           hasBody: !!parsedEmail.textBody || !!parsedEmail.htmlBody,
           attachmentCount: parsedEmail.attachments.length,
         })
@@ -439,65 +506,67 @@ export class MailMonitorService {
         throw new Error('EmailLog를 찾을 수 없습니다')
       }
 
-      // 알림 발송 (notification-service에서 upsert 및 재시도 로직 담당)
-      // - 유니크 키 기반으로 중복 생성 방지
-      // - SENT/DELIVERED 상태면 스킵
-      // - FAILED 상태면 재시도 가능 여부 판단 (에러 코드 + retryCount)
-      try {
-        logger.info('[MailMonitor] 알림 발송 시작', {
-          companyId: company.id,
-          companyName: company.name,
-          emailLogId: emailLog.id,
-        })
-
-        // 주문 시간은 메일 처리 시점(현재 시간)을 사용
-        // 이유: 메일의 Date 헤더는 발신 시간이므로, 실제 발주 처리 시점과 다를 수 있음
-        const results = await sendOrderReceivedNotification(company.id, new Date(), emailLog.id)
-        const successCount = results.filter((r) => r.success).length
-        const failedCount = results.filter((r) => !r.success).length
-
-        logger.info('[MailMonitor] 알림 발송 완료', {
-          companyId: company.id,
-          companyName: company.name,
-          totalContacts: results.length,
-          successCount,
-          failedCount,
-          results: results.map((r) => ({
-            success: r.success,
-            error: r.error,
-            errorCode: r.errorCode,
-            provider: r.provider,
-          })),
-        })
-
-        // 빈 배열: 담당자 없거나 모두 이미 발송 완료 상태
-        if (results.length === 0) {
-          logger.info('[MailMonitor] 알림 발송 스킵 - 담당자 없음 또는 이미 성공 상태', {
+      // 알림 발송: 업체가 매칭된 발주 메일인 경우에만
+      if (company && parsedData.isOrderEmail) {
+        try {
+          logger.info('[MailMonitor] 알림 발송 시작', {
             companyId: company.id,
+            companyName: company.name,
             emailLogId: emailLog.id,
           })
-        }
 
-        // 설정에 따라 읽음 처리
-        if (mailConfig.autoMarkAsRead) {
-          await this.safeMarkAsRead(client, message.uid)
-          logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
-        } else {
-          logger.info('[MailMonitor] 읽음 처리 스킵 (설정 OFF)', { uid: message.uid })
+          // 주문 시간은 메일 처리 시점(현재 시간)을 사용
+          const results = await sendOrderReceivedNotification(company.id, new Date(), emailLog.id)
+          const successCount = results.filter((r) => r.success).length
+          const failedResultCount = results.filter((r) => !r.success).length
+
+          logger.info('[MailMonitor] 알림 발송 완료', {
+            companyId: company.id,
+            companyName: company.name,
+            totalContacts: results.length,
+            successCount,
+            failedCount: failedResultCount,
+            results: results.map((r) => ({
+              success: r.success,
+              error: r.error,
+              errorCode: r.errorCode,
+              provider: r.provider,
+            })),
+          })
+
+          if (results.length === 0) {
+            logger.info('[MailMonitor] 알림 발송 스킵 - 담당자 없음 또는 이미 성공 상태', {
+              companyId: company.id,
+              emailLogId: emailLog.id,
+            })
+          }
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error('알림 발송 실패')
+          logger.error('[MailMonitor] 알림 발송 중 예외 발생:', {
+            companyId: company.id,
+            emailLogId: emailLog.id,
+            error: lastError.message,
+          })
         }
-        return
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error('알림 발송 실패')
-        logger.error('[MailMonitor] 알림 발송 중 예외 발생:', {
-          companyId: company.id,
+      } else {
+        // 일반 메일 (FULL_INBOX 모드) - 알림 없이 저장만
+        logger.info('[MailMonitor] 일반 메일 저장 완료 (알림 없음)', {
           emailLogId: emailLog.id,
-          error: lastError.message,
+          isOrder: parsedData.isOrderEmail,
+          hasCompany: !!company,
         })
       }
 
+      // 설정에 따라 읽음 처리
+      if (mailConfig.autoMarkAsRead) {
+        await this.safeMarkAsRead(client, message.uid)
+        logger.info('[MailMonitor] 메일 읽음 처리 완료', { uid: message.uid })
+      } else {
+        logger.info('[MailMonitor] 읽음 처리 스킵 (설정 OFF)', { uid: message.uid })
+      }
+
       // 알림 발송 실패해도 메일은 처리된 것으로 간주
-      // (다음 스케줄에서 다시 시도하면 upsert로 재시도됨)
-      if (lastError) {
+      if (lastError && company) {
         logger.warn('[MailMonitor] 알림 발송 실패, 다음 스케줄에서 재시도 예정', {
           companyId: company.id,
           emailLogId: emailLog.id,
@@ -693,7 +762,7 @@ export class MailMonitorService {
   }
 
   /**
-   * 활성화된 테넌트의 메일 설정 조회
+   * 활성화된 테넌트의 메일 설정 조회 (플랜 및 mailMode 포함)
    */
   private async getActiveTenantConfigs(): Promise<TenantMailConfig[]> {
     // SystemConfig에서 메일 설정 조회
@@ -726,6 +795,25 @@ export class MailMonitorService {
     // 활성화되고 필수 설정이 모두 있는 테넌트만 반환
     const activeConfigs: TenantMailConfig[] = []
 
+    // 활성 테넌트 ID 목록
+    const activeTenantIds = Array.from(tenantConfigMap.entries())
+      .filter(([, config]) => config.enabled === true && config.host && config.port && config.username && config.password)
+      .map(([tenantId]) => tenantId)
+
+    // 테넌트 플랜 및 mailMode 일괄 조회
+    const tenants = await prisma.tenant.findMany({
+      where: {
+        id: { in: activeTenantIds },
+      },
+      select: {
+        id: true,
+        subscriptionPlan: true,
+        mailMode: true,
+      },
+    })
+
+    const tenantInfoMap = new Map(tenants.map((t) => [t.id, t]))
+
     for (const [tenantId, config] of tenantConfigMap.entries()) {
       if (
         config.enabled === true &&
@@ -734,6 +822,13 @@ export class MailMonitorService {
         config.username &&
         config.password
       ) {
+        const tenantInfo = tenantInfoMap.get(tenantId)
+        const plan = (tenantInfo?.subscriptionPlan || 'FREE') as SubscriptionPlan
+        const mailMode = (tenantInfo?.mailMode || 'ORDER_ONLY') as 'ORDER_ONLY' | 'FULL_INBOX'
+
+        // 플랜 제한 적용: 플랜이 전체 메일함을 지원하지 않으면 강제로 ORDER_ONLY
+        const effectiveMailMode = canAccessFullMailbox(plan) ? mailMode : 'ORDER_ONLY'
+
         activeConfigs.push({
           tenantId,
           host: config.host,
@@ -742,6 +837,16 @@ export class MailMonitorService {
           password: config.password,
           useSSL: config.useSSL ?? true,
           enabled: config.enabled,
+          subscriptionPlan: plan,
+          mailMode,
+          effectiveMailMode,
+        })
+
+        logger.info('[MailMonitor] 테넌트 설정 로드', {
+          tenantId,
+          plan,
+          mailMode,
+          effectiveMailMode,
         })
       }
     }
