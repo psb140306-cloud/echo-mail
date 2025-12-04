@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Send, Loader2, Paperclip, X } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, Paperclip, X, Lock, Crown } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 export default function ComposeMailPage() {
   const router = useRouter()
@@ -31,6 +32,31 @@ export default function ComposeMailPage() {
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
   const [showCcBcc, setShowCcBcc] = useState(false)
+
+  // 권한 상태
+  const [loading, setLoading] = useState(true)
+  const [mailSendingEnabled, setMailSendingEnabled] = useState(false)
+  const [canEnableMailSending, setCanEnableMailSending] = useState(false)
+
+  // 권한 체크
+  useEffect(() => {
+    const checkPermission = async () => {
+      try {
+        const response = await fetch('/api/settings/mail-options')
+        if (response.ok) {
+          const result = await response.json()
+          const data = result.data || result
+          setMailSendingEnabled(data.mailSendingEnabled || false)
+          setCanEnableMailSending(data.permissions?.canEnableMailSending || false)
+        }
+      } catch (error) {
+        console.error('권한 체크 실패:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkPermission()
+  }, [])
 
   // 메일 발송
   const handleSend = async () => {
@@ -117,6 +143,86 @@ export default function ComposeMailPage() {
     } finally {
       setSending(false)
     }
+  }
+
+  // 로딩 중
+  if (loading) {
+    return (
+      <>
+        <AppHeader />
+        <div className="container mx-auto p-6 max-w-4xl">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // 권한 없음 - 플랜 미지원
+  if (!canEnableMailSending) {
+    return (
+      <>
+        <AppHeader />
+        <div className="container mx-auto p-6 max-w-4xl">
+          <div className="mb-6">
+            <Link href="/mail">
+              <Button variant="ghost" size="sm" className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                메일함으로 돌아가기
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-bold">메일 쓰기</h1>
+          </div>
+
+          <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-900/20">
+            <Crown className="h-5 w-5 text-amber-600" />
+            <AlertTitle className="text-amber-800 dark:text-amber-200">
+              프로페셔널 플랜 이상에서 사용 가능
+            </AlertTitle>
+            <AlertDescription className="text-amber-700 dark:text-amber-300">
+              메일 발신 기능은 프로페셔널 플랜 이상에서 사용할 수 있습니다.
+              <Link href="/pricing" className="ml-2 underline font-medium">
+                플랜 업그레이드
+              </Link>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </>
+    )
+  }
+
+  // 기능 비활성화
+  if (!mailSendingEnabled) {
+    return (
+      <>
+        <AppHeader />
+        <div className="container mx-auto p-6 max-w-4xl">
+          <div className="mb-6">
+            <Link href="/mail">
+              <Button variant="ghost" size="sm" className="mb-4">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                메일함으로 돌아가기
+              </Button>
+            </Link>
+            <h1 className="text-3xl font-bold">메일 쓰기</h1>
+          </div>
+
+          <Alert variant="default" className="border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+            <Lock className="h-5 w-5 text-blue-600" />
+            <AlertTitle className="text-blue-800 dark:text-blue-200">
+              메일 발신 기능 비활성화
+            </AlertTitle>
+            <AlertDescription className="text-blue-700 dark:text-blue-300">
+              메일 발신 기능이 비활성화되어 있습니다. 설정에서 활성화해주세요.
+              <Link href="/settings" className="ml-2 underline font-medium">
+                설정으로 이동
+              </Link>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </>
+    )
   }
 
   return (

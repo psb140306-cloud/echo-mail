@@ -184,15 +184,28 @@ export async function sendMail(
     // 3. 플랜별 발송 제한 확인
     const plan = tenant.subscriptionPlan as SubscriptionPlan
 
-    // 이번 달 발송량 조회
+    // 이번 달 발송량 조회 (수신자 수 기준으로 집계)
     const startOfMonth = getKSTStartOfMonth()
-    const currentUsage = await prisma.emailLog.count({
+
+    // metadata에 저장된 recipientCount 합산 또는 기본 1로 계산
+    const sentEmails = await prisma.emailLog.findMany({
       where: {
         tenantId,
         direction: 'OUTBOUND',
         createdAt: { gte: startOfMonth },
+        status: { not: 'FAILED' }, // 실패한 메일은 제외
+      },
+      select: {
+        metadata: true,
       },
     })
+
+    // 수신자 수 기반 사용량 계산
+    const currentUsage = sentEmails.reduce((total, email) => {
+      const metadata = email.metadata as Record<string, any> | null
+      const recipientCount = metadata?.recipientCount || 1
+      return total + recipientCount
+    }, 0)
 
     const recipientCount = Array.isArray(request.to) ? request.to.length : 1
     const limitCheck = checkEmailSendingLimit(plan, currentUsage, recipientCount)
@@ -242,22 +255,27 @@ export async function sendMail(
 
     const info = await transporter.sendMail(mailOptions)
 
-    // 6. 발송 기록 저장
+    // 6. 발송 기록 저장 (보낸 메일함에 표시되도록 folder: 'SENT' 설정)
     await prisma.emailLog.create({
       data: {
         tenantId,
         messageId: info.messageId,
         subject: request.subject,
+        sender: smtpConfig.user, // sender 필드 사용 (목록에서 표시)
         from: smtpConfig.user,
         to: Array.isArray(request.to) ? request.to.join(', ') : request.to,
         direction: 'OUTBOUND',
+        folder: 'SENT', // 보낸 메일함에 표시
         status: 'SENT',
+        isRead: true, // 발신 메일은 읽음 처리
+        receivedAt: new Date(), // 발송 시간 기록
         metadata: {
           cc: request.cc,
           bcc: request.bcc,
           replyTo: request.replyTo,
           inReplyTo: request.inReplyTo,
           sentBy: userId,
+          recipientCount: recipientCount, // 수신자 수 기록
         },
       },
     })
@@ -295,10 +313,13 @@ export async function sendMail(
           tenantId,
           messageId: `failed-${Date.now()}`,
           subject: request.subject,
+          sender: '', // 발송자 정보 없음
           from: '',
           to: Array.isArray(request.to) ? request.to.join(', ') : request.to,
           direction: 'OUTBOUND',
+          folder: 'SENT', // 보낸 메일함에 실패 기록도 표시
           status: 'FAILED',
+          receivedAt: new Date(),
           metadata: {
             error: errorMessage,
             sentBy: userId,

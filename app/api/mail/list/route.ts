@@ -8,6 +8,8 @@ import {
   parseAndValidate,
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
+import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
+import { SubscriptionPlan } from '@/lib/subscription/plans'
 
 // 쿼리 파라미터 스키마
 const listQuerySchema = z.object({
@@ -32,6 +34,26 @@ export async function GET(request: NextRequest) {
         logger.error('Tenant context not available in mail list GET')
         return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
       }
+
+      // 테넌트 플랜 및 메일 모드 조회
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          subscriptionPlan: true,
+          mailMode: true,
+        },
+      })
+
+      if (!tenant) {
+        return createErrorResponse('테넌트를 찾을 수 없습니다.', 404)
+      }
+
+      const plan = tenant.subscriptionPlan as SubscriptionPlan
+      const mailMode = tenant.mailMode || 'ORDER_ONLY'
+
+      // 플랜 권한과 설정된 모드 모두 확인
+      // 플랜이 전체 메일함을 지원하지 않으면 강제로 ORDER_ONLY
+      const effectiveMailMode = canAccessFullMailbox(plan) ? mailMode : 'ORDER_ONLY'
 
       // URL에서 쿼리 파라미터 추출
       const { searchParams } = new URL(request.url)
@@ -79,7 +101,12 @@ export async function GET(request: NextRequest) {
       }
 
       // 발주 메일 필터
-      if (isOrder !== undefined) {
+      // ORDER_ONLY 모드인 경우 발주 메일만 강제 필터링 (플랜 제한 적용)
+      if (effectiveMailMode === 'ORDER_ONLY') {
+        // ORDER_ONLY 모드: 발주 메일만 조회 가능 (사용자 필터 무시)
+        where.isOrder = true
+      } else if (isOrder !== undefined) {
+        // FULL_INBOX 모드: 사용자 필터 적용
         where.isOrder = isOrder === 'true'
       }
 
@@ -128,6 +155,7 @@ export async function GET(request: NextRequest) {
       logger.info('메일 목록 조회 완료', {
         tenantId,
         folder,
+        effectiveMailMode,
         page,
         limit,
         totalCount,
