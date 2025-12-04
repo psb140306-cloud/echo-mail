@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { templateManager } from '@/lib/notifications/templates/template-manager'
+import { PLAN_PRICING } from '@/lib/subscription/plans'
 
 /**
  * 회원가입 후 Tenant 생성
@@ -101,6 +102,20 @@ export async function POST(request: NextRequest) {
           userEmail: authUser.email!,
           role: 'OWNER',
           status: 'ACTIVE',
+        },
+      })
+
+      // 3. Subscription 생성 (무료 체험)
+      const plan = subscriptionPlan || 'FREE_TRIAL'
+      await tx.subscription.create({
+        data: {
+          tenantId: newTenant.id,
+          plan: plan,
+          status: plan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14일
+          priceAmount: PLAN_PRICING[plan as keyof typeof PLAN_PRICING]?.monthly || 0,
+          currency: 'KRW',
         },
       })
 

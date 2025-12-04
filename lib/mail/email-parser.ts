@@ -9,7 +9,7 @@ export interface EmailData {
 }
 
 export interface ParsedEmailData {
-  isOrderEmail: boolean
+  hasOrderKeywords: boolean  // 키워드 포함 여부 (발주 판단은 업체 매칭과 함께)
   companyName?: string
   senderEmail?: string
   senderDomain?: string
@@ -23,38 +23,35 @@ export interface ParsedEmailData {
 export async function parseOrderEmail(email: EmailData): Promise<ParsedEmailData> {
   const { from, fromName, subject, body } = email
 
-  // 발주 관련 키워드
-  const orderKeywords = [
-    '발주',
-    '주문',
-    '구매',
-    '납품',
-    '요청',
-    'order',
-    'purchase',
-    'po',
-    'purchase order',
-  ]
+  // HTML 태그 제거 (border="0" 같은 속성에서 order 매칭 방지)
+  const cleanBody = extractTextFromHtml(body)
 
-  // 제목과 본문에서 발주 키워드 찾기
+  // 한글 키워드 (includes 사용)
+  const koreanKeywords = ['발주', '주문', '구매', '납품']
+
+  // 영어 키워드 (단어 경계 정규식 사용)
+  const englishKeywords = ['order', 'purchase', 'po']
+
   const subjectLower = subject.toLowerCase()
-  const bodyLower = body.toLowerCase()
+  const bodyLower = cleanBody.toLowerCase()
 
-  const keywordMatches = orderKeywords.filter(
+  // 한글 키워드 매칭 (includes)
+  const koreanMatches = koreanKeywords.filter(
     (keyword) =>
-      subjectLower.includes(keyword.toLowerCase()) ||
-      bodyLower.includes(keyword.toLowerCase())
+      subjectLower.includes(keyword) || bodyLower.includes(keyword)
   )
 
-  const isOrderEmail = keywordMatches.length > 0
-  const confidence = keywordMatches.length / orderKeywords.length
+  // 영어 키워드 매칭 (단어 경계 정규식)
+  const englishMatches = englishKeywords.filter((keyword) => {
+    // \b는 단어 경계: border의 order는 매칭 안됨, "your order"의 order는 매칭됨
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i')
+    return regex.test(subject) || regex.test(cleanBody)
+  })
 
-  if (!isOrderEmail) {
-    return {
-      isOrderEmail: false,
-      confidence: 0,
-    }
-  }
+  const keywordMatches = [...koreanMatches, ...englishMatches]
+  const hasOrderKeywords = keywordMatches.length > 0
+  const totalKeywords = koreanKeywords.length + englishKeywords.length
+  const confidence = keywordMatches.length / totalKeywords
 
   // 발신자 이메일에서 도메인 추출
   const senderEmail = from
@@ -79,14 +76,14 @@ export async function parseOrderEmail(email: EmailData): Promise<ParsedEmailData
   logger.info('[EmailParser] 이메일 파싱 완료', {
     from,
     subject,
-    isOrderEmail,
+    hasOrderKeywords,
     companyName,
     confidence,
     matchedKeywords: keywordMatches,
   })
 
   return {
-    isOrderEmail,
+    hasOrderKeywords,
     companyName,
     senderEmail,
     senderDomain,

@@ -382,7 +382,7 @@ export class MailMonitorService {
           emailLogId = existingEmail.id // 기존 EmailLog 재사용
         }
       }
-      // 메일 파싱하여 업체 정보 추출
+      // 메일 파싱하여 키워드 정보 추출
       const emailContent = message.source?.toString() || ''
       const parsedData = await parseOrderEmail({
         from: from?.address || '',
@@ -392,53 +392,45 @@ export class MailMonitorService {
         receivedDate: date,
       })
 
-      // FULL_INBOX 모드: 모든 메일 저장 (발주 여부 무관)
-      // ORDER_ONLY 모드: 발주 메일만 저장
-      if (effectiveMailMode === 'ORDER_ONLY' && !parsedData.isOrderEmail) {
-        logger.info('[MailMonitor] ORDER_ONLY 모드 - 발주 메일이 아님, 스킵', {
-          uid: message.uid,
-          subject,
+      // 1단계: 등록된 업체인지 확인
+      const company = await this.findCompanyByEmail(tenantId, parsedData)
+
+      // 2단계: 발주 메일 판단 = (등록된 업체) AND (키워드 포함)
+      // 핵심: 등록된 업체가 아니면 키워드가 있어도 발주 메일이 아님
+      const isOrderEmail = company !== null && parsedData.hasOrderKeywords
+
+      if (company) {
+        logger.info('[MailMonitor] 업체 매칭 성공', {
+          companyId: company.id,
+          companyName: company.name,
+          hasOrderKeywords: parsedData.hasOrderKeywords,
+          isOrderEmail,
+          emailReceivedAt: date,
         })
-        if (mailConfig.autoMarkAsRead) {
-          await this.safeMarkAsRead(client, message.uid)
-        }
-        return
       }
 
-      // 업체 찾기 (발주 메일인 경우만 매칭 시도)
-      let company = null
-      if (parsedData.isOrderEmail) {
-        company = await this.findCompanyByEmail(tenantId, parsedData)
-
-        if (company) {
-          logger.info('[MailMonitor] 업체 매칭 성공', {
-            companyId: company.id,
-            companyName: company.name,
-            emailReceivedAt: date,
-          })
-        } else if (effectiveMailMode === 'ORDER_ONLY') {
-          // ORDER_ONLY 모드에서 업체 매칭 실패 시 스킵
-          logger.warn('[MailMonitor] ORDER_ONLY 모드 - 업체를 찾을 수 없음, 스킵', {
-            tenantId,
-            from: from?.address,
-            companyName: parsedData.companyName,
+      // ORDER_ONLY 모드: 등록 업체의 발주 메일만 저장
+      if (effectiveMailMode === 'ORDER_ONLY') {
+        if (!isOrderEmail) {
+          logger.info('[MailMonitor] ORDER_ONLY 모드 - 발주 메일이 아님, 스킵', {
+            uid: message.uid,
+            subject,
+            hasCompany: !!company,
+            hasOrderKeywords: parsedData.hasOrderKeywords,
           })
           if (mailConfig.autoMarkAsRead) {
             await this.safeMarkAsRead(client, message.uid)
           }
           return
-        } else {
-          // FULL_INBOX 모드에서는 업체 매칭 실패해도 저장 진행
-          logger.info('[MailMonitor] FULL_INBOX 모드 - 업체 매칭 실패, 일반 메일로 저장', {
-            tenantId,
-            from: from?.address,
-          })
         }
-      } else {
-        // 발주 메일이 아닌 경우 (FULL_INBOX 모드에서만 여기에 도달)
-        logger.info('[MailMonitor] FULL_INBOX 모드 - 일반 메일 저장', {
-          uid: message.uid,
-          subject,
+      }
+
+      // FULL_INBOX 모드: 모든 메일 저장 (발주 여부는 위에서 계산된 isOrderEmail 사용)
+      if (!company && effectiveMailMode === 'FULL_INBOX') {
+        logger.info('[MailMonitor] FULL_INBOX 모드 - 미등록 업체 메일, 일반 메일로 저장', {
+          tenantId,
+          from: from?.address,
+          hasOrderKeywords: parsedData.hasOrderKeywords,
         })
       }
 
@@ -474,7 +466,7 @@ export class MailMonitorService {
             isRead: false, // 새 메일은 읽지 않음
             folder: 'INBOX', // 기본 메일함
             size: emailSize, // 메일 크기
-            isOrder: parsedData.isOrderEmail, // 발주 메일 여부
+            isOrder: isOrderEmail, // 발주 메일 여부 (등록 업체 + 키워드)
             hasAttachment: parsedEmail.attachments.length > 0,
             attachments: parsedEmail.attachments.length > 0
               ? parsedEmail.attachments.map((att) => ({
@@ -506,8 +498,8 @@ export class MailMonitorService {
         throw new Error('EmailLog를 찾을 수 없습니다')
       }
 
-      // 알림 발송: 업체가 매칭된 발주 메일인 경우에만
-      if (company && parsedData.isOrderEmail) {
+      // 알림 발송: 등록 업체의 발주 메일인 경우에만
+      if (isOrderEmail && company) {
         try {
           logger.info('[MailMonitor] 알림 발송 시작', {
             companyId: company.id,
@@ -552,7 +544,7 @@ export class MailMonitorService {
         // 일반 메일 (FULL_INBOX 모드) - 알림 없이 저장만
         logger.info('[MailMonitor] 일반 메일 저장 완료 (알림 없음)', {
           emailLogId: emailLog.id,
-          isOrder: parsedData.isOrderEmail,
+          isOrder: isOrderEmail,
           hasCompany: !!company,
         })
       }
