@@ -3,6 +3,8 @@ import { prisma, TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
+import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
+import { SubscriptionPlan } from '@/lib/subscription/plans'
 
 interface RouteParams {
   params: {
@@ -20,6 +22,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       if (!tenantId) {
         return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
       }
+
+      // 테넌트 플랜 및 메일 모드 조회
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          subscriptionPlan: true,
+          mailMode: true,
+        },
+      })
+
+      if (!tenant) {
+        return createErrorResponse('테넌트를 찾을 수 없습니다.', 404)
+      }
+
+      const plan = tenant.subscriptionPlan as SubscriptionPlan
+      const mailMode = tenant.mailMode || 'ORDER_ONLY'
+
+      // 플랜이 전체 메일함을 지원하지 않으면 강제로 ORDER_ONLY
+      const effectiveMailMode = canAccessFullMailbox(plan) ? mailMode : 'ORDER_ONLY'
 
       const { id } = params
 
@@ -64,6 +85,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return createErrorResponse('메일을 찾을 수 없습니다.', 404)
       }
 
+      // ORDER_ONLY 모드에서 발주 메일이 아닌 경우 접근 차단
+      // (플랜 다운그레이드 후 기존 일반 메일 접근 방지)
+      if (effectiveMailMode === 'ORDER_ONLY' && !email.isOrder && email.folder === 'INBOX') {
+        logger.warn('ORDER_ONLY 모드에서 비발주 메일 접근 시도', {
+          id,
+          tenantId,
+          mailMode: effectiveMailMode,
+          isOrder: email.isOrder,
+        })
+        return createErrorResponse('발주 메일만 조회할 수 있습니다.', 403)
+      }
+
       // 메일이 읽지 않은 상태면 읽음 처리
       if (!email.isRead) {
         await prisma.emailLog.update({
@@ -103,6 +136,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
       }
 
+      // 테넌트 플랜 및 메일 모드 조회
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: {
+          subscriptionPlan: true,
+          mailMode: true,
+        },
+      })
+
+      if (!tenant) {
+        return createErrorResponse('테넌트를 찾을 수 없습니다.', 404)
+      }
+
+      const plan = tenant.subscriptionPlan as SubscriptionPlan
+      const mailMode = tenant.mailMode || 'ORDER_ONLY'
+      const effectiveMailMode = canAccessFullMailbox(plan) ? mailMode : 'ORDER_ONLY'
+
       const { id } = params
 
       if (!id) {
@@ -119,6 +169,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
       if (!existingEmail) {
         return createErrorResponse('메일을 찾을 수 없습니다.', 404)
+      }
+
+      // ORDER_ONLY 모드에서 발주 메일이 아닌 경우 삭제 차단
+      if (effectiveMailMode === 'ORDER_ONLY' && !existingEmail.isOrder && existingEmail.folder === 'INBOX') {
+        return createErrorResponse('발주 메일만 삭제할 수 있습니다.', 403)
       }
 
       // 메일 삭제 (Soft delete - status를 IGNORED로 변경)
