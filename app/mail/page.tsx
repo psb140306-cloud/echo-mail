@@ -24,7 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
-import { Mail, Search, Inbox, RefreshCw, Trash2, Eye, EyeOff, MapPin } from 'lucide-react'
+import { Mail, Search, Inbox, RefreshCw, Trash2, Eye, EyeOff, MapPin, Send, Plus, SendHorizontal, Lock } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AppHeader } from '@/components/layout/app-header'
@@ -81,9 +81,13 @@ export default function MailPage() {
 
   // 필터 및 검색
   const [search, setSearch] = useState('')
-  const [folder, setFolder] = useState('INBOX')
+  const [folder, setFolder] = useState<'INBOX' | 'SENT'>('INBOX')
   const [isReadFilter, setIsReadFilter] = useState<'all' | 'true' | 'false'>('all')
   const [isOrderFilter, setIsOrderFilter] = useState<'all' | 'true' | 'false'>('all')
+
+  // 메일 발신 권한
+  const [mailSendingEnabled, setMailSendingEnabled] = useState(false)
+  const [showComposeModal, setShowComposeModal] = useState(false)
 
   // 페이지네이션
   const [page, setPage] = useState(1)
@@ -279,7 +283,26 @@ export default function MailPage() {
     )
   }
 
+  // 메일 옵션 로드
+  const loadMailOptions = async () => {
+    try {
+      const response = await fetch('/api/settings/mail-options')
+      if (response.ok) {
+        const result = await response.json()
+        const data = result.data || result
+        setMailSendingEnabled(data.mailSendingEnabled || false)
+      }
+    } catch (error) {
+      console.error('메일 옵션 로드 실패:', error)
+    }
+  }
+
   // 초기 로드 및 필터 변경 시 재조회
+  useEffect(() => {
+    fetchEmails()
+    loadMailOptions()
+  }, [])
+
   useEffect(() => {
     fetchEmails()
   }, [page, folder, isReadFilter, isOrderFilter])
@@ -301,9 +324,46 @@ export default function MailPage() {
     <>
       <AppHeader />
       <div className="container mx-auto p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <Mail className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">메일함</h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <Mail className="h-8 w-8" />
+            <h1 className="text-3xl font-bold">메일함</h1>
+          </div>
+          {mailSendingEnabled ? (
+            <Button onClick={() => router.push('/mail/compose')}>
+              <Plus className="h-4 w-4 mr-2" />
+              메일 쓰기
+            </Button>
+          ) : (
+            <Button variant="outline" disabled title="설정에서 메일 발신 기능을 활성화하세요">
+              <Lock className="h-4 w-4 mr-2" />
+              메일 쓰기
+            </Button>
+          )}
+        </div>
+
+        {/* 폴더 탭 */}
+        <div className="flex gap-2 mb-4">
+          <Button
+            variant={folder === 'INBOX' ? 'default' : 'outline'}
+            onClick={() => {
+              setFolder('INBOX')
+              setPage(1)
+            }}
+          >
+            <Inbox className="h-4 w-4 mr-2" />
+            받은 메일함
+          </Button>
+          <Button
+            variant={folder === 'SENT' ? 'default' : 'outline'}
+            onClick={() => {
+              setFolder('SENT')
+              setPage(1)
+            }}
+          >
+            <SendHorizontal className="h-4 w-4 mr-2" />
+            보낸 메일함
+          </Button>
         </div>
 
         <Card>

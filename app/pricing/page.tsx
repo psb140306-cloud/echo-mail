@@ -21,6 +21,8 @@ import {
   BarChart3,
   Shield,
   Headphones,
+  Inbox,
+  Send,
 } from 'lucide-react'
 import {
   SubscriptionPlan,
@@ -67,6 +69,8 @@ export default function PricingPage() {
     { name: '월 알림 발송', key: 'notifications' as const, icon: MessageCircle },
     { name: 'SMS 알림', feature: 'smsNotifications' as const, icon: MessageCircle },
     { name: '카카오톡 알림', feature: 'kakaoNotifications' as const, icon: MessageCircle },
+    { name: '전체 메일함 접근', feature: 'fullMailboxAccess' as const, icon: Inbox },
+    { name: '메일 발신 기능', feature: 'mailSending' as const, icon: Send },
     { name: 'API 액세스', feature: 'apiAccess' as const, icon: BarChart3 },
     { name: '데이터 내보내기', feature: 'exportData' as const, icon: BarChart3 },
     { name: '우선 지원', feature: 'prioritySupport' as const, icon: Headphones },

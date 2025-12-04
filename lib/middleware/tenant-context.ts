@@ -455,3 +455,102 @@ export function isSuperAdmin(): boolean {
   const tenantContext = TenantContext.getInstance()
   return tenantContext.getTenantId() === null
 }
+
+/**
+ * 사용자의 테넌트 역할 조회
+ * OWNER, ADMIN, MEMBER 중 하나를 반환
+ */
+export async function getUserTenantRole(
+  userId: string,
+  tenantId: string
+): Promise<'OWNER' | 'ADMIN' | 'MEMBER' | null> {
+  try {
+    const membership = await prisma.tenantMember.findFirst({
+      where: {
+        userId,
+        tenantId,
+        status: 'ACTIVE',
+      },
+      select: {
+        role: true,
+      },
+    })
+
+    if (!membership) {
+      logger.warn('User membership not found', { userId, tenantId })
+      return null
+    }
+
+    return membership.role as 'OWNER' | 'ADMIN' | 'MEMBER'
+  } catch (error) {
+    logger.error('Failed to get user tenant role', { userId, tenantId, error })
+    return null
+  }
+}
+
+/**
+ * 설정 변경 권한 체크 (OWNER 또는 ADMIN만 허용)
+ */
+export async function canModifySettings(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  const role = await getUserTenantRole(userId, tenantId)
+  return role === 'OWNER' || role === 'ADMIN'
+}
+
+/**
+ * 소유자 권한 체크 (OWNER만 허용)
+ * 결제, 테넌트 삭제, 소유권 이전 등
+ */
+export async function isOwner(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  const role = await getUserTenantRole(userId, tenantId)
+  return role === 'OWNER'
+}
+
+/**
+ * 관리자 이상 권한 체크 (OWNER 또는 ADMIN)
+ */
+export async function isAdminOrAbove(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  const role = await getUserTenantRole(userId, tenantId)
+  return role === 'OWNER' || role === 'ADMIN'
+}
+
+/**
+ * 역할 검증 미들웨어 헬퍼
+ * API 라우트에서 사용
+ */
+export async function requireRole(
+  userId: string,
+  tenantId: string,
+  allowedRoles: Array<'OWNER' | 'ADMIN' | 'MEMBER'>
+): Promise<{ allowed: boolean; role: string | null; message?: string }> {
+  const role = await getUserTenantRole(userId, tenantId)
+
+  if (!role) {
+    return {
+      allowed: false,
+      role: null,
+      message: '테넌트 멤버십이 없습니다.',
+    }
+  }
+
+  if (!allowedRoles.includes(role)) {
+    return {
+      allowed: false,
+      role,
+      message: `이 작업은 ${allowedRoles.join(' 또는 ')} 권한이 필요합니다.`,
+    }
+  }
+
+  return {
+    allowed: true,
+    role,
+  }
+}

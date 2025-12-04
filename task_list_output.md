@@ -989,5 +989,69 @@
 
 ---
 
-**마지막 업데이트**: 2025-10-27
-**다음 작업 시작 지점**: 카카오 채널 재심사 신청 + SOLAPI API 키 발급
+### 2025-12-04 작업 내역
+
+#### 📧 메일 기능 요금제별 차등 제공 구현 (Phase 7)
+
+##### 개요
+요금제에 따라 메일 기능을 차등 제공하고, 사용자가 옵션으로 선택할 수 있게 구현
+
+##### 요금제별 메일 기능 범위
+
+| 기능 | 무료체험/스타터 | 프로페셔널 | 비즈니스/엔터프라이즈 |
+|------|----------------|-----------|---------------------|
+| 발주 메일 수신 | ✅ | ✅ | ✅ |
+| 전체 메일 수신 | ❌ | ✅ (옵션) | ✅ (옵션) |
+| 메일 발신 | ❌ | ✅ (옵션) | ✅ (옵션) |
+
+##### 구현 단계
+
+###### Phase 1: 기반 작업
+- [ ] `lib/subscription/plan-checker.ts` 생성 - 플랜 권한 검증 중앙화
+- [ ] `lib/subscription/plans.ts` 수정 - PlanFeatures에 fullMailboxAccess, mailSending 추가
+- [ ] `prisma/schema.prisma` 수정 - Tenant에 mailMode, mailSendingEnabled 추가
+- [ ] 마이그레이션 실행 + 기존 데이터 기본값 설정 (ORDER_ONLY, false)
+
+###### Phase 2: API 보강
+- [ ] `lib/tenant/context.ts` 수정 - 역할(OWNER/ADMIN) 검증 헬퍼 추가
+- [ ] `app/api/settings/route.ts` 수정 - 메일 옵션 저장 + 플랜 검증 + 권한 검증
+- [ ] `app/api/mail/list/route.ts` 수정 - mailMode에 따른 필터링
+
+###### Phase 3: 메일 발신 기능
+- [ ] `lib/mail/mail-sender.ts` 생성 - SMTP 발송 + 실패 재시도 + 로깅
+- [ ] `app/api/mail/send/route.ts` 생성 - 발신 API + 사용량 카운트
+- [ ] 메일함에 "메일 쓰기" 버튼 추가
+- [ ] "보낸 메일함" 메뉴 추가
+
+###### Phase 4: UI 구현
+- [ ] `app/settings/page.tsx` 수정 - 메일 옵션 섹션 + 업그레이드 CTA
+- [ ] `app/pricing/page.tsx` 수정 - 기능 비교표 업데이트
+
+###### Phase 5: 감사/로깅
+- [ ] `ActivityLog`에 mailMode 변경 이벤트 기록
+
+##### 예상 파일 변경
+```
+lib/subscription/plan-checker.ts   (신규)
+lib/subscription/plans.ts          (수정)
+prisma/schema.prisma               (수정)
+lib/tenant/context.ts              (수정)
+app/api/settings/route.ts          (수정)
+app/api/mail/list/route.ts         (수정)
+lib/mail/mail-sender.ts            (신규)
+app/api/mail/send/route.ts         (신규)
+app/settings/page.tsx              (수정)
+app/pricing/page.tsx               (수정)
+```
+
+##### 주요 고려사항
+1. **플랜 플래그 강제**: 수집·조회·발신·설정 API 모든 경로에서 플랜 검증
+2. **멀티테넌트/권한**: withTenantContext + 역할(OWNER/ADMIN) 검증
+3. **발신 기능**: 테넌트별 SMTP 설정 사용, 사용량 제한 적용
+4. **수집 vs 조회**: 메일은 모두 수집하되, 조회 시 mailMode에 따라 필터링
+5. **업그레이드 시**: 과거 메일도 즉시 접근 가능
+
+---
+
+**마지막 업데이트**: 2025-12-04
+**다음 작업 시작 지점**: 메일 기능 요금제별 차등 제공 구현 Phase 1

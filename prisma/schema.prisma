@@ -429,6 +429,10 @@ model Tenant {
   maxEmails        Int @default(500)
   maxNotifications Int @default(1000)
 
+  // 메일 기능 옵션 (Phase 7)
+  mailMode           MailMode @default(ORDER_ONLY) // 메일 수신 모드
+  mailSendingEnabled Boolean  @default(false)      // 메일 발신 기능 사용 여부
+
   // 관계
   companies        Company[]
   contacts         Contact[]
@@ -580,6 +584,12 @@ enum SubscriptionPlan {
   PROFESSIONAL
   BUSINESS
   ENTERPRISE
+}
+
+// 메일 수신 모드 (Phase 7)
+enum MailMode {
+  ORDER_ONLY  // 발주 메일만 수신 (기본값)
+  FULL_INBOX  // 전체 메일 수신
 }
 
 enum SubscriptionStatus {

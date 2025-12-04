@@ -26,6 +26,10 @@ import {
   FileText,
   Bell,
   RefreshCw,
+  Send,
+  Inbox,
+  Lock,
+  Crown,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { UsageDisplay } from '@/components/subscription/usage-display'
@@ -57,6 +61,16 @@ interface TenantSettings {
     contactEmail: string
     contactPhone: string
   }
+}
+
+interface MailOptions {
+  mailMode: 'ORDER_ONLY' | 'FULL_INBOX'
+  mailSendingEnabled: boolean
+  permissions: {
+    canChangeMailMode: boolean
+    canEnableMailSending: boolean
+  }
+  currentPlan: string
 }
 
 export default function SettingsPage() {
@@ -96,10 +110,21 @@ export default function SettingsPage() {
     exists: number
     messages: number
   } | null>(null)
+  const [mailOptions, setMailOptions] = useState<MailOptions>({
+    mailMode: 'ORDER_ONLY',
+    mailSendingEnabled: false,
+    permissions: {
+      canChangeMailMode: false,
+      canEnableMailSending: false,
+    },
+    currentPlan: 'FREE_TRIAL',
+  })
+  const [savingMailOptions, setSavingMailOptions] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     loadSettings()
+    loadMailOptions()
   }, [])
 
   const loadSettings = async () => {
@@ -120,6 +145,66 @@ export default function SettingsPage() {
         description: '설정을 불러오는데 실패했습니다',
         variant: 'destructive',
       })
+    }
+  }
+
+  const loadMailOptions = async () => {
+    try {
+      const response = await fetch('/api/settings/mail-options')
+      if (response.ok) {
+        const result = await response.json()
+        const data = result.data || result
+        setMailOptions({
+          mailMode: data.mailMode || 'ORDER_ONLY',
+          mailSendingEnabled: data.mailSendingEnabled || false,
+          permissions: data.permissions || {
+            canChangeMailMode: false,
+            canEnableMailSending: false,
+          },
+          currentPlan: data.currentPlan || 'FREE_TRIAL',
+        })
+      }
+    } catch (error) {
+      console.error('메일 옵션 로드 실패:', error)
+    }
+  }
+
+  const saveMailOptions = async () => {
+    setSavingMailOptions(true)
+    try {
+      const response = await fetch('/api/settings/mail-options', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mailMode: mailOptions.mailMode,
+          mailSendingEnabled: mailOptions.mailSendingEnabled,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: '성공',
+          description: result.message || '메일 옵션이 저장되었습니다',
+        })
+      } else {
+        toast({
+          title: '오류',
+          description: result.message || '메일 옵션 저장에 실패했습니다',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: '오류',
+        description: '메일 옵션 저장 중 오류가 발생했습니다',
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingMailOptions(false)
     }
   }
 
@@ -438,6 +523,151 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 메일 기능 옵션 카드 */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Inbox className="h-5 w-5" />
+                  메일 기능 옵션
+                </CardTitle>
+                <CardDescription>
+                  메일 수신 범위와 발신 기능을 설정합니다.
+                  {!mailOptions.permissions.canChangeMailMode && (
+                    <span className="block mt-1 text-amber-600 dark:text-amber-400">
+                      <Crown className="inline h-4 w-4 mr-1" />
+                      프로페셔널 플랜 이상에서 사용 가능한 기능입니다.
+                    </span>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 메일 모드 선택 */}
+                <div className="space-y-4">
+                  <Label className="text-base font-semibold">메일 수신 범위</Label>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {/* 발주 메일만 */}
+                    <div
+                      className={`relative rounded-lg border-2 p-4 cursor-pointer transition-colors ${
+                        mailOptions.mailMode === 'ORDER_ONLY'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                      }`}
+                      onClick={() =>
+                        setMailOptions({ ...mailOptions, mailMode: 'ORDER_ONLY' })
+                      }
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                          mailOptions.mailMode === 'ORDER_ONLY'
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {mailOptions.mailMode === 'ORDER_ONLY' && (
+                            <div className="h-2 w-2 rounded-full bg-white" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">발주 메일만</h4>
+                          <p className="text-sm text-gray-500 mt-1">
+                            발주와 관련된 메일만 수신하고 처리합니다.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 전체 메일 */}
+                    <div
+                      className={`relative rounded-lg border-2 p-4 transition-colors ${
+                        mailOptions.permissions.canChangeMailMode
+                          ? 'cursor-pointer hover:border-gray-300'
+                          : 'cursor-not-allowed opacity-60'
+                      } ${
+                        mailOptions.mailMode === 'FULL_INBOX'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-200 dark:border-gray-700'
+                      }`}
+                      onClick={() => {
+                        if (mailOptions.permissions.canChangeMailMode) {
+                          setMailOptions({ ...mailOptions, mailMode: 'FULL_INBOX' })
+                        }
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center ${
+                          mailOptions.mailMode === 'FULL_INBOX'
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {mailOptions.mailMode === 'FULL_INBOX' && (
+                            <div className="h-2 w-2 rounded-full bg-white" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium flex items-center gap-2">
+                            전체 메일
+                            {!mailOptions.permissions.canChangeMailMode && (
+                              <Lock className="h-4 w-4 text-gray-400" />
+                            )}
+                          </h4>
+                          <p className="text-sm text-gray-500 mt-1">
+                            모든 수신 메일을 확인할 수 있습니다.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* 메일 발신 기능 */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      메일 발신 기능
+                      {!mailOptions.permissions.canEnableMailSending && (
+                        <Lock className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Label>
+                    <p className="text-sm text-gray-500">
+                      메일을 직접 작성하여 발송할 수 있습니다.
+                      {!mailOptions.permissions.canEnableMailSending && (
+                        <span className="block text-amber-600 dark:text-amber-400">
+                          프로페셔널 플랜 이상에서 사용 가능
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={mailOptions.mailSendingEnabled}
+                    disabled={!mailOptions.permissions.canEnableMailSending}
+                    onCheckedChange={(checked) =>
+                      setMailOptions({ ...mailOptions, mailSendingEnabled: checked })
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={saveMailOptions}
+                    disabled={savingMailOptions}
+                    variant="outline"
+                  >
+                    {savingMailOptions ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    메일 옵션 저장
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

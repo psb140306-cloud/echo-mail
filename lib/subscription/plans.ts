@@ -42,6 +42,9 @@ export interface PlanFeatures {
   customBranding: boolean // 브랜딩 커스터마이징
   prioritySupport: boolean // 우선 지원
   sla: boolean // SLA 보장
+  // 메일 기능 (Phase 7 추가)
+  fullMailboxAccess: boolean // 전체 메일함 접근 (발주 외 메일)
+  mailSending: boolean // 메일 발신 기능
 }
 
 // 플랜별 제한 사항 정의
@@ -64,6 +67,8 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
       customBranding: false,
       prioritySupport: false,
       sla: false,
+      fullMailboxAccess: false, // 발주 메일만
+      mailSending: false,
     },
     priority: 1,
   },
@@ -86,6 +91,8 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
       customBranding: false,
       prioritySupport: false,
       sla: false,
+      fullMailboxAccess: false, // 발주 메일만
+      mailSending: false,
     },
     priority: 2,
   },
@@ -108,6 +115,8 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
       customBranding: false,
       prioritySupport: true,
       sla: false,
+      fullMailboxAccess: true, // 전체 메일함 (옵션)
+      mailSending: true, // 메일 발신 (옵션)
     },
     priority: 3,
   },
@@ -130,6 +139,8 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
       customBranding: true,
       prioritySupport: true,
       sla: true,
+      fullMailboxAccess: true, // 전체 메일함 (옵션)
+      mailSending: true, // 메일 발신 (옵션)
     },
     priority: 4,
   },
@@ -152,6 +163,8 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
       customBranding: true,
       prioritySupport: true,
       sla: true,
+      fullMailboxAccess: true, // 전체 메일함 (옵션)
+      mailSending: true, // 메일 발신 (옵션)
     },
     priority: 5,
   },
