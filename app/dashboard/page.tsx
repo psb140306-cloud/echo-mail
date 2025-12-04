@@ -336,7 +336,7 @@ function DashboardContent() {
                 <div className="text-right">
                   <div className="flex items-center space-x-2 mb-1">
                     <span className="text-sm font-medium dark:text-foreground">
-                      {subscription.plan?.name || 'FREE_TRIAL'}
+                      {typeof subscription.plan === 'string' ? subscription.plan : (subscription.plan?.name || 'FREE_TRIAL')}
                     </span>
                     {getStatusBadge(subscription.status)}
                   </div>
