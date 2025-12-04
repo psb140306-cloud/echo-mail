@@ -47,27 +47,63 @@ async function changePlan(request: NextRequest) {
     }
 
     const oldPlan = subscription.plan
+    const oldStatus = subscription.status
 
-    // 플랜 변경 (subscription + tenant 모두 업데이트)
+    // 같은 플랜으로 변경 시도하면 무시
+    if (oldPlan === newPlan) {
+      return NextResponse.json({
+        success: true,
+        data: subscription,
+        message: '이미 해당 플랜을 사용 중입니다.',
+      })
+    }
+
+    // 변경 유형 결정
+    const planOrder = ['FREE_TRIAL', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE']
+    const oldIndex = planOrder.indexOf(oldPlan)
+    const newIndex = planOrder.indexOf(newPlan)
+    let changeType = 'CHANGE'
+    if (oldPlan === 'FREE_TRIAL' && newPlan !== 'FREE_TRIAL') {
+      changeType = 'TRIAL_END'
+    } else if (newIndex > oldIndex) {
+      changeType = 'UPGRADE'
+    } else if (newIndex < oldIndex) {
+      changeType = 'DOWNGRADE'
+    }
+
+    const newStatus = newPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE'
+
+    // 플랜 변경 (subscription + tenant + history 모두 업데이트)
     const [updated] = await prisma.$transaction([
       prisma.subscription.update({
         where: { id: subscription.id },
         data: {
           plan: newPlan,
           priceAmount: PLAN_PRICING[newPlan as keyof typeof PLAN_PRICING]?.monthly || 0,
-          status: newPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
+          status: newStatus,
         }
       }),
       prisma.tenant.update({
         where: { id: tenantId },
         data: {
           subscriptionPlan: newPlan,
-          subscriptionStatus: newPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE',
+          subscriptionStatus: newStatus,
+        }
+      }),
+      // 변경 이력 저장
+      prisma.subscriptionHistory.create({
+        data: {
+          subscriptionId: subscription.id,
+          previousPlan: oldPlan,
+          newPlan: newPlan,
+          previousStatus: oldStatus,
+          newStatus: newStatus,
+          changeType,
         }
       })
     ])
 
-    logger.info('Subscription plan changed', { tenantId, oldPlan, newPlan })
+    logger.info('Subscription plan changed with history', { tenantId, oldPlan, newPlan, changeType })
 
     return NextResponse.json({
       success: true,

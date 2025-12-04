@@ -629,6 +629,7 @@ model Subscription {
 
   // 관계
   invoices              Invoice[]
+  history               SubscriptionHistory[]
 
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
@@ -640,6 +641,33 @@ model Subscription {
   @@index([customerKey])
   @@index([billingKey])
   @@map("subscriptions")
+}
+
+// 구독 변경 이력
+model SubscriptionHistory {
+  id             String           @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription     @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  previousPlan   SubscriptionPlan
+  newPlan        SubscriptionPlan
+  previousStatus SubscriptionStatus?
+  newStatus      SubscriptionStatus?
+
+  // 변경 유형: UPGRADE, DOWNGRADE, TRIAL_END, CANCEL, REACTIVATE
+  changeType     String
+
+  // 결제 정보 (있는 경우)
+  paidAmount     Int?             // 결제 금액
+  paymentId      String?          // 결제 ID (토스페이먼츠 등)
+
+  changedAt      DateTime         @default(now())
+  reason         String?          // 변경 사유
+
+  @@index([subscriptionId])
+  @@index([changedAt])
+  @@index([changeType])
+  @@map("subscription_history")
 }
 
 // =============================================================================
