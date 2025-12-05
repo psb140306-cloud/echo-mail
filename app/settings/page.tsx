@@ -214,10 +214,20 @@ export default function SettingsPage() {
       const result = await response.json()
 
       if (response.ok) {
+        // 저장 성공 시 응답 데이터로 상태 업데이트
+        const savedData = result.data
+        if (savedData) {
+          setKeywordSettings({
+            keywords: savedData.keywords || keywordSettings.keywords,
+            keywordsDisabled: savedData.keywordsDisabled ?? keywordSettings.keywordsDisabled,
+          })
+        }
         toast({
           title: '성공',
           description: result.message || '키워드 설정이 저장되었습니다',
         })
+        // 저장 후 다시 로드하여 서버 상태와 동기화
+        await loadKeywordSettings()
       } else {
         toast({
           title: '오류',

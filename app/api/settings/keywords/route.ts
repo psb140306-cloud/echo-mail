@@ -45,12 +45,23 @@ export async function PUT(request: NextRequest) {
       const tenantContext = TenantContext.getInstance()
       const tenantId = tenantContext.getTenantId()
 
+      logger.info('[Keywords PUT] 요청 시작', { tenantId })
+
       if (!tenantId) {
+        logger.warn('[Keywords PUT] 테넌트 ID 없음')
         return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
       }
 
       const body = await request.json()
       const { keywords, keywordsDisabled } = body
+
+      logger.info('[Keywords PUT] 요청 데이터', {
+        tenantId,
+        keywords,
+        keywordsDisabled,
+        keywordsType: typeof keywords,
+        keywordsLength: Array.isArray(keywords) ? keywords.length : 'N/A',
+      })
 
       // 유효성 검사
       if (keywords !== undefined && !Array.isArray(keywords)) {
@@ -74,6 +85,12 @@ export async function PUT(request: NextRequest) {
         updateData.keywordsDisabled = keywordsDisabled
       }
 
+      logger.info('[Keywords PUT] 업데이트 데이터', {
+        tenantId,
+        updateData,
+        cleanedKeywords,
+      })
+
       const updatedTenant = await prisma.tenant.update({
         where: { id: tenantId },
         data: updateData,
@@ -83,7 +100,7 @@ export async function PUT(request: NextRequest) {
         },
       })
 
-      logger.info('키워드 설정 저장 완료', {
+      logger.info('[Keywords PUT] 저장 완료', {
         tenantId,
         keywords: updatedTenant.orderKeywords,
         keywordsDisabled: updatedTenant.keywordsDisabled,
@@ -97,7 +114,7 @@ export async function PUT(request: NextRequest) {
         '키워드 설정이 저장되었습니다.'
       )
     } catch (error) {
-      logger.error('키워드 설정 저장 실패:', error)
+      logger.error('[Keywords PUT] 저장 실패:', error)
       return createErrorResponse('키워드 설정 저장에 실패했습니다.')
     }
   })
