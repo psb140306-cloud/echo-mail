@@ -683,8 +683,23 @@ export class MailMonitorService {
       if (company) return company
     }
 
-    // 2순위: 도메인으로 찾기
-    if (parsedData.senderDomain) {
+    // 2순위: 도메인으로 찾기 (공용 이메일 도메인 제외)
+    // 네이버, 다음, 지메일 등 공용 도메인은 도메인 매칭에서 제외
+    const publicEmailDomains = [
+      'naver.com',
+      'hanmail.net',
+      'daum.net',
+      'gmail.com',
+      'googlemail.com',
+      'yahoo.com',
+      'yahoo.co.kr',
+      'hotmail.com',
+      'outlook.com',
+      'nate.com',
+      'kakao.com',
+    ]
+
+    if (parsedData.senderDomain && !publicEmailDomains.includes(parsedData.senderDomain.toLowerCase())) {
       const company = await prisma.company.findFirst({
         where: {
           tenantId,
