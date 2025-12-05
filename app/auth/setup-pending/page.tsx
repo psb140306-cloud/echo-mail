@@ -21,7 +21,7 @@ interface SetupProgress {
 }
 
 export default function SetupPendingPage() {
-  const { user, signOut } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
   const [setupProgress, setSetupProgress] = useState<SetupProgress>({
@@ -150,6 +150,11 @@ export default function SetupPendingPage() {
 
   // 자동 테넌트 생성 및 폴링
   useEffect(() => {
+    // 아직 인증 상태 로딩 중이면 대기
+    if (loading) {
+      return
+    }
+
     if (!user) {
       router.push('/auth/login')
       return
@@ -250,10 +255,15 @@ export default function SetupPendingPage() {
       isMounted = false
       clearInterval(interval)
     }
-  }, [user, router])
+  }, [user, loading, router])
 
-  if (!user) {
-    return null // 로그인 페이지로 리다이렉트 중
+  // 로딩 중이거나 유저가 없으면 대기
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
   }
 
   return (
