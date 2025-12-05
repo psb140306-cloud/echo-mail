@@ -16,7 +16,7 @@ import {
   Mail,
   Settings,
   Save,
-  TestTube,
+  Link2,
   AlertTriangle,
   CheckCircle,
   Loader2,
@@ -589,7 +589,7 @@ export default function SettingsPage() {
                     {testingMail ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
-                      <TestTube className="mr-2 h-4 w-4" />
+                      <Link2 className="mr-2 h-4 w-4" />
                     )}
                     연결 테스트
                   </Button>
