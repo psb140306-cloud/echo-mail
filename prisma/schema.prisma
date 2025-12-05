@@ -433,6 +433,10 @@ model Tenant {
   mailMode           MailMode @default(ORDER_ONLY) // 메일 수신 모드
   mailSendingEnabled Boolean  @default(false)      // 메일 발신 기능 사용 여부
 
+  // 발주 키워드 설정
+  orderKeywords      String[] @default(["발주", "주문", "구매", "납품", "order", "purchase", "po"])
+  keywordsDisabled   Boolean  @default(false)      // 키워드 무시 (이메일 주소만으로 발주 판단)
+
   // 관계
   companies        Company[]
   contacts         Contact[]

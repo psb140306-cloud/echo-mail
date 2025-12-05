@@ -30,6 +30,9 @@ import {
   Inbox,
   Lock,
   Crown,
+  Search,
+  Plus,
+  X,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { UsageDisplay } from '@/components/subscription/usage-display'
@@ -71,6 +74,11 @@ interface MailOptions {
     canEnableMailSending: boolean
   }
   currentPlan: string
+}
+
+interface KeywordSettings {
+  keywords: string[]
+  keywordsDisabled: boolean
 }
 
 export default function SettingsPage() {
@@ -120,11 +128,18 @@ export default function SettingsPage() {
     currentPlan: 'FREE_TRIAL',
   })
   const [savingMailOptions, setSavingMailOptions] = useState(false)
+  const [keywordSettings, setKeywordSettings] = useState<KeywordSettings>({
+    keywords: ['발주', '주문', '구매', '납품', 'order', 'purchase', 'po'],
+    keywordsDisabled: false,
+  })
+  const [newKeyword, setNewKeyword] = useState('')
+  const [savingKeywords, setSavingKeywords] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
     loadSettings()
     loadMailOptions()
+    loadKeywordSettings()
   }, [])
 
   const loadSettings = async () => {
@@ -167,6 +182,83 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('메일 옵션 로드 실패:', error)
     }
+  }
+
+  const loadKeywordSettings = async () => {
+    try {
+      const response = await fetch('/api/settings/keywords')
+      if (response.ok) {
+        const result = await response.json()
+        const data = result.data || result
+        setKeywordSettings({
+          keywords: data.keywords || ['발주', '주문', '구매', '납품', 'order', 'purchase', 'po'],
+          keywordsDisabled: data.keywordsDisabled || false,
+        })
+      }
+    } catch (error) {
+      console.error('키워드 설정 로드 실패:', error)
+    }
+  }
+
+  const saveKeywordSettings = async () => {
+    setSavingKeywords(true)
+    try {
+      const response = await fetch('/api/settings/keywords', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(keywordSettings),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        toast({
+          title: '성공',
+          description: result.message || '키워드 설정이 저장되었습니다',
+        })
+      } else {
+        toast({
+          title: '오류',
+          description: result.message || '키워드 설정 저장에 실패했습니다',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: '오류',
+        description: '키워드 설정 저장 중 오류가 발생했습니다',
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingKeywords(false)
+    }
+  }
+
+  const addKeyword = () => {
+    const trimmed = newKeyword.trim()
+    if (!trimmed) return
+    if (keywordSettings.keywords.includes(trimmed)) {
+      toast({
+        title: '중복',
+        description: '이미 등록된 키워드입니다',
+        variant: 'destructive',
+      })
+      return
+    }
+    setKeywordSettings({
+      ...keywordSettings,
+      keywords: [...keywordSettings.keywords, trimmed],
+    })
+    setNewKeyword('')
+  }
+
+  const removeKeyword = (keyword: string) => {
+    setKeywordSettings({
+      ...keywordSettings,
+      keywords: keywordSettings.keywords.filter((k) => k !== keyword),
+    })
   }
 
   const saveMailOptions = async () => {
@@ -318,10 +410,14 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="mail" className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-[600px]">
+          <TabsList className="grid grid-cols-5 w-full max-w-[750px]">
             <TabsTrigger value="mail">
               <Mail className="mr-2 h-4 w-4" />
               메일 서버
+            </TabsTrigger>
+            <TabsTrigger value="keyword">
+              <Search className="mr-2 h-4 w-4" />
+              키워드
             </TabsTrigger>
             <TabsTrigger value="notification">
               <Bell className="mr-2 h-4 w-4" />
@@ -579,7 +675,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* 전체 메일 */}
+                    {/* 받은 메일 */}
                     <div
                       className={`relative rounded-lg border-2 p-4 transition-colors ${
                         mailOptions.permissions.canChangeMailMode
@@ -608,13 +704,13 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <h4 className="font-medium flex items-center gap-2">
-                            전체 메일
+                            받은 메일
                             {!mailOptions.permissions.canChangeMailMode && (
                               <Lock className="h-4 w-4 text-gray-400" />
                             )}
                           </h4>
                           <p className="text-sm text-gray-500 mt-1">
-                            모든 수신 메일을 확인할 수 있습니다.
+                            받은 메일함 수신 메일을 확인할 수 있습니다.
                           </p>
                         </div>
                       </div>
@@ -666,6 +762,107 @@ export default function SettingsPage() {
                       <Save className="mr-2 h-4 w-4" />
                     )}
                     메일 옵션 저장
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="keyword">
+            <Card>
+              <CardHeader>
+                <CardTitle>발주 키워드 설정</CardTitle>
+                <CardDescription>
+                  발주 메일 판단에 사용할 키워드를 설정합니다.
+                  등록된 업체 이메일에서 온 메일 중 키워드가 포함된 메일만 발주로 처리됩니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* 키워드 사용 안함 토글 */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>키워드 사용 안함</Label>
+                    <p className="text-sm text-gray-500">
+                      활성화 시 등록된 업체 이메일에서 온 모든 메일을 발주로 처리합니다
+                    </p>
+                  </div>
+                  <Switch
+                    checked={keywordSettings.keywordsDisabled}
+                    onCheckedChange={(checked) =>
+                      setKeywordSettings({
+                        ...keywordSettings,
+                        keywordsDisabled: checked,
+                      })
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                {/* 키워드 목록 */}
+                <div className={keywordSettings.keywordsDisabled ? 'opacity-50 pointer-events-none' : ''}>
+                  <div className="space-y-4">
+                    <Label>등록된 키워드</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {keywordSettings.keywords.map((keyword) => (
+                        <Badge
+                          key={keyword}
+                          variant="secondary"
+                          className="px-3 py-1 text-sm flex items-center gap-1"
+                        >
+                          {keyword}
+                          <button
+                            type="button"
+                            onClick={() => removeKeyword(keyword)}
+                            className="ml-1 hover:text-red-500"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                      {keywordSettings.keywords.length === 0 && (
+                        <p className="text-sm text-gray-500">등록된 키워드가 없습니다</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <Input
+                      placeholder="새 키워드 입력"
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addKeyword()
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addKeyword}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      추가
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={saveKeywordSettings}
+                    disabled={savingKeywords}
+                    variant="outline"
+                  >
+                    {savingKeywords ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    키워드 설정 저장
                   </Button>
                 </div>
               </CardContent>

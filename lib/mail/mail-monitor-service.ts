@@ -3,7 +3,7 @@ import { ImapFlow } from 'imapflow'
 import { simpleParser, ParsedMail, Attachment } from 'mailparser'
 import { logger } from '@/lib/utils/logger'
 import { createImapClient } from '@/lib/imap/connection'
-import { parseOrderEmail } from './email-parser'
+import { parseOrderEmail, KeywordOptions } from './email-parser'
 import { sendOrderReceivedNotification } from '@/lib/notifications/notification-service'
 import { getKSTStartOfDay, isKSTToday, formatKSTDate } from '@/lib/utils/date'
 import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
@@ -45,6 +45,9 @@ export interface TenantMailConfig {
   subscriptionPlan: SubscriptionPlan
   mailMode: 'ORDER_ONLY' | 'FULL_INBOX'
   effectiveMailMode: 'ORDER_ONLY' | 'FULL_INBOX' // 플랜 제한 적용된 실제 모드
+  // 키워드 설정
+  orderKeywords: string[]
+  keywordsDisabled: boolean
 }
 
 /**
@@ -233,7 +236,7 @@ export class MailMonitorService {
         // 각 메일 처리
         for (const message of messages) {
           try {
-            await this.processEmail(config.tenantId, message, client, config.effectiveMailMode)
+            await this.processEmail(config.tenantId, message, client, config)
             processedCount++
           } catch (error) {
             failedCount++
@@ -286,8 +289,9 @@ export class MailMonitorService {
     tenantId: string,
     message: any,
     client: ImapFlow,
-    effectiveMailMode: 'ORDER_ONLY' | 'FULL_INBOX' = 'ORDER_ONLY'
+    config: TenantMailConfig
   ): Promise<void> {
+    const effectiveMailMode = config.effectiveMailMode
     const from = message.envelope.from?.[0]
     const subject = message.envelope.subject
     const date = message.envelope.date
@@ -382,15 +386,19 @@ export class MailMonitorService {
           emailLogId = existingEmail.id // 기존 EmailLog 재사용
         }
       }
-      // 메일 파싱하여 키워드 정보 추출
+      // 메일 파싱하여 키워드 정보 추출 (테넌트 커스텀 키워드 사용)
       const emailContent = message.source?.toString() || ''
+      const keywordOptions: KeywordOptions = {
+        customKeywords: config.orderKeywords.length > 0 ? config.orderKeywords : undefined,
+        keywordsDisabled: config.keywordsDisabled,
+      }
       const parsedData = await parseOrderEmail({
         from: from?.address || '',
         fromName: from?.name || '',
         subject: subject || '',
         body: emailContent,
         receivedDate: date,
-      })
+      }, keywordOptions)
 
       // 1단계: 등록된 업체인지 확인
       const company = await this.findCompanyByEmail(tenantId, parsedData)
@@ -683,60 +691,8 @@ export class MailMonitorService {
       if (company) return company
     }
 
-    // 2순위: 도메인으로 찾기 (공용 이메일 도메인 제외)
-    // 네이버, 다음, 지메일 등 공용 도메인은 도메인 매칭에서 제외
-    const publicEmailDomains = [
-      'naver.com',
-      'hanmail.net',
-      'daum.net',
-      'gmail.com',
-      'googlemail.com',
-      'yahoo.com',
-      'yahoo.co.kr',
-      'hotmail.com',
-      'outlook.com',
-      'nate.com',
-      'kakao.com',
-    ]
-
-    if (parsedData.senderDomain && !publicEmailDomains.includes(parsedData.senderDomain.toLowerCase())) {
-      const company = await prisma.company.findFirst({
-        where: {
-          tenantId,
-          email: {
-            endsWith: `@${parsedData.senderDomain}`,
-          },
-          isActive: true,
-        },
-      })
-      if (company) return company
-    }
-
-    // 3순위: 업체명으로 찾기 (정확히 일치)
-    if (parsedData.companyName) {
-      const company = await prisma.company.findFirst({
-        where: {
-          tenantId,
-          name: parsedData.companyName,
-          isActive: true,
-        },
-      })
-      if (company) return company
-    }
-
-    // 4순위: 업체명 부분 일치
-    if (parsedData.companyName) {
-      const company = await prisma.company.findFirst({
-        where: {
-          tenantId,
-          name: {
-            contains: parsedData.companyName,
-          },
-          isActive: true,
-        },
-      })
-      if (company) return company
-    }
+    // 도메인 매칭 제거 - 이메일 전체 주소가 정확히 일치해야만 매칭
+    // (같은 도메인의 다른 이메일이 잘못 매칭되는 문제 방지)
 
     return null
   }
@@ -807,7 +763,7 @@ export class MailMonitorService {
       .filter(([, config]) => config.enabled === true && config.host && config.port && config.username && config.password)
       .map(([tenantId]) => tenantId)
 
-    // 테넌트 플랜 및 mailMode 일괄 조회
+    // 테넌트 플랜, mailMode, 키워드 설정 일괄 조회
     const tenants = await prisma.tenant.findMany({
       where: {
         id: { in: activeTenantIds },
@@ -816,6 +772,8 @@ export class MailMonitorService {
         id: true,
         subscriptionPlan: true,
         mailMode: true,
+        orderKeywords: true,
+        keywordsDisabled: true,
       },
     })
 
@@ -836,6 +794,10 @@ export class MailMonitorService {
         // 플랜 제한 적용: 플랜이 전체 메일함을 지원하지 않으면 강제로 ORDER_ONLY
         const effectiveMailMode = canAccessFullMailbox(plan) ? mailMode : 'ORDER_ONLY'
 
+        // 키워드 설정
+        const orderKeywords = tenantInfo?.orderKeywords || ['발주', '주문', '구매', '납품', 'order', 'purchase', 'po']
+        const keywordsDisabled = tenantInfo?.keywordsDisabled || false
+
         activeConfigs.push({
           tenantId,
           host: config.host,
@@ -847,6 +809,8 @@ export class MailMonitorService {
           subscriptionPlan: plan,
           mailMode,
           effectiveMailMode,
+          orderKeywords,
+          keywordsDisabled,
         })
 
         logger.info('[MailMonitor] 테넌트 설정 로드', {
@@ -854,6 +818,8 @@ export class MailMonitorService {
           plan,
           mailMode,
           effectiveMailMode,
+          keywordsDisabled,
+          keywordCount: orderKeywords.length,
         })
       }
     }

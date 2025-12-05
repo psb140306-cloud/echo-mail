@@ -17,20 +17,76 @@ export interface ParsedEmailData {
   confidence: number
 }
 
+export interface KeywordOptions {
+  customKeywords?: string[]  // 사용자 정의 키워드 (설정되면 기본 키워드 대체)
+  keywordsDisabled?: boolean // 키워드 체크 무시 (이메일 주소만으로 판단)
+}
+
+// 기본 키워드 (한글/영어)
+const DEFAULT_KOREAN_KEYWORDS = ['발주', '주문', '구매', '납품']
+const DEFAULT_ENGLISH_KEYWORDS = ['order', 'purchase', 'po']
+
+/**
+ * 키워드가 한글인지 판별
+ */
+function isKoreanKeyword(keyword: string): boolean {
+  return /[가-힣]/.test(keyword)
+}
+
 /**
  * 이메일 파싱하여 발주 메일 여부 판단 및 업체 정보 추출
  */
-export async function parseOrderEmail(email: EmailData): Promise<ParsedEmailData> {
+export async function parseOrderEmail(
+  email: EmailData,
+  options?: KeywordOptions
+): Promise<ParsedEmailData> {
   const { from, fromName, subject, body } = email
+
+  // 키워드 체크 무시 옵션
+  if (options?.keywordsDisabled) {
+    logger.info('[EmailParser] 키워드 체크 무시 (이메일 주소만으로 발주 판단)', {
+      from,
+      subject,
+    })
+
+    const senderEmail = from
+    const senderDomain = from.split('@')[1]
+    let companyName: string | undefined
+
+    if (fromName && fromName.trim().length > 0) {
+      companyName = fromName.trim()
+    } else if (senderDomain) {
+      const domainParts = senderDomain.split('.')
+      if (domainParts.length > 0) {
+        companyName = domainParts[0]
+      }
+    }
+
+    return {
+      hasOrderKeywords: true, // 키워드 무시이므로 항상 true
+      companyName,
+      senderEmail,
+      senderDomain,
+      orderDate: email.receivedDate,
+      confidence: 1, // 키워드 무시이므로 100%
+    }
+  }
 
   // HTML 태그 제거 (border="0" 같은 속성에서 order 매칭 방지)
   const cleanBody = extractTextFromHtml(body)
 
-  // 한글 키워드 (includes 사용)
-  const koreanKeywords = ['발주', '주문', '구매', '납품']
+  // 사용자 정의 키워드가 있으면 사용, 없으면 기본 키워드 사용
+  let koreanKeywords: string[]
+  let englishKeywords: string[]
 
-  // 영어 키워드 (단어 경계 정규식 사용)
-  const englishKeywords = ['order', 'purchase', 'po']
+  if (options?.customKeywords && options.customKeywords.length > 0) {
+    // 커스텀 키워드를 한글/영어로 분류
+    koreanKeywords = options.customKeywords.filter(isKoreanKeyword)
+    englishKeywords = options.customKeywords.filter(k => !isKoreanKeyword(k))
+  } else {
+    koreanKeywords = DEFAULT_KOREAN_KEYWORDS
+    englishKeywords = DEFAULT_ENGLISH_KEYWORDS
+  }
 
   const subjectLower = subject.toLowerCase()
   const bodyLower = cleanBody.toLowerCase()
@@ -38,7 +94,7 @@ export async function parseOrderEmail(email: EmailData): Promise<ParsedEmailData
   // 한글 키워드 매칭 (includes)
   const koreanMatches = koreanKeywords.filter(
     (keyword) =>
-      subjectLower.includes(keyword) || bodyLower.includes(keyword)
+      subjectLower.includes(keyword.toLowerCase()) || bodyLower.includes(keyword.toLowerCase())
   )
 
   // 영어 키워드 매칭 (단어 경계 정규식)
@@ -51,7 +107,7 @@ export async function parseOrderEmail(email: EmailData): Promise<ParsedEmailData
   const keywordMatches = [...koreanMatches, ...englishMatches]
   const hasOrderKeywords = keywordMatches.length > 0
   const totalKeywords = koreanKeywords.length + englishKeywords.length
-  const confidence = keywordMatches.length / totalKeywords
+  const confidence = totalKeywords > 0 ? keywordMatches.length / totalKeywords : 0
 
   // 발신자 이메일에서 도메인 추출
   const senderEmail = from
