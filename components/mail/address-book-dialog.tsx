@@ -95,7 +95,8 @@ export function AddressBookDialog({
 
       const response = await fetch(`/api/mail/address-book?${params.toString()}`)
       if (response.ok) {
-        const data = await response.json()
+        const result = await response.json()
+        const data = result.data || result  // createSuccessResponse가 { data: ... } 형태로 감쌈
         setContacts(data.contacts || [])
 
         // 처음 로드 시에만 회사 목록과 최근 연락처 설정
