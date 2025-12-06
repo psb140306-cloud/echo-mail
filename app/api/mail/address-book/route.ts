@@ -1,6 +1,6 @@
 /**
  * 주소록 검색 API
- * GET /api/mail/address-book?q=검색어
+ * GET /api/mail/address-book?q=검색어&companyId=업체ID&limit=100
  *
  * 등록된 담당자(Contact)와 업체(Company) 이메일에서 검색
  */
@@ -35,97 +35,131 @@ export async function GET(request: NextRequest) {
 
       const { searchParams } = new URL(request.url)
       const query = searchParams.get('q') || ''
-      const limit = parseInt(searchParams.get('limit') || '10')
+      const companyId = searchParams.get('companyId')
+      const limit = parseInt(searchParams.get('limit') || '100')
 
-      // 검색어가 없으면 빈 배열 반환
-      if (!query.trim()) {
-        return createSuccessResponse([])
-      }
-
+      // 전체 조회 (팝업용)
       const searchTerm = query.trim()
 
-      // 담당자에서 검색 (이메일이 있는 담당자만)
-      const contacts = await prisma.contact.findMany({
+      // 업체 목록 조회 (담당자 수 포함)
+      const companies = await prisma.company.findMany({
         where: {
           tenantId,
           isActive: true,
-          email: { not: null },
-          OR: [
-            { name: { contains: searchTerm, mode: 'insensitive' } },
-            { email: { contains: searchTerm, mode: 'insensitive' } },
-            { position: { contains: searchTerm, mode: 'insensitive' } },
-          ],
         },
+        select: {
+          id: true,
+          name: true,
+          _count: {
+            select: {
+              contacts: {
+                where: {
+                  isActive: true,
+                  email: { not: null },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { name: 'asc' },
+      })
+
+      // 담당자 조회 조건
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const contactWhere: any = {
+        tenantId,
+        isActive: true,
+        email: { not: null },
+      }
+
+      // 검색어 조건
+      if (searchTerm) {
+        contactWhere.OR = [
+          { name: { contains: searchTerm, mode: 'insensitive' } },
+          { email: { contains: searchTerm, mode: 'insensitive' } },
+          { position: { contains: searchTerm, mode: 'insensitive' } },
+          { company: { name: { contains: searchTerm, mode: 'insensitive' } } },
+        ]
+      }
+
+      // 업체 필터
+      if (companyId) {
+        contactWhere.companyId = companyId
+      }
+
+      // 담당자 조회
+      const contacts = await prisma.contact.findMany({
+        where: contactWhere,
         include: {
           company: {
             select: {
+              id: true,
               name: true,
             },
           },
         },
         take: limit,
-        orderBy: { name: 'asc' },
+        orderBy: [
+          { company: { name: 'asc' } },
+          { name: 'asc' },
+        ],
       })
 
-      // 업체 이메일에서 검색
-      const companies = await prisma.company.findMany({
+      // 최근 사용한 연락처 (최근 발송한 메일의 수신자 기준)
+      // NotificationLog에서 최근 발송 내역 기반으로 추출
+      const recentNotifications = await prisma.notificationLog.findMany({
         where: {
           tenantId,
-          isActive: true,
-          OR: [
-            { name: { contains: searchTerm, mode: 'insensitive' } },
-            { email: { contains: searchTerm, mode: 'insensitive' } },
-          ],
+          status: 'SENT',
+          type: 'SMS', // SMS로 발송한 내역 기준
         },
-        take: limit,
-        orderBy: { name: 'asc' },
+        select: {
+          contactId: true,
+        },
+        distinct: ['contactId'],
+        orderBy: { sentAt: 'desc' },
+        take: 20,
       })
 
-      // 결과 통합
-      const results: AddressBookEntry[] = []
+      const recentContactIds = recentNotifications
+        .map(n => n.contactId)
+        .filter(Boolean) as string[]
 
-      // 담당자 추가
-      for (const contact of contacts) {
-        if (contact.email) {
-          results.push({
-            type: 'contact',
-            id: contact.id,
-            name: contact.name,
-            email: contact.email,
-            companyName: contact.company.name,
-            position: contact.position || undefined,
+      const recentContacts = recentContactIds.length > 0
+        ? await prisma.contact.findMany({
+            where: {
+              id: { in: recentContactIds },
+              tenantId,
+              isActive: true,
+              email: { not: null },
+            },
+            include: {
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
           })
-        }
-      }
+        : []
 
-      // 업체 추가 (담당자 이메일과 중복되지 않는 경우만)
-      const contactEmails = new Set(results.map((r) => r.email.toLowerCase()))
-      for (const company of companies) {
-        if (!contactEmails.has(company.email.toLowerCase())) {
-          results.push({
-            type: 'company',
-            id: company.id,
-            name: company.name,
-            email: company.email,
-            companyName: company.name,
-          })
-        }
-      }
-
-      // 이름순 정렬 후 limit 적용
-      results.sort((a, b) => a.name.localeCompare(b.name))
-      const limitedResults = results.slice(0, limit)
-
-      logger.info('주소록 검색', {
+      logger.info('주소록 조회', {
         tenantId,
         query: searchTerm,
-        resultCount: limitedResults.length,
+        companyId,
+        contactCount: contacts.length,
+        companyCount: companies.length,
       })
 
-      return createSuccessResponse(limitedResults)
+      return createSuccessResponse({
+        contacts,
+        companies,
+        recentContacts,
+      })
     } catch (error) {
-      logger.error('주소록 검색 API 오류:', error)
-      return createErrorResponse('주소록 검색에 실패했습니다.')
+      logger.error('주소록 API 오류:', error)
+      return createErrorResponse('주소록 조회에 실패했습니다.')
     }
   })
 }

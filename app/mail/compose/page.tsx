@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Send, Loader2, Lock, Crown, Timer } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, Lock, Crown, Timer, BookUser } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
@@ -18,6 +18,7 @@ import { AddressAutocomplete } from '@/components/mail/address-autocomplete'
 import { SignatureSelector } from '@/components/mail/signature-selector'
 import { TemplateSelector } from '@/components/mail/template-selector'
 import { SchedulePicker } from '@/components/mail/schedule-picker'
+import { AddressBookDialog } from '@/components/mail/address-book-dialog'
 
 export default function ComposeMailPage() {
   const router = useRouter()
@@ -43,6 +44,9 @@ export default function ComposeMailPage() {
   const [selectedSignature, setSelectedSignature] = useState<{ id: string; content: string } | null>(null)
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null)
   const [editorKey, setEditorKey] = useState(0) // 에디터 리셋용
+
+  // 주소록 팝업 상태
+  const [addressBookOpen, setAddressBookOpen] = useState(false)
 
   // 권한 상태
   const [loading, setLoading] = useState(true)
@@ -94,6 +98,28 @@ export default function ComposeMailPage() {
   // 예약 시간 핸들러
   const handleScheduleChange = (date: Date | null) => {
     setScheduledAt(date)
+  }
+
+  // 주소록에서 수신자 선택 핸들러
+  const handleAddressBookConfirm = (recipients: { to: string[]; cc: string[]; bcc: string[] }) => {
+    // 기존 값에 추가
+    if (recipients.to.length > 0) {
+      const currentTo = to ? to.split(/[,;]/).map(e => e.trim()).filter(e => e) : []
+      const newTo = [...new Set([...currentTo, ...recipients.to])]
+      setTo(newTo.join(', '))
+    }
+    if (recipients.cc.length > 0) {
+      const currentCc = cc ? cc.split(/[,;]/).map(e => e.trim()).filter(e => e) : []
+      const newCc = [...new Set([...currentCc, ...recipients.cc])]
+      setCc(newCc.join(', '))
+      setShowCcBcc(true)
+    }
+    if (recipients.bcc.length > 0) {
+      const currentBcc = bcc ? bcc.split(/[,;]/).map(e => e.trim()).filter(e => e) : []
+      const newBcc = [...new Set([...currentBcc, ...recipients.bcc])]
+      setBcc(newBcc.join(', '))
+      setShowCcBcc(true)
+    }
   }
 
   // 최종 HTML (서명 포함)
@@ -354,13 +380,24 @@ export default function ComposeMailPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="to">받는 사람</Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowCcBcc(!showCcBcc)}
-                >
-                  {showCcBcc ? '숨기기' : '참조/숨은참조'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAddressBookOpen(true)}
+                    disabled={sending}
+                  >
+                    <BookUser className="mr-2 h-4 w-4" />
+                    주소록
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCcBcc(!showCcBcc)}
+                  >
+                    {showCcBcc ? '숨기기' : '참조/숨은참조'}
+                  </Button>
+                </div>
               </div>
               <AddressAutocomplete
                 id="to"
@@ -472,6 +509,13 @@ export default function ComposeMailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 주소록 팝업 */}
+      <AddressBookDialog
+        open={addressBookOpen}
+        onOpenChange={setAddressBookOpen}
+        onConfirm={handleAddressBookConfirm}
+      />
     </>
   )
 }
