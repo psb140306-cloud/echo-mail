@@ -262,7 +262,7 @@ export default function ComposeMailPage() {
     return (
       <>
         <AppHeader />
-        <div className="container mx-auto p-6 max-w-4xl">
+        <div className="container mx-auto p-6 max-w-6xl">
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
@@ -276,7 +276,7 @@ export default function ComposeMailPage() {
     return (
       <>
         <AppHeader />
-        <div className="container mx-auto p-6 max-w-4xl">
+        <div className="container mx-auto p-6 max-w-6xl">
           <div className="mb-6">
             <Link href="/mail">
               <Button variant="ghost" size="sm" className="mb-4">
@@ -309,7 +309,7 @@ export default function ComposeMailPage() {
     return (
       <>
         <AppHeader />
-        <div className="container mx-auto p-6 max-w-4xl">
+        <div className="container mx-auto p-6 max-w-6xl">
           <div className="mb-6">
             <Link href="/mail">
               <Button variant="ghost" size="sm" className="mb-4">
@@ -340,7 +340,7 @@ export default function ComposeMailPage() {
   return (
     <>
       <AppHeader />
-      <div className="container mx-auto p-6 max-w-4xl">
+      <div className="container mx-auto p-6 max-w-6xl">
         <div className="mb-6">
           <Link href="/mail">
             <Button variant="ghost" size="sm" className="mb-4">
