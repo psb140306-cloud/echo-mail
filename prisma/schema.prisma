@@ -452,6 +452,9 @@ model Tenant {
   members          TenantMember[] // 팀원 관리
   invitations      TenantInvitation[] // 초대 관리
   activityLogs     ActivityLog[] // 활동 로그
+  emailSignatures  EmailSignature[] // 이메일 서명
+  emailTemplates   EmailTemplate[] // 이메일 템플릿
+  scheduledEmails  ScheduledEmail[] // 예약 발송
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -800,5 +803,101 @@ enum InquiryStatus {
   IN_PROGRESS   // 처리중
   RESOLVED      // 해결됨
   CLOSED        // 종료
+}
+
+// =============================================================================
+// 이메일 서명 및 템플릿
+// =============================================================================
+
+model EmailSignature {
+  id          String   @id @default(cuid())
+  name        String
+  content     String   @db.Text  // HTML 형식
+  isDefault   Boolean  @default(false)
+
+  // 멀티테넌시
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdBy   String              // 생성자 userId
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, isDefault])
+  @@map("email_signatures")
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  subject     String
+  content     String   @db.Text  // HTML 형식
+  category    String?             // 카테고리 분류
+  isDefault   Boolean  @default(false)
+
+  // 멀티테넌시
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdBy   String              // 생성자 userId
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, category])
+  @@map("email_templates")
+}
+
+// =============================================================================
+// 예약 발송
+// =============================================================================
+
+model ScheduledEmail {
+  id          String   @id @default(cuid())
+
+  // 메일 내용
+  to          String[]
+  cc          String[]
+  bcc         String[]
+  subject     String
+  text        String?  @db.Text
+  html        String   @db.Text
+  attachments Json?              // 첨부파일 정보
+
+  // 예약 정보
+  scheduledAt DateTime           // 예약 발송 시간
+  status      ScheduledEmailStatus @default(PENDING)
+
+  // 발송 결과
+  sentAt      DateTime?
+  messageId   String?            // 발송 후 메시지 ID
+  errorMessage String?
+
+  // 멀티테넌시
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  createdBy   String              // 생성자 userId
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([scheduledAt, status])
+  @@map("scheduled_emails")
+}
+
+enum ScheduledEmailStatus {
+  PENDING   // 대기
+  SENDING   // 발송 중
+  SENT      // 발송 완료
+  FAILED    // 발송 실패
+  CANCELLED // 취소됨
 }
 

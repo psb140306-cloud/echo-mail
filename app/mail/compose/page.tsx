@@ -7,11 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Send, Loader2, Paperclip, X, Lock, Crown } from 'lucide-react'
+import { ArrowLeft, Send, Loader2, Lock, Crown, Timer } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
+import { RichTextEditor } from '@/components/mail/rich-text-editor'
+import { AttachmentUploader, AttachmentFile } from '@/components/mail/attachment-uploader'
+import { AddressAutocomplete } from '@/components/mail/address-autocomplete'
+import { SignatureSelector } from '@/components/mail/signature-selector'
+import { TemplateSelector } from '@/components/mail/template-selector'
+import { SchedulePicker } from '@/components/mail/schedule-picker'
 
 export default function ComposeMailPage() {
   const router = useRouter()
@@ -29,14 +35,20 @@ export default function ComposeMailPage() {
   const [cc, setCc] = useState('')
   const [bcc, setBcc] = useState('')
   const [subject, setSubject] = useState(initialSubject)
-  const [body, setBody] = useState('')
+  const [bodyHtml, setBodyHtml] = useState('')
+  const [bodyText, setBodyText] = useState('')
   const [sending, setSending] = useState(false)
   const [showCcBcc, setShowCcBcc] = useState(false)
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([])
+  const [selectedSignature, setSelectedSignature] = useState<{ id: string; content: string } | null>(null)
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null)
+  const [editorKey, setEditorKey] = useState(0) // 에디터 리셋용
 
   // 권한 상태
   const [loading, setLoading] = useState(true)
   const [mailSendingEnabled, setMailSendingEnabled] = useState(false)
   const [canEnableMailSending, setCanEnableMailSending] = useState(false)
+  const [canSchedule, setCanSchedule] = useState(false) // 예약 발송 가능 여부
 
   // 권한 체크
   useEffect(() => {
@@ -48,6 +60,9 @@ export default function ComposeMailPage() {
           const data = result.data || result
           setMailSendingEnabled(data.mailSendingEnabled || false)
           setCanEnableMailSending(data.permissions?.canEnableMailSending || false)
+          // 프로페셔널 이상만 예약 발송 가능
+          const plan = data.plan || 'FREE_TRIAL'
+          setCanSchedule(['PROFESSIONAL', 'BUSINESS', 'ENTERPRISE'].includes(plan))
         }
       } catch (error) {
         console.error('권한 체크 실패:', error)
@@ -57,6 +72,37 @@ export default function ComposeMailPage() {
     }
     checkPermission()
   }, [])
+
+  // 에디터 변경 핸들러
+  const handleEditorChange = (html: string, text: string) => {
+    setBodyHtml(html)
+    setBodyText(text)
+  }
+
+  // 템플릿 선택 핸들러
+  const handleTemplateSelect = (template: { subject: string; content: string }) => {
+    setSubject(template.subject)
+    setBodyHtml(template.content)
+    setEditorKey(prev => prev + 1) // 에디터 리셋
+  }
+
+  // 서명 선택 핸들러
+  const handleSignatureSelect = (signature: { id: string; content: string } | null) => {
+    setSelectedSignature(signature)
+  }
+
+  // 예약 시간 핸들러
+  const handleScheduleChange = (date: Date | null) => {
+    setScheduledAt(date)
+  }
+
+  // 최종 HTML (서명 포함)
+  const getFinalHtml = () => {
+    if (selectedSignature) {
+      return `${bodyHtml}<br/><br/>${selectedSignature.content}`
+    }
+    return bodyHtml
+  }
 
   // 메일 발송
   const handleSend = async () => {
@@ -79,7 +125,7 @@ export default function ComposeMailPage() {
       return
     }
 
-    if (!body.trim()) {
+    if (!bodyText.trim()) {
       toast({
         title: '오류',
         description: '본문을 입력해주세요.',
@@ -102,36 +148,76 @@ export default function ComposeMailPage() {
       const ccEmails = cc ? parseEmails(cc) : undefined
       const bccEmails = bcc ? parseEmails(bcc) : undefined
 
-      const response = await fetch('/api/mail/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          to: toEmails.length === 1 ? toEmails[0] : toEmails,
-          cc: ccEmails,
-          bcc: bccEmails,
-          subject,
-          text: body,
-          html: `<div style="white-space: pre-wrap;">${body.replace(/\n/g, '<br>')}</div>`,
-          inReplyTo: inReplyTo || undefined,
-        }),
-      })
+      const finalHtml = getFinalHtml()
 
-      const result = await response.json()
-
-      if (response.ok) {
-        toast({
-          title: '발송 완료',
-          description: result.message || '메일이 성공적으로 발송되었습니다.',
+      // 예약 발송인 경우
+      if (scheduledAt) {
+        const response = await fetch('/api/mail/schedule', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: toEmails,
+            cc: ccEmails || [],
+            bcc: bccEmails || [],
+            subject,
+            text: bodyText,
+            html: finalHtml,
+            attachments: attachments.length > 0 ? attachments : undefined,
+            scheduledAt: scheduledAt.toISOString(),
+          }),
         })
-        router.push('/mail')
+
+        const result = await response.json()
+
+        if (response.ok) {
+          toast({
+            title: '예약 완료',
+            description: `메일이 예약되었습니다.`,
+          })
+          router.push('/mail')
+        } else {
+          toast({
+            title: '예약 실패',
+            description: result.message || '메일 예약에 실패했습니다.',
+            variant: 'destructive',
+          })
+        }
       } else {
-        toast({
-          title: '발송 실패',
-          description: result.message || '메일 발송에 실패했습니다.',
-          variant: 'destructive',
+        // 즉시 발송
+        const response = await fetch('/api/mail/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: toEmails.length === 1 ? toEmails[0] : toEmails,
+            cc: ccEmails,
+            bcc: bccEmails,
+            subject,
+            text: bodyText,
+            html: finalHtml,
+            inReplyTo: inReplyTo || undefined,
+            attachments: attachments.length > 0 ? attachments : undefined,
+          }),
         })
+
+        const result = await response.json()
+
+        if (response.ok) {
+          toast({
+            title: '발송 완료',
+            description: result.message || '메일이 성공적으로 발송되었습니다.',
+          })
+          router.push('/mail')
+        } else {
+          toast({
+            title: '발송 실패',
+            description: result.message || '메일 발송에 실패했습니다.',
+            variant: 'destructive',
+          })
+        }
       }
     } catch (error) {
       console.error('메일 발송 오류:', error)
@@ -248,6 +334,22 @@ export default function ComposeMailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* 템플릿/서명 선택 */}
+            <div className="flex flex-wrap items-center gap-4 pb-2">
+              <TemplateSelector
+                onSelect={handleTemplateSelect}
+                currentSubject={subject}
+                currentContent={bodyHtml}
+                disabled={sending}
+              />
+              <SignatureSelector
+                onSelect={handleSignatureSelect}
+                disabled={sending}
+              />
+            </div>
+
+            <Separator />
+
             {/* 받는 사람 */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -260,12 +362,12 @@ export default function ComposeMailPage() {
                   {showCcBcc ? '숨기기' : '참조/숨은참조'}
                 </Button>
               </div>
-              <Input
+              <AddressAutocomplete
                 id="to"
-                type="email"
-                placeholder="example@email.com (여러 명은 쉼표로 구분)"
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
+                onChange={setTo}
+                placeholder="이메일 주소 입력 (주소록에서 검색)"
+                disabled={sending}
               />
             </div>
 
@@ -274,22 +376,22 @@ export default function ComposeMailPage() {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="cc">참조 (CC)</Label>
-                  <Input
+                  <AddressAutocomplete
                     id="cc"
-                    type="email"
-                    placeholder="참조할 이메일 주소"
                     value={cc}
-                    onChange={(e) => setCc(e.target.value)}
+                    onChange={setCc}
+                    placeholder="참조할 이메일 주소"
+                    disabled={sending}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bcc">숨은참조 (BCC)</Label>
-                  <Input
+                  <AddressAutocomplete
                     id="bcc"
-                    type="email"
-                    placeholder="숨은참조 이메일 주소"
                     value={bcc}
-                    onChange={(e) => setBcc(e.target.value)}
+                    onChange={setBcc}
+                    placeholder="숨은참조 이메일 주소"
+                    disabled={sending}
                   />
                 </div>
               </>
@@ -306,16 +408,36 @@ export default function ComposeMailPage() {
               />
             </div>
 
-            {/* 본문 */}
+            {/* 본문 - 리치 텍스트 에디터 */}
             <div className="space-y-2">
-              <Label htmlFor="body">본문</Label>
-              <Textarea
-                id="body"
+              <Label>본문</Label>
+              <RichTextEditor
+                key={editorKey}
+                content={bodyHtml}
+                onChange={handleEditorChange}
                 placeholder="메일 내용을 입력하세요..."
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={15}
-                className="resize-none"
+                minHeight="350px"
+              />
+            </div>
+
+            {/* 첨부파일 */}
+            <div className="space-y-2">
+              <Label>첨부파일</Label>
+              <AttachmentUploader
+                attachments={attachments}
+                onAttachmentsChange={setAttachments}
+                disabled={sending}
+              />
+            </div>
+
+            <Separator />
+
+            {/* 예약 발송 */}
+            <div className="space-y-2">
+              <SchedulePicker
+                onSchedule={handleScheduleChange}
+                disabled={sending}
+                canSchedule={canSchedule}
               />
             </div>
 
@@ -332,7 +454,12 @@ export default function ComposeMailPage() {
                 {sending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    발송 중...
+                    {scheduledAt ? '예약 중...' : '발송 중...'}
+                  </>
+                ) : scheduledAt ? (
+                  <>
+                    <Timer className="mr-2 h-4 w-4" />
+                    예약 발송
                   </>
                 ) : (
                   <>
