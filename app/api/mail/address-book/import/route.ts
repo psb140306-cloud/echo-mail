@@ -150,7 +150,8 @@ export async function POST(request: NextRequest) {
       }, `${createdCount}개 추가, ${updatedCount}개 업데이트 완료`)
     } catch (error) {
       logger.error('주소록 가져오기 실패:', error)
-      return createErrorResponse('주소록 가져오기에 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
+      return createErrorResponse(`주소록 가져오기에 실패했습니다: ${errorMessage}`)
     }
   })
 }

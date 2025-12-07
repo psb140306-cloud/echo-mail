@@ -156,7 +156,7 @@ export async function parseAddressBookFile(
     }
 
     if (!hasEmailColumn) {
-      result.errors.push('이메일 컬럼을 찾을 수 없습니다. 컬럼명을 확인해주세요.')
+      result.errors.push(`이메일 컬럼을 찾을 수 없습니다. 발견된 컬럼: ${columnNames.join(', ')}`)
       return result
     }
 
