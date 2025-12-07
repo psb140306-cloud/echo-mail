@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Search, Users, Building2, Clock, X } from 'lucide-react'
+import { Loader2, Search, Users, Building2, Clock, X, Upload, Download } from 'lucide-react'
+import { AddressBookImportDialog } from './address-book-import-dialog'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/hooks/use-debounce'
 
@@ -73,6 +74,7 @@ export function AddressBookDialog({
 
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'recent' | string>('all')
   const [activeRecipientType, setActiveRecipientType] = useState<RecipientType>('to')
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   const [selectedRecipients, setSelectedRecipients] = useState<SelectedRecipients>({
     to: [],
@@ -186,20 +188,50 @@ export function AddressBookDialog({
   // 표시할 연락처 목록
   const displayContacts = selectedFilter === 'recent' ? recentContacts : contacts
 
+  // 주소록 내보내기
+  const handleExport = () => {
+    window.open('/api/mail/address-book/export', '_blank')
+  }
+
+  // 가져오기 성공 시 연락처 다시 로드
+  const handleImportSuccess = () => {
+    setCompanies([]) // 회사 목록도 다시 로드하기 위해 초기화
+    setRecentContacts([])
+    loadContacts()
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[600px] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between">
             <DialogTitle>메일 주소록</DialogTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="이메일 주소 검색"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                가져오기
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                내보내기
+              </Button>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="이메일 주소 검색"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
           </div>
         </DialogHeader>
@@ -489,6 +521,13 @@ export function AddressBookDialog({
             확인
           </Button>
         </DialogFooter>
+
+        {/* 가져오기 다이얼로그 */}
+        <AddressBookImportDialog
+          open={importDialogOpen}
+          onOpenChange={setImportDialogOpen}
+          onSuccess={handleImportSuccess}
+        />
       </DialogContent>
     </Dialog>
   )
