@@ -30,6 +30,7 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     '이름/별명': 'name',
 
     email: 'email',
+    메일: 'email',  // 다음 메일
     이메일: 'email',
     'E-mail': 'email',
     'Email': 'email',
@@ -54,9 +55,11 @@ const COLUMN_MAPPINGS: Record<string, Record<string, string>> = {
     phone: 'phone',
     전화: 'phone',
     전화번호: 'phone',
-    휴대폰: 'phone',
+    휴대폰: 'phone',  // 다음 메일
     휴대전화: 'phone',
     '휴대폰 번호': 'phone',
+    회사전화: 'phone',  // 다음 메일 (휴대폰이 없을 때 대체)
+    집전화: 'phone',
     'Phone': 'phone',
     'Mobile': 'phone',
     'Mobile Phone': 'phone',
