@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
             data: {
               tenantId,
               name: '개인 연락처',
-              businessType: '기타',
+              email: 'imported@contacts.local',
+              region: '기타',
             },
           })
         }
