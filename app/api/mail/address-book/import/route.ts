@@ -103,10 +103,8 @@ export async function POST(request: NextRequest) {
             companyId: defaultCompany!.id,
             name: c.name,
             email: c.email,
-            phone: c.phone || null,
+            phone: c.phone || '',  // phone은 필수 필드
             position: c.position || null,
-            department: c.department || null,
-            memo: c.memo || null,
           })),
         })
         createdCount = newContacts.length
@@ -115,18 +113,18 @@ export async function POST(request: NextRequest) {
       // 기존 연락처 업데이트 (merge 모드)
       if (mode === 'merge' && updateContacts.length > 0) {
         for (const contact of updateContacts) {
+          const updateData: Record<string, string | undefined> = {
+            name: contact.name,
+          }
+          if (contact.phone) updateData.phone = contact.phone
+          if (contact.position) updateData.position = contact.position
+
           await prisma.contact.updateMany({
             where: {
               tenantId,
               email: { equals: contact.email, mode: 'insensitive' },
             },
-            data: {
-              name: contact.name,
-              phone: contact.phone || undefined,
-              position: contact.position || undefined,
-              department: contact.department || undefined,
-              memo: contact.memo || undefined,
-            },
+            data: updateData,
           })
         }
         updatedCount = updateContacts.length
@@ -151,8 +149,8 @@ export async function POST(request: NextRequest) {
       }, `${createdCount}개 추가, ${updatedCount}개 업데이트 완료`)
     } catch (error) {
       logger.error('주소록 가져오기 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
-      return createErrorResponse(`주소록 가져오기에 실패했습니다: ${errorMessage}`)
+      // 보안: Prisma 에러 메시지에 민감한 데이터가 포함될 수 있으므로 일반 메시지 반환
+      return createErrorResponse('주소록 가져오기에 실패했습니다. 파일 형식을 확인해주세요.')
     }
   })
 }
