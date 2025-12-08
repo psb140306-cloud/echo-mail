@@ -202,8 +202,8 @@ export function AddressBookDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[600px] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b">
+      <DialogContent className="max-w-4xl h-[600px] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b pr-12">
           <div className="flex items-center justify-between">
             <DialogTitle>메일 주소록</DialogTitle>
             <div className="flex items-center gap-2">
