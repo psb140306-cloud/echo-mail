@@ -94,7 +94,7 @@ export default function NewCompanyPage() {
         params.append('search', search)
       }
 
-      const response = await fetch(`/api/address-book?${params}`)
+      const response = await fetch(`/api/contacts?${params}`)
       const data = await response.json()
 
       if (data.success) {
