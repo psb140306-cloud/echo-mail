@@ -5,6 +5,27 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
 import { parseAddressBookFile, ImportedContact } from '@/lib/utils/address-book-import'
 
+// 전화번호 정규화 함수: 다양한 형식을 010-0000-0000으로 변환
+function normalizePhoneNumber(phone: string | undefined | null): string | null {
+  if (!phone) return null
+
+  // 숫자만 추출
+  const digits = phone.replace(/\D/g, '')
+
+  // 010으로 시작하는 11자리 번호인지 확인
+  if (digits.length === 11 && digits.startsWith('010')) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`
+  }
+
+  // 10자리 (구형 번호: 010-000-0000)
+  if (digits.length === 10 && digits.startsWith('010')) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`
+  }
+
+  // 유효하지 않은 번호
+  return null
+}
+
 export async function POST(request: NextRequest) {
   return withTenantContext(request, async () => {
     try {
@@ -97,18 +118,33 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        // 연락처 생성
-        await prisma.contact.createMany({
-          data: newContacts.map((c) => ({
-            tenantId,
-            companyId: defaultCompany!.id,
-            name: c.name,
-            email: c.email,
-            phone: c.phone || '',  // phone은 필수 필드
-            position: c.position || null,
-          })),
-        })
-        createdCount = newContacts.length
+        // 연락처 생성 (유효한 전화번호가 있는 것만)
+        const validNewContacts = newContacts
+          .map((c) => ({
+            ...c,
+            normalizedPhone: normalizePhoneNumber(c.phone),
+          }))
+          .filter((c) => c.normalizedPhone !== null) // 유효한 전화번호만
+
+        if (validNewContacts.length > 0) {
+          await prisma.contact.createMany({
+            data: validNewContacts.map((c) => ({
+              tenantId,
+              companyId: defaultCompany!.id,
+              name: c.name,
+              email: c.email,
+              phone: c.normalizedPhone!, // 정규화된 전화번호
+              position: c.position || null,
+            })),
+          })
+        }
+        createdCount = validNewContacts.length
+
+        // 전화번호가 유효하지 않아 건너뛴 연락처 수 기록
+        const skippedInvalidPhone = newContacts.length - validNewContacts.length
+        if (skippedInvalidPhone > 0) {
+          result.errors.push(`전화번호 형식이 올바르지 않아 ${skippedInvalidPhone}개 건너뜀`)
+        }
       }
 
       // 기존 연락처 업데이트 (merge 모드)
@@ -117,7 +153,9 @@ export async function POST(request: NextRequest) {
           const updateData: Record<string, string | undefined> = {
             name: contact.name,
           }
-          if (contact.phone) updateData.phone = contact.phone
+          // 전화번호 정규화 후 유효한 경우만 업데이트
+          const normalizedPhone = normalizePhoneNumber(contact.phone)
+          if (normalizedPhone) updateData.phone = normalizedPhone
           if (contact.position) updateData.position = contact.position
 
           await prisma.contact.updateMany({

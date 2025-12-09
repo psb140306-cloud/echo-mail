@@ -222,9 +222,8 @@ export default function AddressBookPage() {
     fetchContacts()
   }, [fetchContacts])
 
-  // 초기 데이터 로드
+  // 초기 데이터 로드 (fetchContacts는 [fetchContacts] useEffect에서 자동 호출)
   useEffect(() => {
-    fetchContacts()
     fetchCompanies()
     fetchStats()
   }, [])

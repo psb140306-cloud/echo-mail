@@ -24,7 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
-import { Mail, Search, Inbox, RefreshCw, Trash2, Eye, EyeOff, MapPin, Send, Plus, SendHorizontal, Lock } from 'lucide-react'
+import { Mail, MailOpen, Search, Inbox, RefreshCw, Trash2, Eye, EyeOff, MapPin, Send, Plus, SendHorizontal, Lock } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AppHeader } from '@/components/layout/app-header'
@@ -476,9 +476,9 @@ export default function MailPage() {
                         </TableCell>
                         <TableCell>
                           {email.isRead ? (
-                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <MailOpen className="h-4 w-4 text-muted-foreground" />
                           ) : (
-                            <Mail className="h-4 w-4 text-primary" fill="currentColor" />
+                            <Mail className="h-4 w-4 text-primary" />
                           )}
                         </TableCell>
                         <TableCell>

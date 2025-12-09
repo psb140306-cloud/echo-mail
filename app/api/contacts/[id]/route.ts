@@ -17,6 +17,7 @@ const updateContactSchema = z.object({
     .optional(),
   email: z.string().email('올바른 이메일 형식이 아닙니다').optional(),
   position: z.string().max(50, '직책은 50자 이하여야 합니다').optional(),
+  companyId: z.string().min(1, '업체 ID는 필수입니다').optional(), // 업체 변경 지원
   isActive: z.boolean().optional(),
   smsEnabled: z.boolean().optional(),
   kakaoEnabled: z.boolean().optional(),
@@ -143,14 +144,36 @@ async function updateContact(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // 전화번호 중복 확인 (전화번호가 변경된 경우) - tenantId 필터링
-    if (validatedData.phone && validatedData.phone !== existingContact.phone) {
+    // 업체 변경 시 새 업체 존재 여부 확인
+    const targetCompanyId = validatedData.companyId || existingContact.companyId
+    if (validatedData.companyId && validatedData.companyId !== existingContact.companyId) {
+      const newCompany = await prisma.company.findFirst({
+        where: { id: validatedData.companyId, tenantId },
+      })
+      if (!newCompany) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: '존재하지 않는 업체입니다.',
+            field: 'companyId',
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    // 전화번호 중복 확인 (전화번호 또는 업체가 변경된 경우)
+    const phoneToCheck = validatedData.phone || existingContact.phone
+    const phoneChanged = validatedData.phone && validatedData.phone !== existingContact.phone
+    const companyChanged = validatedData.companyId && validatedData.companyId !== existingContact.companyId
+
+    if (phoneChanged || companyChanged) {
       const duplicateContact = await prisma.contact.findFirst({
         where: {
           AND: [
             { id: { not: id } }, // 현재 담당자 제외
-            { companyId: existingContact.companyId }, // 같은 업체 내에서
-            { phone: validatedData.phone },
+            { companyId: targetCompanyId }, // 변경될 업체 또는 현재 업체 내에서
+            { phone: phoneToCheck },
             { tenantId }, // 같은 테넌트 내에서
           ],
         },
@@ -168,12 +191,9 @@ async function updateContact(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // 담당자 수정 - tenantId로 검증된 후 업데이트
+    // 담당자 수정 - findFirst로 tenantId 검증 완료 후 업데이트
     const updatedContact = await prisma.contact.update({
-      where: {
-        id,
-        tenantId
-      },
+      where: { id },
       data: validatedData,
       include: {
         company: {
@@ -271,12 +291,9 @@ async function deleteContact(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // 담당자 삭제 - tenantId로 검증된 후 삭제
+    // 담당자 삭제 - findFirst로 tenantId 검증 완료 후 삭제
     await prisma.contact.delete({
-      where: {
-        id,
-        tenantId
-      },
+      where: { id },
     })
 
     logger.info(`담당자 삭제 완료: ${existingContact.name}`, {
