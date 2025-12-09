@@ -28,13 +28,11 @@ async function getStats(request: NextRequest) {
       },
     })
 
-    // 연락처가 있는 업체 수 (중복 제거)
-    const companiesWithContacts = await prisma.company.count({
+    // 전화번호가 등록된 연락처 수
+    const contactsWithPhone = await prisma.contact.count({
       where: {
         tenantId,
-        contacts: {
-          some: {},
-        },
+        phone: { not: '' },
       },
     })
 
@@ -42,7 +40,7 @@ async function getStats(request: NextRequest) {
       tenantId,
       totalContacts,
       contactsWithEmail,
-      companiesWithContacts,
+      contactsWithPhone,
     })
 
     return NextResponse.json({
@@ -50,7 +48,7 @@ async function getStats(request: NextRequest) {
       data: {
         totalContacts,
         contactsWithEmail,
-        companiesWithContacts,
+        contactsWithPhone,
       },
     })
   } catch (error) {
