@@ -65,7 +65,7 @@ export default function ComposeMailPage() {
           setMailSendingEnabled(data.mailSendingEnabled || false)
           setCanEnableMailSending(data.permissions?.canEnableMailSending || false)
           // 프로페셔널 이상만 예약 발송 가능
-          const plan = data.plan || 'FREE_TRIAL'
+          const plan = data.currentPlan || 'FREE_TRIAL'
           setCanSchedule(['PROFESSIONAL', 'BUSINESS', 'ENTERPRISE'].includes(plan))
         }
       } catch (error) {
