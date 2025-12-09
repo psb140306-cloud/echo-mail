@@ -206,20 +206,21 @@ export default function AddressBookPage() {
     }
   }
 
-  // 검색 및 필터 적용
+  // 검색 및 필터 적용 - 페이지를 1로 리셋 (debounce 적용)
   useEffect(() => {
     const timer = setTimeout(() => {
-      setCurrentPage(1)
-      fetchContacts()
+      if (currentPage !== 1) {
+        setCurrentPage(1)
+      }
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [searchTerm, selectedCompanyId])
+  }, [searchTerm, selectedCompanyId, currentPage])
 
-  // 페이지 변경
+  // 페이지 변경 시 조회 (fetchContacts가 searchTerm, selectedCompanyId를 이미 의존하므로 중복 방지)
   useEffect(() => {
     fetchContacts()
-  }, [currentPage, fetchContacts])
+  }, [fetchContacts])
 
   // 초기 데이터 로드
   useEffect(() => {
