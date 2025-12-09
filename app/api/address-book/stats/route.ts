@@ -28,11 +28,11 @@ async function getStats(request: NextRequest) {
       },
     })
 
-    // 전화번호가 등록된 연락처 수
+    // 전화번호가 등록된 연락처 수 (010으로 시작하는 유효한 전화번호만)
     const contactsWithPhone = await prisma.contact.count({
       where: {
         tenantId,
-        phone: { not: '' },
+        phone: { startsWith: '010' },
       },
     })
 
