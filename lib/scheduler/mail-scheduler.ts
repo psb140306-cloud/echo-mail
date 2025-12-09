@@ -2,6 +2,7 @@ import cron from 'node-cron'
 import { PrismaClient } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
 import { mailMonitorService } from '@/lib/mail/mail-monitor-service'
+import { processScheduledEmails } from './scheduled-email-processor'
 
 const prisma = new PrismaClient()
 
@@ -91,7 +92,17 @@ export class MailScheduler {
         })
 
         try {
-          // 해당 테넌트의 메일만 확인
+          // 1. 예약된 메일 발송 처리 (모든 테넌트 대상)
+          const scheduledResult = await processScheduledEmails()
+          if (scheduledResult.processed > 0) {
+            logger.info('[MailScheduler] 예약 메일 처리 완료', {
+              processed: scheduledResult.processed,
+              sent: scheduledResult.sent,
+              failed: scheduledResult.failed,
+            })
+          }
+
+          // 2. 해당 테넌트의 수신 메일 확인
           const results = await mailMonitorService.checkAllTenants()
           const result = results.get(tenantId)
 

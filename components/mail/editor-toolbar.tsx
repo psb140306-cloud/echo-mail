@@ -1,7 +1,7 @@
 'use client'
 
 import { Editor } from '@tiptap/react'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Tooltip,
@@ -60,6 +60,8 @@ import {
   Columns,
   Merge,
   Split,
+  ExternalLink,
+  Upload,
 } from 'lucide-react'
 
 interface EditorToolbarProps {
@@ -93,9 +95,59 @@ const HIGHLIGHT_COLORS = [
 
 export function EditorToolbar({ editor }: EditorToolbarProps) {
   const [linkUrl, setLinkUrl] = useState('')
+  const [linkText, setLinkText] = useState('')
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [imageUrl, setImageUrl] = useState('')
   const [imageDialogOpen, setImageDialogOpen] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const imageFileInputRef = useRef<HTMLInputElement>(null)
+
+  // 이미지 파일 선택 처리 (로컬 파일을 Base64로 변환)
+  const handleImageFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+
+      // 이미지 파일만 허용
+      if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드할 수 있습니다.')
+        return
+      }
+
+      // 파일 크기 제한 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('이미지 크기는 5MB 이하여야 합니다.')
+        return
+      }
+
+      setIsUploadingImage(true)
+
+      try {
+        // 파일을 Base64로 변환
+        const reader = new FileReader()
+        reader.onload = () => {
+          const base64 = reader.result as string
+          editor.chain().focus().setImage({ src: base64 }).run()
+          setImageDialogOpen(false)
+          setIsUploadingImage(false)
+        }
+        reader.onerror = () => {
+          alert('이미지를 읽는 중 오류가 발생했습니다.')
+          setIsUploadingImage(false)
+        }
+        reader.readAsDataURL(file)
+      } catch (error) {
+        alert('이미지 처리 중 오류가 발생했습니다.')
+        setIsUploadingImage(false)
+      }
+
+      // input 초기화
+      if (imageFileInputRef.current) {
+        imageFileInputRef.current.value = ''
+      }
+    },
+    [editor]
+  )
 
   // 링크 설정
   const setLink = useCallback(() => {
@@ -110,10 +162,21 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       url = 'https://' + url
     }
 
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    // 링크 텍스트가 있으면 해당 텍스트로 링크 생성
+    if (linkText) {
+      editor
+        .chain()
+        .focus()
+        .insertContent(`<a href="${url}">${linkText}</a>`)
+        .run()
+    } else {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    }
+
     setLinkUrl('')
+    setLinkText('')
     setLinkDialogOpen(false)
-  }, [editor, linkUrl])
+  }, [editor, linkUrl, linkText])
 
   // 이미지 삽입
   const insertImage = useCallback(() => {
@@ -274,7 +337,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       {/* 글자 색상 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" title="글자 색상" className="h-8 w-8 p-0">
             <Palette className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -306,7 +369,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       {/* 형광펜 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" title="형광펜" className="h-8 w-8 p-0">
             <Highlighter className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -400,38 +463,72 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
           <Button
             variant="ghost"
             size="sm"
+            title="링크 삽입"
             className={`h-8 w-8 p-0 ${editor.isActive('link') ? 'bg-muted' : ''}`}
           >
             <LinkIcon className="h-4 w-4" />
           </Button>
         </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>링크 삽입</DialogTitle>
-            <DialogDescription>링크할 URL을 입력하세요.</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="link-url">URL</Label>
-            <Input
-              id="link-url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="mt-2"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  setLink()
-                }
-              }}
-            />
+        <DialogContent className="sm:max-w-md p-0">
+          <div className="p-4 space-y-4">
+            {/* 링크 제목 */}
+            <div className="flex items-center gap-4">
+              <Label htmlFor="link-text" className="w-20 text-sm text-muted-foreground whitespace-nowrap">
+                링크 제목
+              </Label>
+              <Input
+                id="link-text"
+                value={linkText}
+                onChange={(e) => setLinkText(e.target.value)}
+                className="flex-1 h-9"
+              />
+            </div>
+
+            {/* 이동할 URL */}
+            <div className="flex items-center gap-4">
+              <Label htmlFor="link-url" className="w-20 text-sm text-muted-foreground whitespace-nowrap">
+                이동할 URL
+              </Label>
+              <Input
+                id="link-url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="URL을 입력하세요."
+                className="flex-1 h-9"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    setLink()
+                  }
+                }}
+              />
+            </div>
+
+            {/* 하단 버튼 영역 */}
+            <div className="flex items-center justify-between pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  if (linkUrl) {
+                    let url = linkUrl
+                    if (!/^https?:\/\//i.test(url)) {
+                      url = 'https://' + url
+                    }
+                    window.open(url, '_blank')
+                  }
+                }}
+                disabled={!linkUrl}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                URL로 이동
+              </Button>
+              <Button size="sm" onClick={setLink}>
+                확인
+              </Button>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
-              취소
-            </Button>
-            <Button onClick={setLink}>확인</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -447,44 +544,82 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       {/* 이미지 */}
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" title="이미지 삽입" className="h-8 w-8 p-0">
             <ImageIcon className="h-4 w-4" />
           </Button>
         </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>이미지 삽입</DialogTitle>
-            <DialogDescription>이미지 URL을 입력하세요.</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="image-url">이미지 URL</Label>
-            <Input
-              id="image-url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-              className="mt-2"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  insertImage()
-                }
-              }}
+        <DialogContent className="sm:max-w-md p-0">
+          <div className="p-4 space-y-4">
+            {/* 숨겨진 파일 input */}
+            <input
+              ref={imageFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageFileSelect}
+              className="hidden"
             />
+
+            {/* 파일 업로드 영역 */}
+            <div
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
+              onClick={() => imageFileInputRef.current?.click()}
+            >
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {isUploadingImage ? '업로드 중...' : '클릭하여 이미지 파일 선택'}
+              </p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                PNG, JPG, GIF (최대 5MB)
+              </p>
+            </div>
+
+            {/* 구분선 */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-background px-2 text-muted-foreground">또는</span>
+              </div>
+            </div>
+
+            {/* URL 입력 */}
+            <div className="flex items-center gap-4">
+              <Label htmlFor="image-url" className="w-16 text-sm text-muted-foreground whitespace-nowrap">
+                이미지 URL
+              </Label>
+              <Input
+                id="image-url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+                className="flex-1 h-9"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    insertImage()
+                  }
+                }}
+              />
+            </div>
+
+            {/* 하단 버튼 영역 */}
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setImageDialogOpen(false)}>
+                취소
+              </Button>
+              <Button size="sm" onClick={insertImage} disabled={!imageUrl}>
+                삽입
+              </Button>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
-              취소
-            </Button>
-            <Button onClick={insertImage}>삽입</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* 표 */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Button variant="ghost" size="sm" title="표 삽입" className="h-8 w-8 p-0">
             <TableIcon className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>

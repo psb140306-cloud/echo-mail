@@ -14,6 +14,32 @@ import { SubscriptionPlan } from '@/lib/subscription/plans'
 import { trackEmailUsage } from '@/lib/usage/usage-tracker'
 import { getKSTStartOfMonth } from '@/lib/utils/date'
 
+// 프론트엔드에서 전송하는 첨부파일 형식
+export interface FrontendAttachment {
+  key: string
+  name: string
+  size: number
+  type: string
+  url?: string
+}
+
+/**
+ * 프론트엔드 첨부파일 형식을 nodemailer 형식으로 변환
+ */
+export function convertAttachmentsForNodemailer(
+  attachments: FrontendAttachment[]
+): Array<{
+  filename: string
+  path?: string
+  contentType?: string
+}> {
+  return attachments.map((attachment) => ({
+    filename: attachment.name,
+    path: attachment.url, // URL을 path로 사용 (nodemailer가 URL에서 다운로드)
+    contentType: attachment.type,
+  }))
+}
+
 // 메일 발송 설정 인터페이스
 export interface SmtpConfig {
   host: string
@@ -367,4 +393,45 @@ export async function testTenantSmtpConnection(
   }
 
   return testSmtpConnection(smtpConfig)
+}
+
+/**
+ * sendMail의 별칭 (scheduled-email-processor와의 호환성을 위해)
+ * tenantId만으로 호출 가능한 간소화된 인터페이스
+ */
+export interface SendEmailRequest {
+  tenantId: string
+  to: string | string[]
+  cc?: string | string[]
+  bcc?: string | string[]
+  subject: string
+  text?: string
+  html?: string
+  attachments?: FrontendAttachment[]
+  replyTo?: string
+  inReplyTo?: string
+  references?: string
+}
+
+export async function sendEmail(
+  request: SendEmailRequest
+): Promise<SendMailResult> {
+  // 첨부파일 변환
+  const convertedAttachments = request.attachments
+    ? convertAttachmentsForNodemailer(request.attachments)
+    : undefined
+
+  // sendMail 호출 (userId는 'system'으로 설정)
+  return sendMail(request.tenantId, 'system', {
+    to: request.to,
+    cc: request.cc,
+    bcc: request.bcc,
+    subject: request.subject,
+    text: request.text,
+    html: request.html,
+    attachments: convertedAttachments,
+    replyTo: request.replyTo,
+    inReplyTo: request.inReplyTo,
+    references: request.references,
+  })
 }

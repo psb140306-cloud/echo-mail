@@ -151,7 +151,12 @@ export default function ComposeMailPage() {
       return
     }
 
-    if (!bodyText.trim()) {
+    // HTML 내용이 비어있는지 확인 (태그만 있는 경우도 빈 것으로 처리)
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = bodyHtml
+    const textContent = tempDiv.textContent || tempDiv.innerText || ''
+
+    if (!textContent.trim()) {
       toast({
         title: '오류',
         description: '본문을 입력해주세요.',

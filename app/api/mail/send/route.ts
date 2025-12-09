@@ -18,9 +18,18 @@ import {
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { createClient } from '@/lib/supabase/server'
-import { sendMail } from '@/lib/mail/mail-sender'
+import { sendMail, convertAttachmentsForNodemailer } from '@/lib/mail/mail-sender'
 import { canSendMail } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
+
+// 첨부파일 스키마 (프론트엔드에서 전송하는 형식)
+const attachmentSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  size: z.number(),
+  type: z.string(),
+  url: z.string().optional(),
+})
 
 // 메일 발송 요청 스키마
 const sendMailSchema = z.object({
@@ -30,6 +39,7 @@ const sendMailSchema = z.object({
   subject: z.string().min(1, '제목을 입력해주세요.').max(500),
   text: z.string().optional(),
   html: z.string().optional(),
+  attachments: z.array(attachmentSchema).optional(),
   replyTo: z.string().email().optional(),
   inReplyTo: z.string().optional(),
   references: z.string().optional(),
@@ -93,6 +103,11 @@ export async function POST(request: NextRequest) {
       const { data, error } = await parseAndValidate(request, sendMailSchema)
       if (error) return error
 
+      // 첨부파일 변환 (프론트엔드 형식 → nodemailer 형식)
+      const convertedAttachments = data.attachments
+        ? convertAttachmentsForNodemailer(data.attachments)
+        : undefined
+
       // 메일 발송
       const result = await sendMail(tenantId, user.id, {
         to: data.to,
@@ -101,6 +116,7 @@ export async function POST(request: NextRequest) {
         subject: data.subject,
         text: data.text,
         html: data.html,
+        attachments: convertedAttachments,
         replyTo: data.replyTo,
         inReplyTo: data.inReplyTo,
         references: data.references,

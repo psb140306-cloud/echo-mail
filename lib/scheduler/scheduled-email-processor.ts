@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
-import { sendEmail } from '@/lib/mail/mail-sender'
+import { sendEmail, FrontendAttachment } from '@/lib/mail/mail-sender'
 
 /**
  * 예약된 메일을 발송하는 프로세서
@@ -75,13 +75,7 @@ export async function processScheduledEmails(): Promise<{
           subject: scheduledEmail.subject,
           text: scheduledEmail.text || undefined,
           html: scheduledEmail.html,
-          attachments: scheduledEmail.attachments as Array<{
-            key: string
-            name: string
-            size: number
-            type: string
-            url?: string
-          }> | undefined,
+          attachments: scheduledEmail.attachments as FrontendAttachment[] | undefined,
         })
 
         if (result.success) {
