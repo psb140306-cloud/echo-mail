@@ -72,6 +72,12 @@ interface Contact {
   createdAt: string
 }
 
+interface Stats {
+  totalContacts: number
+  contactsWithEmail: number
+  companiesWithContacts: number
+}
+
 export default function AddressBookPage() {
   const [contacts, setContacts] = useState<Contact[]>([])
   const [companies, setCompanies] = useState<Company[]>([])
@@ -81,11 +87,18 @@ export default function AddressBookPage() {
   const [deletingContact, setDeletingContact] = useState<string | null>(null)
   const { toast } = useToast()
 
+  // 통계 상태
+  const [stats, setStats] = useState<Stats>({
+    totalContacts: 0,
+    contactsWithEmail: 0,
+    companiesWithContacts: 0,
+  })
+
   // 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
-  const itemsPerPage = 20
+  const [itemsPerPage, setItemsPerPage] = useState(20)
 
   // 다이얼로그 상태
   const [contactDialogOpen, setContactDialogOpen] = useState(false)
@@ -144,6 +157,20 @@ export default function AddressBookPage() {
     }
   }, [])
 
+  // 통계 조회
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await fetch('/api/address-book/stats')
+      const data = await response.json()
+
+      if (data.success) {
+        setStats(data.data)
+      }
+    } catch (error) {
+      console.error('통계 조회 실패:', error)
+    }
+  }, [])
+
   // 연락처 삭제
   const deleteContact = async (contactId: string) => {
     try {
@@ -198,7 +225,13 @@ export default function AddressBookPage() {
   useEffect(() => {
     fetchContacts()
     fetchCompanies()
+    fetchStats()
   }, [])
+
+  // itemsPerPage 변경 시 첫 페이지로
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [itemsPerPage])
 
   // 새 연락처 추가 핸들러
   const handleAddContact = () => {
@@ -217,6 +250,7 @@ export default function AddressBookPage() {
     setContactDialogOpen(false)
     setEditingContact(null)
     fetchContacts()
+    fetchStats()
   }
 
   // 주소록 내보내기
@@ -229,6 +263,7 @@ export default function AddressBookPage() {
     setImportDialogOpen(false)
     fetchContacts()
     fetchCompanies()
+    fetchStats()
   }
 
   return (
@@ -264,7 +299,7 @@ export default function AddressBookPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalCount}</div>
+              <div className="text-2xl font-bold">{stats.totalContacts}</div>
             </CardContent>
           </Card>
           <Card>
@@ -273,18 +308,24 @@ export default function AddressBookPage() {
               <Mail className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {contacts.filter((c) => c.email).length}
-              </div>
+              <div className="text-2xl font-bold">{stats.contactsWithEmail}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.totalContacts > 0
+                  ? `${Math.round((stats.contactsWithEmail / stats.totalContacts) * 100)}%`
+                  : '0%'}
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">등록 업체</CardTitle>
+              <CardTitle className="text-sm font-medium">연락처 보유 업체</CardTitle>
               <Building2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{companies.length}</div>
+              <div className="text-2xl font-bold">{stats.companiesWithContacts}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                전체 {companies.length}개 업체 중
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -445,12 +486,26 @@ export default function AddressBookPage() {
             )}
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-2 py-4">
+            <div className="flex items-center justify-between px-2 py-4">
+              <div className="flex items-center gap-4">
                 <div className="text-sm text-muted-foreground">
-                  {totalCount}개 중 {(currentPage - 1) * itemsPerPage + 1}-
+                  {totalCount}개 중 {totalCount > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-
                   {Math.min(currentPage * itemsPerPage, totalCount)}개 표시
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">페이지당</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className="px-2 py-1 border border-input bg-background rounded-md text-sm"
+                  >
+                    <option value={20}>20개</option>
+                    <option value={50}>50개</option>
+                    <option value={100}>100개</option>
+                  </select>
+                </div>
+              </div>
+              {totalPages > 1 && (
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"
@@ -472,8 +527,8 @@ export default function AddressBookPage() {
                     다음
                   </Button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
