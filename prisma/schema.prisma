@@ -23,6 +23,7 @@ model Company {
   email     String
   region    String
   isActive  Boolean  @default(true)
+  isManual  Boolean  @default(true)  // true: 사용자가 직접 등록, false: 주소록 가져오기로 자동 생성
 
   // 멀티테넌시
   tenantId  String

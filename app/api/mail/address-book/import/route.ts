@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
               name: '개인 연락처',
               email: 'imported@contacts.local',
               region: '기타',
+              isManual: false, // 자동 생성된 업체 (업체 관리에 표시 안 함)
             },
           })
         }

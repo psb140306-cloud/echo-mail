@@ -88,6 +88,13 @@ export default function CompaniesPage() {
   const [totalCount, setTotalCount] = useState(0)
   const itemsPerPage = 10
 
+  // 통계 상태
+  const [stats, setStats] = useState({
+    totalCompanies: 0,
+    activeCompanies: 0,
+    totalContacts: 0,
+  })
+
   // 업체 목록 조회
   const fetchCompanies = useCallback(async () => {
     try {
@@ -108,6 +115,10 @@ export default function CompaniesPage() {
         setCompanies(data.data)
         setTotalPages(data.pagination.pages)
         setTotalCount(data.pagination.total)
+        // 서버에서 제공하는 통계 사용
+        if (data.stats) {
+          setStats(data.stats)
+        }
       } else {
         toast({
           title: '오류',
@@ -227,7 +238,7 @@ export default function CompaniesPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalCount}</div>
+              <div className="text-2xl font-bold">{stats.totalCompanies}</div>
             </CardContent>
           </Card>
           <Card>
@@ -236,7 +247,7 @@ export default function CompaniesPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{companies.filter((c) => c.isActive).length}</div>
+              <div className="text-2xl font-bold">{stats.activeCompanies}</div>
             </CardContent>
           </Card>
           <Card>
@@ -245,9 +256,7 @@ export default function CompaniesPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {companies.reduce((sum, c) => sum + c._count.contacts, 0)}
-              </div>
+              <div className="text-2xl font-bold">{stats.totalContacts}</div>
             </CardContent>
           </Card>
         </div>

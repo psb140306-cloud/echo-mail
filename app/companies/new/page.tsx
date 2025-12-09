@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,9 +14,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Save } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Loader2, Save, Search, BookUser, X } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { AppHeader } from '@/components/layout/app-header'
+
+interface AddressBookContact {
+  id: string
+  name: string
+  email: string | null
+  phone: string
+  position: string | null
+}
 
 // 기본 지역 목록 (배송 규칙과 동일)
 const DEFAULT_REGIONS = [
@@ -58,6 +74,74 @@ export default function NewCompanyPage() {
     smsEnabled: true,
     kakaoEnabled: false,
   })
+
+  // 주소록 선택 관련 상태
+  const [isAddressBookOpen, setIsAddressBookOpen] = useState(false)
+  const [addressBookContacts, setAddressBookContacts] = useState<AddressBookContact[]>([])
+  const [addressBookSearch, setAddressBookSearch] = useState('')
+  const [addressBookLoading, setAddressBookLoading] = useState(false)
+  const [selectedContact, setSelectedContact] = useState<AddressBookContact | null>(null)
+
+  // 주소록 연락처 검색
+  const searchAddressBook = useCallback(async (search: string) => {
+    try {
+      setAddressBookLoading(true)
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '20',
+      })
+      if (search) {
+        params.append('search', search)
+      }
+
+      const response = await fetch(`/api/address-book?${params}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setAddressBookContacts(data.data)
+      }
+    } catch (error) {
+      console.error('주소록 검색 실패:', error)
+    } finally {
+      setAddressBookLoading(false)
+    }
+  }, [])
+
+  // 주소록 다이얼로그 열릴 때 초기 로드
+  useEffect(() => {
+    if (isAddressBookOpen) {
+      searchAddressBook(addressBookSearch)
+    }
+  }, [isAddressBookOpen, searchAddressBook, addressBookSearch])
+
+  // 주소록에서 연락처 선택
+  const handleSelectContact = (contact: AddressBookContact) => {
+    setSelectedContact(contact)
+    setFormData({
+      ...formData,
+      contactName: contact.name,
+      contactPhone: contact.phone,
+      contactEmail: contact.email || '',
+      contactPosition: contact.position || '',
+    })
+    setIsAddressBookOpen(false)
+    toast({
+      title: '담당자 선택됨',
+      description: `${contact.name}님이 담당자로 선택되었습니다.`,
+    })
+  }
+
+  // 선택된 연락처 해제
+  const handleClearContact = () => {
+    setSelectedContact(null)
+    setFormData({
+      ...formData,
+      contactName: '',
+      contactPhone: '',
+      contactEmail: '',
+      contactPosition: '',
+    })
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -247,7 +331,88 @@ export default function NewCompanyPage() {
 
               {/* 구분선 */}
               <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">담당자 정보</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">담당자 정보</h3>
+                  <Dialog open={isAddressBookOpen} onOpenChange={setIsAddressBookOpen}>
+                    <DialogTrigger asChild>
+                      <Button type="button" variant="outline" size="sm">
+                        <BookUser className="mr-2 h-4 w-4" />
+                        주소록에서 선택
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>주소록에서 담당자 선택</DialogTitle>
+                        <DialogDescription>
+                          주소록에 등록된 연락처에서 담당자를 선택하세요.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="이름, 이메일, 전화번호로 검색..."
+                            value={addressBookSearch}
+                            onChange={(e) => setAddressBookSearch(e.target.value)}
+                            className="pl-8"
+                          />
+                        </div>
+                        <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                          {addressBookLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                            </div>
+                          ) : addressBookContacts.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              검색 결과가 없습니다.
+                            </div>
+                          ) : (
+                            <div className="divide-y">
+                              {addressBookContacts.map((contact) => (
+                                <button
+                                  key={contact.id}
+                                  type="button"
+                                  className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                                  onClick={() => handleSelectContact(contact)}
+                                >
+                                  <div className="font-medium">{contact.name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {contact.phone}
+                                    {contact.email && ` · ${contact.email}`}
+                                    {contact.position && ` · ${contact.position}`}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {/* 선택된 연락처 표시 */}
+                {selectedContact && (
+                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between">
+                    <div>
+                      <span className="text-sm text-blue-600 dark:text-blue-400">
+                        주소록에서 선택됨:
+                      </span>
+                      <span className="ml-2 font-medium">{selectedContact.name}</span>
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        {selectedContact.phone}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearContact}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
 
                 {/* 담당자 이름 */}
                 <div className="space-y-2 mb-4">

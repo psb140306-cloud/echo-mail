@@ -50,6 +50,7 @@ async function getCompanies(request: NextRequest) {
 
     const where: Prisma.CompanyWhereInput = {
       tenantId, // CRITICAL: Filter by tenantId for security
+      isManual: true, // 사용자가 직접 등록한 업체만 조회
     }
 
     if (search) {
@@ -67,7 +68,13 @@ async function getCompanies(request: NextRequest) {
       where.isActive = isActiveParam === 'true'
     }
 
-    const [companies, total] = await Promise.all([
+    // 통계용 기본 조건 (검색/필터 무관하게 전체 isManual 업체)
+    const baseWhere: Prisma.CompanyWhereInput = {
+      tenantId,
+      isManual: true,
+    }
+
+    const [companies, total, activeCount, totalContacts] = await Promise.all([
       prisma.company.findMany({
         where,
         include: {
@@ -86,6 +93,16 @@ async function getCompanies(request: NextRequest) {
         take: limit,
       }),
       prisma.company.count({ where }),
+      // 활성 업체 수 (전체 기준)
+      prisma.company.count({ where: { ...baseWhere, isActive: true } }),
+      // 총 담당자 수 (isManual: true 업체의 담당자만)
+      prisma.contact.count({
+        where: {
+          tenantId,
+          isActive: true,
+          company: { isManual: true },
+        },
+      }),
     ])
 
     logger.info('업체 목록 조회', {
@@ -106,6 +123,11 @@ async function getCompanies(request: NextRequest) {
         limit,
         total,
         pages: Math.ceil(total / limit),
+      },
+      stats: {
+        totalCompanies: total,
+        activeCompanies: activeCount,
+        totalContacts,
       },
     })
   } catch (error) {
@@ -176,6 +198,7 @@ async function createCompany(request: NextRequest) {
         email: validatedData.email,
         region: validatedData.region,
         isActive: validatedData.isActive ?? true,
+        isManual: true, // 사용자가 직접 등록한 업체
         tenantId, // tenant context에서 가져온 tenantId 추가
         // 담당자 정보가 있으면 함께 생성
         ...(validatedData.contactName &&
