@@ -197,7 +197,7 @@ export function SchedulePicker({
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 min-w-[320px]" align="start">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
@@ -206,6 +206,7 @@ export function SchedulePicker({
                       date < new Date() || date > addMinutes(new Date(), 30 * 24 * 60)
                     }
                     initialFocus
+                    className="p-4"
                   />
                 </PopoverContent>
               </Popover>
