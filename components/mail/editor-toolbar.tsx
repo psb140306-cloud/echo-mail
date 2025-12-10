@@ -335,12 +335,17 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 글자 색상 */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" title="글자 색상" className="h-8 w-8 p-0">
-            <Palette className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <DropdownMenu>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Palette className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>글자 색상</TooltipContent>
         <DropdownMenuContent align="start" className="w-36">
           <div className="p-2">
             <p className="text-xs font-medium mb-2">글자 색상</p>
@@ -364,15 +369,22 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             </div>
           </div>
         </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenu>
+        </Tooltip>
+      </TooltipProvider>
 
       {/* 형광펜 */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" title="형광펜" className="h-8 w-8 p-0">
-            <Highlighter className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <DropdownMenu>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Highlighter className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>형광펜</TooltipContent>
         <DropdownMenuContent align="start" className="w-36">
           <div className="p-2">
             <p className="text-xs font-medium mb-2">형광펜</p>
@@ -396,7 +408,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             </div>
           </div>
         </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenu>
+        </Tooltip>
+      </TooltipProvider>
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
@@ -458,17 +472,21 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       <Separator orientation="vertical" className="h-6 mx-1" />
 
       {/* 링크 */}
-      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <DialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            title="링크 삽입"
-            className={`h-8 w-8 p-0 ${editor.isActive('link') ? 'bg-muted' : ''}`}
-          >
-            <LinkIcon className="h-4 w-4" />
-          </Button>
-        </DialogTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+            <TooltipTrigger asChild>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-8 w-8 p-0 ${editor.isActive('link') ? 'bg-muted' : ''}`}
+                >
+                  <LinkIcon className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent>링크 삽입</TooltipContent>
         <DialogContent className="sm:max-w-md p-0">
           <div className="p-4 space-y-4">
             {/* 링크 제목 */}
@@ -530,7 +548,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+          </Dialog>
+        </Tooltip>
+      </TooltipProvider>
 
       {editor.isActive('link') && (
         <ToolbarButton
@@ -542,12 +562,17 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       )}
 
       {/* 이미지 */}
-      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant="ghost" size="sm" title="이미지 삽입" className="h-8 w-8 p-0">
-            <ImageIcon className="h-4 w-4" />
-          </Button>
-        </DialogTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+            <TooltipTrigger asChild>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <ImageIcon className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent>이미지 삽입</TooltipContent>
         <DialogContent className="sm:max-w-md p-0">
           <div className="p-4 space-y-4">
             {/* 숨겨진 파일 input */}
@@ -614,15 +639,22 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+          </Dialog>
+        </Tooltip>
+      </TooltipProvider>
 
       {/* 표 */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" title="표 삽입" className="h-8 w-8 p-0">
-            <TableIcon className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <DropdownMenu>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <TableIcon className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>표 삽입</TooltipContent>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={insertTable}>
             <Plus className="h-4 w-4 mr-2" />
@@ -676,7 +708,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             </>
           )}
         </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenu>
+        </Tooltip>
+      </TooltipProvider>
     </div>
   )
 }
