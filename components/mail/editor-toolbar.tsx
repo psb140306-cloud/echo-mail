@@ -14,7 +14,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import {
   Dialog,
@@ -47,22 +46,15 @@ import {
   Link as LinkIcon,
   Unlink,
   Image as ImageIcon,
-  Table as TableIcon,
   Undo,
   Redo,
   Highlighter,
   Palette,
   ChevronDown,
-  Plus,
-  Minus,
-  Trash2,
-  RowsIcon,
-  Columns,
-  Merge,
-  Split,
   ExternalLink,
   Upload,
 } from 'lucide-react'
+import { TableInsertPopover } from './table-insert-popover'
 
 interface EditorToolbarProps {
   editor: Editor
@@ -191,11 +183,6 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
     setImageUrl('')
     setImageDialogOpen(false)
   }, [editor, imageUrl])
-
-  // 표 삽입
-  const insertTable = useCallback(() => {
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-  }, [editor])
 
   // 툴바 버튼 컴포넌트
   const ToolbarButton = ({
@@ -487,8 +474,8 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
               </DialogTrigger>
             </TooltipTrigger>
             <TooltipContent side="bottom">링크 삽입</TooltipContent>
-        <DialogContent className="sm:max-w-md p-0">
-          <div className="p-4 space-y-4">
+        <DialogContent className="sm:max-w-lg">
+          <div className="space-y-4 pr-6">
             {/* 링크 제목 */}
             <div className="flex items-center gap-4">
               <Label htmlFor="link-text" className="w-20 text-sm text-muted-foreground whitespace-nowrap">
@@ -573,8 +560,8 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
               </DialogTrigger>
             </TooltipTrigger>
             <TooltipContent side="bottom">이미지 삽입</TooltipContent>
-        <DialogContent className="sm:max-w-md p-0">
-          <div className="p-4 space-y-4">
+        <DialogContent className="sm:max-w-lg">
+          <div className="space-y-4 pr-6">
             {/* 숨겨진 파일 input */}
             <input
               ref={imageFileInputRef}
@@ -644,73 +631,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       </TooltipProvider>
 
       {/* 표 */}
-      <TooltipProvider delayDuration={300}>
-        <Tooltip>
-          <DropdownMenu>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <TableIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">표 삽입</TooltipContent>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={insertTable}>
-            <Plus className="h-4 w-4 mr-2" />
-            표 삽입 (3x3)
-          </DropdownMenuItem>
-          {editor.isActive('table') && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => editor.chain().focus().addColumnBefore().run()}>
-                <Columns className="h-4 w-4 mr-2" />
-                왼쪽에 열 추가
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().addColumnAfter().run()}>
-                <Columns className="h-4 w-4 mr-2" />
-                오른쪽에 열 추가
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().deleteColumn().run()}>
-                <Minus className="h-4 w-4 mr-2" />
-                열 삭제
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => editor.chain().focus().addRowBefore().run()}>
-                <RowsIcon className="h-4 w-4 mr-2" />
-                위에 행 추가
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().addRowAfter().run()}>
-                <RowsIcon className="h-4 w-4 mr-2" />
-                아래에 행 추가
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().deleteRow().run()}>
-                <Minus className="h-4 w-4 mr-2" />
-                행 삭제
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => editor.chain().focus().mergeCells().run()}>
-                <Merge className="h-4 w-4 mr-2" />
-                셀 병합
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => editor.chain().focus().splitCell().run()}>
-                <Split className="h-4 w-4 mr-2" />
-                셀 분할
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => editor.chain().focus().deleteTable().run()}
-                className="text-red-600"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                표 삭제
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-          </DropdownMenu>
-        </Tooltip>
-      </TooltipProvider>
+      <TableInsertPopover editor={editor} />
     </div>
   )
 }

@@ -16,6 +16,7 @@ import { Color } from '@tiptap/extension-color'
 import { Highlight } from '@tiptap/extension-highlight'
 import { useCallback, useEffect, useState } from 'react'
 import { EditorToolbar } from './editor-toolbar'
+import { TableCellMenu } from './table-cell-menu'
 
 interface RichTextEditorProps {
   content?: string
@@ -126,6 +127,12 @@ export function RichTextEditor({
   return (
     <div className={`border rounded-md bg-background overflow-hidden ${className}`}>
       {editor && <EditorToolbar editor={editor} />}
+      {/* 표 편집 시 셀 메뉴 표시 */}
+      {editor && editor.isActive('table') && (
+        <div className="border-b px-2 py-1 bg-muted/20">
+          <TableCellMenu editor={editor} />
+        </div>
+      )}
       <EditorContent
         editor={editor}
         className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
