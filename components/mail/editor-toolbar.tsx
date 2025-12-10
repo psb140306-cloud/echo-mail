@@ -345,7 +345,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent>글자 색상</TooltipContent>
+            <TooltipContent side="bottom">글자 색상</TooltipContent>
         <DropdownMenuContent align="start" className="w-36">
           <div className="p-2">
             <p className="text-xs font-medium mb-2">글자 색상</p>
@@ -384,7 +384,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent>형광펜</TooltipContent>
+            <TooltipContent side="bottom">형광펜</TooltipContent>
         <DropdownMenuContent align="start" className="w-36">
           <div className="p-2">
             <p className="text-xs font-medium mb-2">형광펜</p>
@@ -486,7 +486,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
                 </Button>
               </DialogTrigger>
             </TooltipTrigger>
-            <TooltipContent>링크 삽입</TooltipContent>
+            <TooltipContent side="bottom">링크 삽입</TooltipContent>
         <DialogContent className="sm:max-w-md p-0">
           <div className="p-4 space-y-4">
             {/* 링크 제목 */}
@@ -572,7 +572,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
                 </Button>
               </DialogTrigger>
             </TooltipTrigger>
-            <TooltipContent>이미지 삽입</TooltipContent>
+            <TooltipContent side="bottom">이미지 삽입</TooltipContent>
         <DialogContent className="sm:max-w-md p-0">
           <div className="p-4 space-y-4">
             {/* 숨겨진 파일 input */}
@@ -654,7 +654,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent>표 삽입</TooltipContent>
+            <TooltipContent side="bottom">표 삽입</TooltipContent>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={insertTable}>
             <Plus className="h-4 w-4 mr-2" />
