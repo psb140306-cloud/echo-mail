@@ -120,6 +120,7 @@ export default function MailPage() {
   // 메일 발신 권한
   const [mailSendingEnabled, setMailSendingEnabled] = useState(false)
   const [showComposeModal, setShowComposeModal] = useState(false)
+  const [checkingMail, setCheckingMail] = useState(false)
 
   // 페이지네이션
   const [page, setPage] = useState(1)
@@ -274,6 +275,41 @@ export default function MailPage() {
     }
   }
 
+  // 새 메일 확인 (IMAP에서 가져오기)
+  const checkNewMail = async () => {
+    setCheckingMail(true)
+    try {
+      const response = await fetch('/api/mail/check', {
+        method: 'POST',
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: '메일 확인 완료',
+          description: result.data?.message || '새 메일을 확인했습니다.',
+        })
+        // 메일 목록 새로고침
+        fetchEmails()
+      } else {
+        toast({
+          title: '오류',
+          description: result.error || '메일 확인에 실패했습니다.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      console.error('메일 확인 실패:', error)
+      toast({
+        title: '오류',
+        description: '메일 확인에 실패했습니다.',
+        variant: 'destructive',
+      })
+    } finally {
+      setCheckingMail(false)
+    }
+  }
+
   // 전체 선택/해제
   const toggleSelectAll = () => {
     if (selectedIds.size === emails.length) {
@@ -419,8 +455,19 @@ export default function MailPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={checkNewMail}
+                  disabled={checkingMail}
+                  title="IMAP 서버에서 새 메일 확인"
+                >
+                  <Mail className={`h-4 w-4 mr-1 ${checkingMail ? 'animate-pulse' : ''}`} />
+                  {checkingMail ? '확인 중...' : '새 메일'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={fetchEmails}
                   disabled={loading}
+                  title="목록 새로고침"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
