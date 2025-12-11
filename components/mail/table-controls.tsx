@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import type React from 'react'
+import { useEffect, useState, useCallback, useRef, Fragment } from 'react'
 import { Editor } from '@tiptap/react'
-import { CellSelection } from '@tiptap/pm/tables'
-import { TableMap } from '@tiptap/pm/tables'
 
 interface TableControlsProps {
   editor: Editor
@@ -13,6 +12,16 @@ export function TableControls({ editor }: TableControlsProps) {
   const [tableElement, setTableElement] = useState<HTMLTableElement | null>(null)
   const [showControls, setShowControls] = useState(false)
   const [controlPosition, setControlPosition] = useState({ top: 0, left: 0 })
+  const resizeStateRef = useRef<{
+    rowIndex: number
+    startY: number
+    startHeight: number
+  } | null>(null)
+  const latestTableRef = useRef<HTMLTableElement | null>(null)
+
+  useEffect(() => {
+    latestTableRef.current = tableElement
+  }, [tableElement])
 
   // 테이블 요소 찾기
   useEffect(() => {
@@ -108,6 +117,49 @@ export function TableControls({ editor }: TableControlsProps) {
     })
   }, [tableElement])
 
+  const handleRowResize = useCallback((event: MouseEvent) => {
+    const state = resizeStateRef.current
+    const table = latestTableRef.current
+
+    if (!state || !table) return
+
+    const deltaY = event.clientY - state.startY
+    const nextHeight = Math.max(16, state.startHeight + deltaY)
+    editor.commands.setRowHeight(state.rowIndex, nextHeight)
+  }, [editor])
+
+  const stopRowResize = useCallback(() => {
+    resizeStateRef.current = null
+    window.removeEventListener('mousemove', handleRowResize)
+    window.removeEventListener('mouseup', stopRowResize)
+    window.removeEventListener('mouseleave', stopRowResize)
+  }, [handleRowResize])
+
+  const startRowResize = useCallback((
+    event: React.MouseEvent<HTMLDivElement>,
+    rowIndex: number,
+    rowElement: HTMLTableRowElement
+  ) => {
+    event.preventDefault()
+    const rowRect = rowElement.getBoundingClientRect()
+
+    resizeStateRef.current = {
+      rowIndex,
+      startY: event.clientY,
+      startHeight: rowRect.height,
+    }
+
+    window.addEventListener('mousemove', handleRowResize)
+    window.addEventListener('mouseup', stopRowResize)
+    window.addEventListener('mouseleave', stopRowResize)
+  }, [handleRowResize, stopRowResize])
+
+  useEffect(() => {
+    return () => {
+      stopRowResize()
+    }
+  }, [stopRowResize])
+
   if (!showControls || !tableElement) {
     return null
   }
@@ -155,19 +207,31 @@ export function TableControls({ editor }: TableControlsProps) {
       {Array.from(rows).map((row, index) => {
         const rowRect = row.getBoundingClientRect()
         const editorRect = editor.view.dom.getBoundingClientRect()
+        const rowElement = row as HTMLTableRowElement
 
         return (
-          <div
-            key={`row-${index}`}
-            className="absolute z-40 w-4 bg-muted hover:bg-primary/20 border-y border-l border-border cursor-pointer transition-colors"
-            style={{
-              top: `${rowRect.top - editorRect.top}px`,
-              left: `${controlPosition.left - 16}px`,
-              height: `${rowRect.height}px`,
-            }}
-            onClick={() => selectRow(index)}
-            title={`${index + 1}행 선택`}
-          />
+          <Fragment key={`row-${index}`}>
+            <div
+              className="absolute z-40 w-4 bg-muted hover:bg-primary/20 border-y border-l border-border cursor-pointer transition-colors"
+              style={{
+                top: `${rowRect.top - editorRect.top}px`,
+                left: `${controlPosition.left - 16}px`,
+                height: `${rowRect.height}px`,
+              }}
+              onClick={() => selectRow(index)}
+              title={`${index + 1}행 선택`}
+            />
+            <div
+              className="absolute z-50 h-1.5 bg-primary/40 hover:bg-primary cursor-row-resize rounded"
+              style={{
+                top: `${rowRect.bottom - editorRect.top - 1}px`,
+                left: `${tableRect.left - editorRect.left}px`,
+                width: `${tableRect.width}px`,
+              }}
+              onMouseDown={event => startRowResize(event, index, rowElement)}
+              title="행 높이 조절"
+            />
+          </Fragment>
         )
       })}
     </>
