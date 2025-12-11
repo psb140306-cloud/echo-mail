@@ -126,6 +126,7 @@ export function RichTextEditor({
     let startY = 0
     let startHeight = 0
     let targetRow: HTMLTableRowElement | null = null
+    let lastHoveredCell: HTMLElement | null = null
 
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing && targetRow) {
@@ -145,19 +146,26 @@ export function RichTextEditor({
       const target = e.target as HTMLElement
       const cell = target.closest('td, th') as HTMLTableCellElement
 
+      // 이전 호버 셀의 커서 초기화
+      if (lastHoveredCell && lastHoveredCell !== cell) {
+        lastHoveredCell.style.cursor = ''
+      }
+
       if (!cell) {
-        editorDom.style.cursor = ''
+        lastHoveredCell = null
         return
       }
 
       const cellRect = cell.getBoundingClientRect()
       const distanceFromBottom = cellRect.bottom - e.clientY
 
-      // 셀 하단 6px 영역에서 row-resize 커서 표시
-      if (distanceFromBottom <= 8 && distanceFromBottom >= 0) {
-        editorDom.style.cursor = 'row-resize'
+      // 셀 하단 10px 영역에서 row-resize 커서 표시
+      if (distanceFromBottom <= 10 && distanceFromBottom >= 0) {
+        cell.style.cursor = 'row-resize'
+        lastHoveredCell = cell
       } else {
-        editorDom.style.cursor = ''
+        cell.style.cursor = ''
+        lastHoveredCell = cell
       }
     }
 
@@ -169,8 +177,8 @@ export function RichTextEditor({
       const cellRect = cell.getBoundingClientRect()
       const distanceFromBottom = cellRect.bottom - e.clientY
 
-      // 셀 하단 8px 영역에서 드래그 시작
-      if (distanceFromBottom <= 8 && distanceFromBottom >= 0) {
+      // 셀 하단 10px 영역에서 드래그 시작
+      if (distanceFromBottom <= 10 && distanceFromBottom >= 0) {
         e.preventDefault()
         e.stopPropagation()
         isResizing = true
@@ -190,7 +198,9 @@ export function RichTextEditor({
         targetRow = null
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        editorDom.style.cursor = ''
+        if (lastHoveredCell) {
+          lastHoveredCell.style.cursor = ''
+        }
       }
     }
 
@@ -205,6 +215,10 @@ export function RichTextEditor({
       editorDom.removeEventListener('mousedown', handleMouseDown, { capture: true } as EventListenerOptions)
       document.removeEventListener('mouseup', handleMouseUp)
       document.removeEventListener('mousemove', handleMouseMove)
+      // cleanup
+      if (lastHoveredCell) {
+        lastHoveredCell.style.cursor = ''
+      }
     }
   }, [editor, isMounted])
 
