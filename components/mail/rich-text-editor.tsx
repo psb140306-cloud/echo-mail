@@ -65,18 +65,18 @@ export function RichTextEditor({
       Table.configure({
         resizable: true,
         HTMLAttributes: {
-          class: 'border-collapse border border-gray-500',
+          class: 'border-collapse border border-gray-800',
         },
       }),
       TableRow,
       CustomTableCell.configure({
         HTMLAttributes: {
-          class: 'border border-gray-500 p-2',
+          class: 'border border-gray-800 p-2',
         },
       }),
       CustomTableHeader.configure({
         HTMLAttributes: {
-          class: 'border border-gray-500 p-2 bg-gray-100 font-bold',
+          class: 'border border-gray-800 p-2 bg-white',
         },
       }),
       SplitCellExtension,
