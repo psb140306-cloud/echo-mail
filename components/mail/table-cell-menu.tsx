@@ -132,6 +132,18 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
     }
   }, [editor])
 
+  // 셀을 행으로 분할 (위아래로 나눔) - 선택된 셀의 rowspan을 증가시키고 아래 행 추가
+  const splitCellVertically = useCallback(() => {
+    // 현재 위치에서 행 추가 후 셀 병합으로 분할 효과
+    editor.chain().focus().addRowAfter().run()
+  }, [editor])
+
+  // 셀을 열로 분할 (좌우로 나눔) - 선택된 셀의 colspan을 증가시키고 오른쪽 열 추가
+  const splitCellHorizontally = useCallback(() => {
+    // 현재 위치에서 열 추가로 분할 효과
+    editor.chain().focus().addColumnAfter().run()
+  }, [editor])
+
   // 셀 배경색 설정 - 직접 DOM 스타일 적용
   const setCellBackground = useCallback((color: string) => {
     const selectedCells = editor.view.dom.querySelectorAll('.selectedCell')
@@ -188,18 +200,31 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
         </Button>
       </div>
 
-      {/* 병합 해제 */}
+      {/* 분할 */}
       <div className="flex items-center justify-between py-1.5 px-1">
-        <span className="text-sm">병합 해제</span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2 text-xs"
-          onClick={() => editor.chain().focus().splitCell().run()}
-        >
-          <Grid3X3 className="h-3.5 w-3.5 mr-1" />
-          셀 분할
-        </Button>
+        <span className="text-sm">분할</span>
+        <div className="flex gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={splitCellVertically}
+            title="행으로 분할 (위아래로 나눔)"
+          >
+            <RowsIcon className="h-3.5 w-3.5 mr-1" />
+            행
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={splitCellHorizontally}
+            title="열로 분할 (좌우로 나눔)"
+          >
+            <Columns className="h-3.5 w-3.5 mr-1" />
+            열
+          </Button>
+        </div>
       </div>
 
       {/* 삽입 */}
