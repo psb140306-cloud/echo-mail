@@ -10,6 +10,8 @@ import {
   Grid3X3,
   RowsIcon,
   Columns,
+  SplitSquareVertical,
+  SplitSquareHorizontal,
 } from 'lucide-react'
 
 interface TableCellMenuProps {
@@ -132,16 +134,34 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
     }
   }, [editor])
 
-  // 셀을 행으로 분할 (위아래로 나눔) - 선택된 셀의 rowspan을 증가시키고 아래 행 추가
-  const splitCellVertically = useCallback(() => {
-    // 현재 위치에서 행 추가 후 셀 병합으로 분할 효과
-    editor.chain().focus().addRowAfter().run()
+  // 셀을 행으로 분할 (위아래로 나눔)
+  // 1. 병합된 셀이면 splitCell로 분할
+  // 2. 일반 셀이면 행 추가 후 같은 열의 다른 셀들을 병합하여 분할 효과
+  const splitCellIntoRows = useCallback(() => {
+    // 먼저 splitCell 시도 (병합된 셀 분할)
+    const canSplit = editor.can().splitCell()
+
+    if (canSplit) {
+      editor.chain().focus().splitCell().run()
+    } else {
+      // 일반 셀인 경우: 행 추가로 분할 효과
+      editor.chain().focus().addRowAfter().run()
+    }
   }, [editor])
 
-  // 셀을 열로 분할 (좌우로 나눔) - 선택된 셀의 colspan을 증가시키고 오른쪽 열 추가
-  const splitCellHorizontally = useCallback(() => {
-    // 현재 위치에서 열 추가로 분할 효과
-    editor.chain().focus().addColumnAfter().run()
+  // 셀을 열로 분할 (좌우로 나눔)
+  // 1. 병합된 셀이면 splitCell로 분할
+  // 2. 일반 셀이면 열 추가로 분할 효과
+  const splitCellIntoCols = useCallback(() => {
+    // 먼저 splitCell 시도 (병합된 셀 분할)
+    const canSplit = editor.can().splitCell()
+
+    if (canSplit) {
+      editor.chain().focus().splitCell().run()
+    } else {
+      // 일반 셀인 경우: 열 추가로 분할 효과
+      editor.chain().focus().addColumnAfter().run()
+    }
   }, [editor])
 
   // 셀 배경색 설정 - 직접 DOM 스타일 적용
@@ -208,20 +228,20 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
             variant="outline"
             size="sm"
             className="h-7 px-2 text-xs"
-            onClick={splitCellVertically}
+            onClick={splitCellIntoRows}
             title="행으로 분할 (위아래로 나눔)"
           >
-            <RowsIcon className="h-3.5 w-3.5 mr-1" />
+            <SplitSquareVertical className="h-3.5 w-3.5 mr-1" />
             행
           </Button>
           <Button
             variant="outline"
             size="sm"
             className="h-7 px-2 text-xs"
-            onClick={splitCellHorizontally}
+            onClick={splitCellIntoCols}
             title="열로 분할 (좌우로 나눔)"
           >
-            <Columns className="h-3.5 w-3.5 mr-1" />
+            <SplitSquareHorizontal className="h-3.5 w-3.5 mr-1" />
             열
           </Button>
         </div>

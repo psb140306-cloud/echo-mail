@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client'
 import { ImapFlow } from 'imapflow'
 import { simpleParser, ParsedMail, Attachment } from 'mailparser'
+// @ts-ignore - libmime에 타입 정의 파일이 없음
+import { decode as decodeMailHeader } from 'libmime'
 import { logger } from '@/lib/utils/logger'
 import { createImapClient } from '@/lib/imap/connection'
 import { parseOrderEmail, KeywordOptions } from './email-parser'
@@ -12,6 +14,27 @@ import { SubscriptionPlan } from '@/lib/subscription/plans'
 // import { unregisteredCompanyHandler } from '@/lib/unregistered-company-handler'
 
 const prisma = new PrismaClient()
+
+/**
+ * MIME 인코딩된 메일 헤더 디코딩 (제목, 발신자명 등)
+ * 예: =?UTF-8?B?7ZWc6riA7YWM7Iqk7Yq4?= → 한글테스트
+ * 예: =?euc-kr?Q?=C7=D1=B1=DB?= → 한글
+ */
+function decodeMimeHeader(header: string | undefined): string {
+  if (!header) return ''
+
+  try {
+    // libmime의 decode 함수 사용
+    const decoded = decodeMailHeader(header)
+    return decoded || header
+  } catch (error) {
+    logger.warn('[MailMonitor] MIME 헤더 디코딩 실패, 원본 반환:', {
+      header: header.substring(0, 100),
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+    return header
+  }
+}
 
 // 파싱된 이메일 정보 인터페이스
 interface ParsedEmailContent {
@@ -166,9 +189,20 @@ export class MailMonitorService {
               envelope: true,
               source: true,
               uid: true,
-              headers: ['message-id'],
+              headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
               markSeen: false,
             })) {
+              // 스팸 메일 필터링 (X-Spam-Flag: YES 또는 X-Spam-Status: Yes 등)
+              const isSpam = this.checkIfSpam(message.headers)
+              if (isSpam) {
+                logger.info(`[MailMonitor] 스팸 메일 스킵:`, {
+                  uid: message.uid,
+                  from: message.envelope?.from?.[0]?.address,
+                  subject: message.envelope?.subject,
+                })
+                continue
+              }
+
               logger.info(`[MailMonitor] 메일 발견:`, {
                 uid: message.uid,
                 from: message.envelope?.from?.[0]?.address,
@@ -212,9 +246,20 @@ export class MailMonitorService {
                 envelope: true,
                 source: true,
                 uid: true,
-                headers: ['message-id'],
+                headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
                 markSeen: false,
               })) {
+                // 스팸 메일 필터링
+                const isSpam = this.checkIfSpam(message.headers)
+                if (isSpam) {
+                  logger.info(`[MailMonitor] 스팸 메일 스킵:`, {
+                    uid: message.uid,
+                    from: message.envelope?.from?.[0]?.address,
+                    subject: message.envelope?.subject,
+                  })
+                  continue
+                }
+
                 logger.info(`[MailMonitor] 메일 발견:`, {
                   uid: message.uid,
                   from: message.envelope?.from?.[0]?.address,
@@ -293,10 +338,20 @@ export class MailMonitorService {
   ): Promise<void> {
     const effectiveMailMode = config.effectiveMailMode
     const from = message.envelope.from?.[0]
-    const subject = message.envelope.subject
+    // MIME 인코딩된 제목 디코딩 (예: =?utf-8?B?...?= → 한글)
+    const rawSubject = message.envelope.subject
+    const subject = decodeMimeHeader(rawSubject)
     const date = message.envelope.date
     const maxRetries = 3
     let lastError: Error | null = null
+
+    // 제목 디코딩 로깅
+    if (rawSubject !== subject) {
+      logger.info('[MailMonitor] 제목 MIME 디코딩 완료', {
+        raw: rawSubject?.substring(0, 50),
+        decoded: subject.substring(0, 50),
+      })
+    }
 
     // autoMarkAsRead 설정 조회
     const mailConfig = await this.getMailConfig(tenantId)
@@ -835,6 +890,51 @@ export class MailMonitorService {
       isRunning: this.isRunning,
       lastCheckTimes: Object.fromEntries(this.lastCheckTimes),
     }
+  }
+
+  /**
+   * 스팸 메일 여부 확인 (헤더 기반)
+   * - X-Spam-Flag: YES
+   * - X-Spam-Status: Yes, ...
+   * - X-Daum-Spam: YES (다음 메일 전용)
+   */
+  private checkIfSpam(headers: Buffer | Map<string, string[]> | undefined): boolean {
+    if (!headers) return false
+
+    let headerText = ''
+
+    // Buffer인 경우 문자열로 변환
+    if (Buffer.isBuffer(headers)) {
+      headerText = headers.toString('utf-8').toLowerCase()
+    } else if (headers instanceof Map) {
+      // Map인 경우 문자열로 변환
+      for (const [key, values] of headers) {
+        headerText += `${key}: ${values.join(', ')}\n`
+      }
+      headerText = headerText.toLowerCase()
+    }
+
+    // X-Spam-Flag: YES 확인
+    if (/x-spam-flag:\s*yes/i.test(headerText)) {
+      return true
+    }
+
+    // X-Spam-Status: Yes 확인 (SpamAssassin 등)
+    if (/x-spam-status:\s*yes/i.test(headerText)) {
+      return true
+    }
+
+    // X-Daum-Spam 확인 (다음 메일 전용)
+    if (/x-daum-spam:\s*(yes|true|1)/i.test(headerText)) {
+      return true
+    }
+
+    // X-Naver-Spam 확인 (네이버 메일)
+    if (/x-naver-spam:\s*(yes|true|1)/i.test(headerText)) {
+      return true
+    }
+
+    return false
   }
 
   /**

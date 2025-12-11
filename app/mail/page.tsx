@@ -28,6 +28,37 @@ import { Mail, MailOpen, Search, Inbox, RefreshCw, Trash2, Eye, EyeOff, MapPin, 
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AppHeader } from '@/components/layout/app-header'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+
+// 발신자 파싱 헬퍼 함수: "이름" <email@example.com> 또는 이름 <email@example.com> 형식에서 이름과 이메일 추출
+function parseSender(sender: string): { name: string; email: string } {
+  if (!sender) return { name: '', email: '' }
+
+  // "이름" <email@example.com> 또는 이름 <email@example.com> 형식
+  const match = sender.match(/^"?([^"<]+)"?\s*<([^>]+)>$/)
+  if (match) {
+    return { name: match[1].trim(), email: match[2].trim() }
+  }
+
+  // <email@example.com> 형식 (이름 없음)
+  const emailOnlyMatch = sender.match(/^<([^>]+)>$/)
+  if (emailOnlyMatch) {
+    return { name: '', email: emailOnlyMatch[1].trim() }
+  }
+
+  // email@example.com 형식 (이메일만)
+  if (sender.includes('@') && !sender.includes(' ')) {
+    return { name: '', email: sender.trim() }
+  }
+
+  // 그 외는 전체를 이름으로 처리
+  return { name: sender.trim(), email: sender.trim() }
+}
 
 interface NotificationInfo {
   id: string
@@ -504,7 +535,27 @@ export default function MailPage() {
                           </Link>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {email.sender}
+                          {(() => {
+                            const { name, email: emailAddr } = parseSender(email.sender)
+                            const displayName = name || emailAddr
+                            return (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="block max-w-[150px] truncate cursor-default">
+                                      {displayName}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom">
+                                    <div className="text-sm">
+                                      {name && <div className="font-medium">{name}</div>}
+                                      <div className="text-muted-foreground">{emailAddr}</div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )
+                          })()}
                         </TableCell>
                         <TableCell>
                           {renderNotificationBadge(email.notifications)}
