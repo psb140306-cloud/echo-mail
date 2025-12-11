@@ -4,6 +4,7 @@ import { logger } from '@/lib/utils/logger'
 import { createSuccessResponse, createErrorResponse } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { createImapClient } from '@/lib/imap/connection'
+import { simpleParser } from 'mailparser'
 // @ts-ignore - libmime에 타입 정의 파일이 없음
 import { decode as decodeMailHeader } from 'libmime'
 
@@ -102,22 +103,40 @@ export async function POST(request: NextRequest) {
             })
 
             if (searchResult.length > 0) {
-              // 첫 번째 결과의 envelope 조회
-              const messages = client.fetch(searchResult[0], { envelope: true })
+              // 첫 번째 결과의 source를 가져와서 mailparser로 파싱
+              const messages = client.fetch(searchResult[0], { envelope: true, source: true })
 
               for await (const msg of messages) {
-                const from = msg.envelope?.from?.[0]
-                if (from?.name) {
-                  const senderName = decodeMimeHeader(from.name)
+                let senderName: string | null = null
 
-                  if (senderName) {
-                    await prisma.emailLog.update({
-                      where: { id: email.id },
-                      data: { senderName },
-                    })
-                    updatedCount++
-                    logger.info(`[RefreshSenderNames] 업데이트: ${email.sender} -> ${senderName}`)
+                // 1. mailparser로 source 파싱 (MIME 자동 디코딩)
+                if (msg.source) {
+                  try {
+                    const parsed = await simpleParser(msg.source)
+                    if (parsed.from?.value?.[0]?.name) {
+                      senderName = parsed.from.value[0].name
+                      logger.info(`[RefreshSenderNames] mailparser로 발신자 이름 추출: ${senderName}`)
+                    }
+                  } catch (parseError) {
+                    logger.warn(`[RefreshSenderNames] mailparser 파싱 실패:`, parseError)
                   }
+                }
+
+                // 2. Fallback: envelope에서 추출
+                if (!senderName) {
+                  const from = msg.envelope?.from?.[0]
+                  if (from?.name) {
+                    senderName = decodeMimeHeader(from.name)
+                  }
+                }
+
+                if (senderName) {
+                  await prisma.emailLog.update({
+                    where: { id: email.id },
+                    data: { senderName },
+                  })
+                  updatedCount++
+                  logger.info(`[RefreshSenderNames] 업데이트: ${email.sender} -> ${senderName}`)
                 }
                 break // 첫 번째 메시지만 처리
               }
