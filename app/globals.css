@@ -358,6 +358,28 @@
   cursor: col-resize;
 }
 
+/* 테이블 행 높이 조절 핸들 */
+.ProseMirror .row-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 6px;
+  background-color: transparent;
+  cursor: row-resize;
+  z-index: 20;
+}
+
+.ProseMirror .row-resize-handle:hover,
+.ProseMirror .row-resize-handle:active {
+  background-color: hsl(var(--primary));
+}
+
+/* 행 높이 조절을 위해 tr에 position relative 추가 */
+.ProseMirror tr {
+  position: relative;
+}
+
 /* 테이블 그립 (전체 선택) */
 .ProseMirror .tableWrapper {
   overflow-x: auto;

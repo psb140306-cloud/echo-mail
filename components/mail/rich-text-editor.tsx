@@ -9,6 +9,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { CustomTableCell } from '@/lib/tiptap/custom-table-cell'
 import { CustomTableHeader } from '@/lib/tiptap/custom-table-header'
 import { SplitCellExtension } from '@/lib/tiptap/split-cell-extension'
+import { RowResizeExtension } from '@/lib/tiptap/row-resize-extension'
 import { Placeholder } from '@tiptap/extension-placeholder'
 import { TextAlign } from '@tiptap/extension-text-align'
 import { Underline } from '@tiptap/extension-underline'
@@ -80,6 +81,7 @@ export function RichTextEditor({
         },
       }),
       SplitCellExtension,
+      RowResizeExtension,
       TextAlign.configure({
         types: ['heading', 'paragraph', 'listItem'],
       }),
