@@ -15,7 +15,7 @@ import { Underline } from '@tiptap/extension-underline'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import { Highlight } from '@tiptap/extension-highlight'
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { EditorToolbar } from './editor-toolbar'
 import { TableCellMenu } from './table-cell-menu'
 
@@ -37,7 +37,6 @@ export function RichTextEditor({
   className = '',
 }: RichTextEditorProps) {
   const [isMounted, setIsMounted] = useState(false)
-  const editorContainerRef = useRef<HTMLDivElement>(null)
 
   const editor = useEditor({
     extensions: [
@@ -118,8 +117,10 @@ export function RichTextEditor({
 
   // 테이블 행 높이 조절 이벤트 핸들러
   useEffect(() => {
-    const container = editorContainerRef.current
-    if (!container) return
+    if (!editor || !isMounted) return
+
+    const editorDom = editor.view.dom
+    if (!editorDom) return
 
     let isResizing = false
     let startY = 0
@@ -128,31 +129,35 @@ export function RichTextEditor({
 
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing && targetRow) {
+        e.preventDefault()
         const deltaY = e.clientY - startY
         const newHeight = Math.max(24, startHeight + deltaY)
         targetRow.style.height = `${newHeight}px`
         const cells = targetRow.querySelectorAll('td, th')
         cells.forEach((cell) => {
           (cell as HTMLElement).style.height = `${newHeight}px`
+          ;(cell as HTMLElement).style.minHeight = `${newHeight}px`
         })
         return
       }
 
-      // 커서 변경 로직
+      // 커서 변경 로직 - 셀의 아래쪽 테두리 근처인지 확인
       const target = e.target as HTMLElement
       const cell = target.closest('td, th') as HTMLTableCellElement
+
       if (!cell) {
-        container.style.cursor = ''
+        editorDom.style.cursor = ''
         return
       }
 
       const cellRect = cell.getBoundingClientRect()
       const distanceFromBottom = cellRect.bottom - e.clientY
 
-      if (distanceFromBottom <= 6 && distanceFromBottom >= 0) {
-        container.style.cursor = 'row-resize'
+      // 셀 하단 6px 영역에서 row-resize 커서 표시
+      if (distanceFromBottom <= 8 && distanceFromBottom >= 0) {
+        editorDom.style.cursor = 'row-resize'
       } else {
-        container.style.cursor = ''
+        editorDom.style.cursor = ''
       }
     }
 
@@ -164,8 +169,10 @@ export function RichTextEditor({
       const cellRect = cell.getBoundingClientRect()
       const distanceFromBottom = cellRect.bottom - e.clientY
 
-      if (distanceFromBottom <= 6 && distanceFromBottom >= 0) {
+      // 셀 하단 8px 영역에서 드래그 시작
+      if (distanceFromBottom <= 8 && distanceFromBottom >= 0) {
         e.preventDefault()
+        e.stopPropagation()
         isResizing = true
         startY = e.clientY
         targetRow = cell.closest('tr')
@@ -183,22 +190,23 @@ export function RichTextEditor({
         targetRow = null
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        container.style.cursor = ''
+        editorDom.style.cursor = ''
       }
     }
 
-    container.addEventListener('mousemove', handleMouseMove)
-    container.addEventListener('mousedown', handleMouseDown)
+    // 에디터 DOM에 직접 이벤트 리스너 연결
+    editorDom.addEventListener('mousemove', handleMouseMove)
+    editorDom.addEventListener('mousedown', handleMouseDown, { capture: true })
     document.addEventListener('mouseup', handleMouseUp)
     document.addEventListener('mousemove', handleMouseMove)
 
     return () => {
-      container.removeEventListener('mousemove', handleMouseMove)
-      container.removeEventListener('mousedown', handleMouseDown)
+      editorDom.removeEventListener('mousemove', handleMouseMove)
+      editorDom.removeEventListener('mousedown', handleMouseDown, { capture: true } as EventListenerOptions)
       document.removeEventListener('mouseup', handleMouseUp)
       document.removeEventListener('mousemove', handleMouseMove)
     }
-  }, [isMounted])
+  }, [editor, isMounted])
 
   if (!isMounted) {
     return (
@@ -214,7 +222,7 @@ export function RichTextEditor({
   return (
     <div className={`border rounded-md bg-background overflow-hidden ${className}`}>
       {editor && <EditorToolbar editor={editor} />}
-      <div className="relative" ref={editorContainerRef}>
+      <div className="relative">
         <EditorContent
           editor={editor}
           className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
