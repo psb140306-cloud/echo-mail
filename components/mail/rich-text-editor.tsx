@@ -6,8 +6,8 @@ import { Link } from '@tiptap/extension-link'
 import { Image } from '@tiptap/extension-image'
 import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
-import { TableCell } from '@tiptap/extension-table-cell'
-import { TableHeader } from '@tiptap/extension-table-header'
+import { CustomTableCell } from '@/lib/tiptap/custom-table-cell'
+import { CustomTableHeader } from '@/lib/tiptap/custom-table-header'
 import { SplitCellExtension } from '@/lib/tiptap/split-cell-extension'
 import { Placeholder } from '@tiptap/extension-placeholder'
 import { TextAlign } from '@tiptap/extension-text-align'
@@ -65,18 +65,18 @@ export function RichTextEditor({
       Table.configure({
         resizable: true,
         HTMLAttributes: {
-          class: 'border-collapse border border-gray-300',
+          class: 'border-collapse border border-gray-500',
         },
       }),
       TableRow,
-      TableCell.configure({
+      CustomTableCell.configure({
         HTMLAttributes: {
-          class: 'border border-gray-300 p-2',
+          class: 'border border-gray-500 p-2',
         },
       }),
-      TableHeader.configure({
+      CustomTableHeader.configure({
         HTMLAttributes: {
-          class: 'border border-gray-300 p-2 bg-gray-100 font-bold',
+          class: 'border border-gray-500 p-2 bg-gray-100 font-bold',
         },
       }),
       SplitCellExtension,

@@ -162,28 +162,12 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
     }
   }, [editor])
 
-  // 셀 배경색 설정 - 직접 DOM 스타일 적용
+  // 셀 배경색 설정 - CustomTableCell/CustomTableHeader의 backgroundColor 속성 사용
   const setCellBackground = useCallback((color: string) => {
-    const selectedCells = editor.view.dom.querySelectorAll('.selectedCell')
-
-    selectedCells.forEach((cell) => {
-      const htmlCell = cell as HTMLElement
-      if (color) {
-        htmlCell.style.backgroundColor = color
-      } else {
-        htmlCell.style.backgroundColor = ''
-      }
-    })
-
-    // TipTap 명령도 시도 (일부 버전에서 동작)
-    try {
-      if (color) {
-        editor.chain().focus().setCellAttribute('backgroundColor', color).run()
-      } else {
-        editor.chain().focus().setCellAttribute('backgroundColor', null).run()
-      }
-    } catch {
-      // 무시
+    if (color) {
+      editor.chain().focus().setCellAttribute('backgroundColor', color).run()
+    } else {
+      editor.chain().focus().setCellAttribute('backgroundColor', null).run()
     }
   }, [editor])
 
