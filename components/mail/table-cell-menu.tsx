@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Editor } from '@tiptap/react'
-import { CellSelection } from '@tiptap/pm/tables'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -41,28 +40,26 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
   useEffect(() => {
     const checkSelection = () => {
       const isInTable = editor.isActive('table')
-      const { selection } = editor.state
 
       if (!isInTable) {
         setShowMenu(false)
         return
       }
 
-      // CellSelection 확인 (여러 셀 드래그 선택)
-      const isCellSelection = selection instanceof CellSelection
-      setHasMultipleCellsSelected(isCellSelection)
-
       // 선택된 셀의 위치 계산
       const { view } = editor
 
       // selectedCell 클래스가 있는 요소 찾기 (드래그로 선택된 셀들)
       const selectedCells = view.dom.querySelectorAll('.selectedCell')
+      const cellCount = selectedCells.length
 
-      // 드래그로 여러 셀을 선택한 경우에만 메뉴 표시
-      if (selectedCells.length > 0 && isCellSelection) {
+      // 여러 셀이 선택된 경우에만 메뉴 표시
+      if (cellCount > 1) {
+        setHasMultipleCellsSelected(true)
+
         // 선택된 셀들의 영역 계산
         const firstCell = selectedCells[0] as HTMLElement
-        const lastCell = selectedCells[selectedCells.length - 1] as HTMLElement
+        const lastCell = selectedCells[cellCount - 1] as HTMLElement
         const editorRect = view.dom.getBoundingClientRect()
 
         const firstRect = firstCell.getBoundingClientRect()
@@ -70,7 +67,7 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
 
         // 선택 영역의 중앙 하단에 메뉴 배치
         const centerX = (firstRect.left + lastRect.right) / 2 - editorRect.left
-        const bottomY = lastRect.bottom - editorRect.top + 8
+        const bottomY = Math.max(firstRect.bottom, lastRect.bottom) - editorRect.top + 8
 
         setMenuPosition({
           top: bottomY,
@@ -78,7 +75,7 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
         })
         setShowMenu(true)
       } else {
-        // 단일 셀에 커서만 있는 경우 - 메뉴 표시 안함
+        setHasMultipleCellsSelected(false)
         setShowMenu(false)
       }
     }
@@ -86,10 +83,22 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
     // 초기 체크
     checkSelection()
 
+    // DOM 변경 감지를 위한 MutationObserver
+    const observer = new MutationObserver(() => {
+      checkSelection()
+    })
+
+    observer.observe(editor.view.dom, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true,
+    })
+
     editor.on('selectionUpdate', checkSelection)
     editor.on('transaction', checkSelection)
 
     return () => {
+      observer.disconnect()
       editor.off('selectionUpdate', checkSelection)
       editor.off('transaction', checkSelection)
     }
@@ -102,12 +111,6 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
     } else {
       editor.chain().focus().setCellAttribute('backgroundColor', null).run()
     }
-  }, [editor])
-
-  // 표 전체 선택
-  const selectAllCells = useCallback(() => {
-    // TipTap의 표 전체 선택은 직접 지원하지 않아서, 표 삭제로 대체
-    editor.chain().focus().deleteTable().run()
   }, [editor])
 
   if (!showMenu || !editor.isActive('table')) {
@@ -123,7 +126,7 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
         left: `${menuPosition.left}px`,
         transform: 'translateX(-50%)',
       }}
-      onMouseDown={(e) => e.preventDefault()} // 메뉴 클릭 시 에디터 포커스 유지
+      onMouseDown={(e) => e.preventDefault()}
     >
       {/* 병합 */}
       <div className="flex items-center justify-between py-1.5 px-2">

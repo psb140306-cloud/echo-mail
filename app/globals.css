@@ -322,19 +322,7 @@
 
 /* 테이블 셀 선택 스타일 */
 .ProseMirror .selectedCell {
-  background-color: rgba(59, 130, 246, 0.2) !important;
-}
-
-.ProseMirror .selectedCell:after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  background: rgba(59, 130, 246, 0.15);
-  pointer-events: none;
-  z-index: 1;
+  background-color: rgba(59, 130, 246, 0.25) !important;
 }
 
 /* 테이블 리사이즈 핸들 - 열 */
@@ -352,38 +340,6 @@
 /* 테이블 리사이즈 중 커서 */
 .ProseMirror.resize-cursor {
   cursor: col-resize;
-}
-
-/* 테두리 호버 시 리사이즈 힌트 */
-.ProseMirror td,
-.ProseMirror th {
-  transition: border-color 0.15s ease;
-}
-
-/* 테이블 셀 우측 테두리 호버 영역 */
-.ProseMirror td::after,
-.ProseMirror th::after {
-  content: "";
-  position: absolute;
-  right: -3px;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: col-resize;
-  z-index: 10;
-}
-
-/* 테이블 셀 하단 테두리 호버 영역 */
-.ProseMirror td::before,
-.ProseMirror th::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -3px;
-  height: 6px;
-  cursor: row-resize;
-  z-index: 10;
 }
 
 /* 테이블 그립 (전체 선택) */
