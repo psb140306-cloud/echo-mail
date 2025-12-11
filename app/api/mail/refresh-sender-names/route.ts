@@ -27,7 +27,14 @@ export async function POST(request: NextRequest) {
   return withTenantContext(request, async () => {
     try {
       const tenantContext = TenantContext.getInstance()
-      const tenantId = tenantContext.getTenantId()
+      let tenantId = tenantContext.getTenantId()
+
+      // 쿼리 파라미터에서 tenantId 받기 (디버깅용)
+      const { searchParams } = new URL(request.url)
+      const queryTenantId = searchParams.get('tenantId')
+      if (queryTenantId && !tenantId) {
+        tenantId = queryTenantId
+      }
 
       if (!tenantId) {
         return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
