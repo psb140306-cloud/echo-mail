@@ -36,7 +36,39 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
   const [customColor, setCustomColor] = useState('#dbeafe')
   const [selectedCellCount, setSelectedCellCount] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const pendingSelectionRef = useRef<{ top: number; left: number; count: number } | null>(null)
+
+  // 마우스 드래그 상태 감지
+  useEffect(() => {
+    const editorDom = editor.view.dom
+
+    const handleMouseDown = () => {
+      setIsDragging(true)
+      setShowMenu(false) // 드래그 시작 시 메뉴 숨김
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      // 드래그 종료 후 대기 중인 선택 정보가 있으면 메뉴 표시
+      if (pendingSelectionRef.current) {
+        const { top, left, count } = pendingSelectionRef.current
+        setMenuPosition({ top, left })
+        setSelectedCellCount(count)
+        setShowMenu(true)
+        pendingSelectionRef.current = null
+      }
+    }
+
+    editorDom.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      editorDom.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [editor])
 
   // 테이블 셀 선택 감지
   useEffect(() => {
@@ -45,6 +77,7 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
 
       if (!isInTable) {
         setShowMenu(false)
+        pendingSelectionRef.current = null
         return
       }
 
@@ -55,12 +88,9 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
         const selectedCells = editor.view.dom.querySelectorAll('.selectedCell')
         const actualCount = selectedCells.length
 
-        setSelectedCellCount(actualCount)
-
-        // 1개 이상의 셀이 선택된 경우 메뉴 표시
+        // 1개 이상의 셀이 선택된 경우
         if (actualCount >= 1) {
           const editorRect = editor.view.dom.getBoundingClientRect()
-          const editorWrapper = editor.view.dom.parentElement
 
           // 선택된 셀들의 경계 계산
           let maxRight = 0
@@ -101,15 +131,24 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
           // 상단 제한
           if (menuTop < 10) menuTop = 10
 
-          setMenuPosition({ top: menuTop, left: menuLeft })
-          setShowMenu(true)
+          // 드래그 중이면 대기, 아니면 바로 표시
+          if (isDragging) {
+            pendingSelectionRef.current = { top: menuTop, left: menuLeft, count: actualCount }
+            setSelectedCellCount(actualCount)
+          } else {
+            setMenuPosition({ top: menuTop, left: menuLeft })
+            setSelectedCellCount(actualCount)
+            setShowMenu(true)
+          }
         } else {
           setShowMenu(false)
+          pendingSelectionRef.current = null
         }
       } else {
         // 일반 텍스트 선택인 경우 - 테이블 내부에서 커서가 있으면 메뉴 숨김
         setShowMenu(false)
         setSelectedCellCount(0)
+        pendingSelectionRef.current = null
       }
     }
 
@@ -132,7 +171,7 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
       editor.off('selectionUpdate', checkSelection)
       editor.off('transaction', checkSelection)
     }
-  }, [editor])
+  }, [editor, isDragging])
 
   // 셀을 행으로 분할 (위아래로 나눔)
   // 커스텀 ProseMirror 명령 사용
