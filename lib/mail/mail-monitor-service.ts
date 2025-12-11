@@ -521,6 +521,16 @@ export class MailMonitorService {
         const rawSenderName = from?.name || ''
         const senderName = decodeMimeHeader(rawSenderName)
 
+        // 디버그: senderName 로그
+        logger.info('[MailMonitor] 발신자 정보', {
+          tenantId,
+          uid: message.uid,
+          'from.address': from?.address,
+          'from.name (raw)': rawSenderName,
+          'senderName (decoded)': senderName,
+          'will save': senderName || null,
+        })
+
         emailLog = await prisma.emailLog.create({
           data: {
             messageId: messageIdHeader, // 실제 Message-ID 사용
