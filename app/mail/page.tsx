@@ -72,6 +72,7 @@ interface EmailItem {
   messageId: string
   subject: string
   sender: string
+  senderName: string | null // 발신자 이름
   receivedAt: string
   isRead: boolean
   isOrder: boolean
@@ -536,8 +537,8 @@ export default function MailPage() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {(() => {
-                            const { name, email: emailAddr } = parseSender(email.sender)
-                            const displayName = name || emailAddr
+                            // DB에 저장된 senderName 우선 사용, 없으면 sender에서 파싱
+                            const displayName = email.senderName || parseSender(email.sender).name || email.sender
                             return (
                               <TooltipProvider>
                                 <Tooltip>
@@ -548,8 +549,8 @@ export default function MailPage() {
                                   </TooltipTrigger>
                                   <TooltipContent side="bottom">
                                     <div className="text-sm">
-                                      {name && <div className="font-medium">{name}</div>}
-                                      <div className="text-muted-foreground">{emailAddr}</div>
+                                      {email.senderName && <div className="font-medium">{email.senderName}</div>}
+                                      <div className="text-muted-foreground">{email.sender}</div>
                                     </div>
                                   </TooltipContent>
                                 </Tooltip>

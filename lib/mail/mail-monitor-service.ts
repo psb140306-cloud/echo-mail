@@ -517,10 +517,15 @@ export class MailMonitorService {
         // 상태 결정: 업체 매칭되면 MATCHED, 아니면 RECEIVED
         const status = company ? 'MATCHED' : 'RECEIVED'
 
+        // 발신자 이름 디코딩 (MIME 인코딩된 경우 처리)
+        const rawSenderName = from?.name || ''
+        const senderName = decodeMimeHeader(rawSenderName)
+
         emailLog = await prisma.emailLog.create({
           data: {
             messageId: messageIdHeader, // 실제 Message-ID 사용
             sender: from?.address || '',
+            senderName: senderName || null, // 발신자 이름 (예: "잡코리아 | AI추천")
             recipient: '', // IMAP에서는 수신자 정보 없음
             subject: subject || '',
             receivedAt: date,

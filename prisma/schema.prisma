@@ -198,7 +198,8 @@ model EmailLog {
   // 메일 정보
   messageId  String
   subject    String
-  sender     String
+  sender     String    // 발신자 이메일 주소
+  senderName String?   // 발신자 이름 (예: "잡코리아 | AI추천")
   recipient  String
   receivedAt DateTime
 

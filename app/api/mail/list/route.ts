@@ -122,6 +122,7 @@ export async function GET(request: NextRequest) {
             messageId: true,
             subject: true,
             sender: true,
+            senderName: true, // 발신자 이름
             receivedAt: true,
             isRead: true,
             isOrder: true,
