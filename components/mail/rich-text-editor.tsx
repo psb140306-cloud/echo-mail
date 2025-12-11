@@ -9,14 +9,13 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { CustomTableCell } from '@/lib/tiptap/custom-table-cell'
 import { CustomTableHeader } from '@/lib/tiptap/custom-table-header'
 import { SplitCellExtension } from '@/lib/tiptap/split-cell-extension'
-import { RowResizeExtension } from '@/lib/tiptap/row-resize-extension'
 import { Placeholder } from '@tiptap/extension-placeholder'
 import { TextAlign } from '@tiptap/extension-text-align'
 import { Underline } from '@tiptap/extension-underline'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import { Highlight } from '@tiptap/extension-highlight'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { EditorToolbar } from './editor-toolbar'
 import { TableCellMenu } from './table-cell-menu'
 
@@ -38,6 +37,7 @@ export function RichTextEditor({
   className = '',
 }: RichTextEditorProps) {
   const [isMounted, setIsMounted] = useState(false)
+  const editorContainerRef = useRef<HTMLDivElement>(null)
 
   const editor = useEditor({
     extensions: [
@@ -81,7 +81,6 @@ export function RichTextEditor({
         },
       }),
       SplitCellExtension,
-      RowResizeExtension,
       TextAlign.configure({
         types: ['heading', 'paragraph', 'listItem'],
       }),
@@ -117,6 +116,90 @@ export function RichTextEditor({
     }
   }, [content, editor])
 
+  // 테이블 행 높이 조절 이벤트 핸들러
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return
+
+    let isResizing = false
+    let startY = 0
+    let startHeight = 0
+    let targetRow: HTMLTableRowElement | null = null
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing && targetRow) {
+        const deltaY = e.clientY - startY
+        const newHeight = Math.max(24, startHeight + deltaY)
+        targetRow.style.height = `${newHeight}px`
+        const cells = targetRow.querySelectorAll('td, th')
+        cells.forEach((cell) => {
+          (cell as HTMLElement).style.height = `${newHeight}px`
+        })
+        return
+      }
+
+      // 커서 변경 로직
+      const target = e.target as HTMLElement
+      const cell = target.closest('td, th') as HTMLTableCellElement
+      if (!cell) {
+        container.style.cursor = ''
+        return
+      }
+
+      const cellRect = cell.getBoundingClientRect()
+      const distanceFromBottom = cellRect.bottom - e.clientY
+
+      if (distanceFromBottom <= 6 && distanceFromBottom >= 0) {
+        container.style.cursor = 'row-resize'
+      } else {
+        container.style.cursor = ''
+      }
+    }
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      const cell = target.closest('td, th') as HTMLTableCellElement
+      if (!cell) return
+
+      const cellRect = cell.getBoundingClientRect()
+      const distanceFromBottom = cellRect.bottom - e.clientY
+
+      if (distanceFromBottom <= 6 && distanceFromBottom >= 0) {
+        e.preventDefault()
+        isResizing = true
+        startY = e.clientY
+        targetRow = cell.closest('tr')
+        if (targetRow) {
+          startHeight = targetRow.offsetHeight
+        }
+        document.body.style.cursor = 'row-resize'
+        document.body.style.userSelect = 'none'
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        isResizing = false
+        targetRow = null
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+        container.style.cursor = ''
+      }
+    }
+
+    container.addEventListener('mousemove', handleMouseMove)
+    container.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('mouseup', handleMouseUp)
+    document.addEventListener('mousemove', handleMouseMove)
+
+    return () => {
+      container.removeEventListener('mousemove', handleMouseMove)
+      container.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('mousemove', handleMouseMove)
+    }
+  }, [isMounted])
+
   if (!isMounted) {
     return (
       <div
@@ -131,7 +214,7 @@ export function RichTextEditor({
   return (
     <div className={`border rounded-md bg-background overflow-hidden ${className}`}>
       {editor && <EditorToolbar editor={editor} />}
-      <div className="relative">
+      <div className="relative" ref={editorContainerRef}>
         <EditorContent
           editor={editor}
           className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
