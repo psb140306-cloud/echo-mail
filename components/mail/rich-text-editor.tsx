@@ -127,16 +127,16 @@ export function RichTextEditor({
   return (
     <div className={`border rounded-md bg-background overflow-hidden ${className}`}>
       {editor && <EditorToolbar editor={editor} />}
-      {/* 표 편집 시 셀 메뉴 표시 */}
-      {editor && editor.isActive('table') && (
-        <div className="border-b px-2 py-1 bg-muted/20">
+      <div className="relative">
+        <EditorContent
+          editor={editor}
+          className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
+        />
+        {/* 표 편집 시 셀 메뉴 표시 (에디터 위에 플로팅) */}
+        {editor && editor.isActive('table') && (
           <TableCellMenu editor={editor} />
-        </div>
-      )}
-      <EditorContent
-        editor={editor}
-        className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
-      />
+        )}
+      </div>
     </div>
   )
 }
