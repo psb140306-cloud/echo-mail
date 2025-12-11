@@ -55,10 +55,11 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
       // 선택된 셀의 위치 계산
       const { view } = editor
 
-      // selectedCell 클래스가 있는 요소 찾기
+      // selectedCell 클래스가 있는 요소 찾기 (드래그로 선택된 셀들)
       const selectedCells = view.dom.querySelectorAll('.selectedCell')
 
-      if (selectedCells.length > 0) {
+      // 드래그로 여러 셀을 선택한 경우에만 메뉴 표시
+      if (selectedCells.length > 0 && isCellSelection) {
         // 선택된 셀들의 영역 계산
         const firstCell = selectedCells[0] as HTMLElement
         const lastCell = selectedCells[selectedCells.length - 1] as HTMLElement
@@ -77,29 +78,8 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
         })
         setShowMenu(true)
       } else {
-        // 단일 셀 선택 (커서만 있는 경우)
-        const { from } = selection
-        try {
-          const domAtPos = view.domAtPos(from)
-          let cellElement = domAtPos.node as HTMLElement
-
-          while (cellElement && !['TD', 'TH'].includes(cellElement.tagName)) {
-            cellElement = cellElement.parentElement as HTMLElement
-          }
-
-          if (cellElement) {
-            const rect = cellElement.getBoundingClientRect()
-            const editorRect = view.dom.getBoundingClientRect()
-
-            setMenuPosition({
-              top: rect.bottom - editorRect.top + 8,
-              left: rect.left - editorRect.left + rect.width / 2,
-            })
-            setShowMenu(true)
-          }
-        } catch {
-          setShowMenu(false)
-        }
+        // 단일 셀에 커서만 있는 경우 - 메뉴 표시 안함
+        setShowMenu(false)
       }
     }
 
