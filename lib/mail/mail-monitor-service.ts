@@ -46,6 +46,9 @@ interface ParsedEmailContent {
     size: number
     content: Buffer
   }[]
+  // 발신자 정보 (mailparser에서 추출)
+  fromName: string | null
+  fromAddress: string | null
 }
 
 export interface MailCheckResult {
@@ -517,25 +520,25 @@ export class MailMonitorService {
         // 상태 결정: 업체 매칭되면 MATCHED, 아니면 RECEIVED
         const status = company ? 'MATCHED' : 'RECEIVED'
 
-        // 발신자 이름 디코딩 (MIME 인코딩된 경우 처리)
-        const rawSenderName = from?.name || ''
-        const senderName = decodeMimeHeader(rawSenderName)
+        // 발신자 이름: mailparser에서 추출 (MIME 자동 디코딩) → IMAP envelope fallback
+        // mailparser가 MIME 인코딩을 제대로 디코딩하므로 우선 사용
+        const senderName = parsedEmail.fromName || decodeMimeHeader(from?.name || '') || null
 
         // 디버그: senderName 로그
         logger.info('[MailMonitor] 발신자 정보', {
           tenantId,
           uid: message.uid,
           'from.address': from?.address,
-          'from.name (raw)': rawSenderName,
-          'senderName (decoded)': senderName,
-          'will save': senderName || null,
+          'imap from.name': from?.name,
+          'mailparser fromName': parsedEmail.fromName,
+          'senderName (final)': senderName,
         })
 
         emailLog = await prisma.emailLog.create({
           data: {
             messageId: messageIdHeader, // 실제 Message-ID 사용
             sender: from?.address || '',
-            senderName: senderName || null, // 발신자 이름 (예: "잡코리아 | AI추천")
+            senderName: senderName, // 발신자 이름 (예: "잡코리아 | AI추천")
             recipient: '', // IMAP에서는 수신자 정보 없음
             subject: subject || '',
             receivedAt: date,
@@ -960,6 +963,8 @@ export class MailMonitorService {
       textBody: null,
       htmlBody: null,
       attachments: [],
+      fromName: null,
+      fromAddress: null,
     }
 
     if (!emailSource) {
@@ -969,6 +974,18 @@ export class MailMonitorService {
 
     try {
       const parsed: ParsedMail = await simpleParser(emailSource)
+
+      // 발신자 정보 추출 (mailparser가 MIME 인코딩 자동 디코딩)
+      if (parsed.from && parsed.from.value && parsed.from.value.length > 0) {
+        const fromInfo = parsed.from.value[0]
+        result.fromName = fromInfo.name || null
+        result.fromAddress = fromInfo.address || null
+
+        logger.info('[MailMonitor] mailparser 발신자 정보', {
+          'from.name': fromInfo.name,
+          'from.address': fromInfo.address,
+        })
+      }
 
       // Plain text 본문
       if (parsed.text) {
@@ -1001,6 +1018,7 @@ export class MailMonitorService {
         hasHtmlBody: !!result.htmlBody,
         htmlBodyLength: result.htmlBody?.length || 0,
         attachmentCount: result.attachments.length,
+        fromName: result.fromName,
       })
 
       return result

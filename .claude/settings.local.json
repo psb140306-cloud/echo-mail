@@ -62,7 +62,9 @@
       "Bash(findstr:*)",
       "Bash(DATABASE_URL=\"postgresql://postgres:p7%21z%40K9s%23L1h@db.pnbfnxjtjtvftipjfeub.supabase.co:5432/postgres\" npx prisma db push:*)",
       "Bash(npm ls:*)",
-      "Bash(if exist \"c:\\startcoding\\Echo Mail\\.next\" rmdir /s /q \"c:\\startcoding\\Echo Mail\\.next\")"
+      "Bash(if exist \"c:\\startcoding\\Echo Mail\\.next\" rmdir /s /q \"c:\\startcoding\\Echo Mail\\.next\")",
+      "Bash(AI추천\" 형태로 표시됨\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(if exist nul del nul)"
     ],
     "deny": [],
     "ask": []
