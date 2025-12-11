@@ -74,24 +74,30 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
           let menuLeft = maxRight - editorRect.left + 8
           let menuTop = minTop - editorRect.top
 
+          // 메뉴 크기 예상
+          const menuWidth = 220
+          const menuHeight = 320
+
           // 메뉴가 에디터 오른쪽을 벗어나면 왼쪽에 배치
-          const menuWidth = 200 // 예상 메뉴 너비
           if (menuLeft + menuWidth > editorRect.width) {
             // 선택 영역의 왼쪽에 배치
             const firstCell = selectedCells[0] as HTMLElement
             const firstCellRect = firstCell.getBoundingClientRect()
             menuLeft = firstCellRect.left - editorRect.left - menuWidth - 8
 
-            // 그래도 벗어나면 셀 아래에 배치
+            // 그래도 벗어나면 중앙에 배치
             if (menuLeft < 0) {
-              menuLeft = 10
-              const lastCell = selectedCells[actualCount - 1] as HTMLElement
-              menuTop = lastCell.getBoundingClientRect().bottom - editorRect.top + 8
+              menuLeft = Math.max(10, (editorRect.width - menuWidth) / 2)
             }
           }
 
+          // 메뉴가 에디터 아래쪽을 벗어나면 위로 조정
+          if (menuTop + menuHeight > editorRect.height) {
+            menuTop = editorRect.height - menuHeight - 10
+          }
+
           // 상단 제한
-          if (menuTop < 0) menuTop = 10
+          if (menuTop < 10) menuTop = 10
 
           setMenuPosition({ top: menuTop, left: menuLeft })
           setShowMenu(true)

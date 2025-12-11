@@ -32,7 +32,7 @@ export function RichTextEditor({
   onChange,
   placeholder = '메일 내용을 입력하세요...',
   editable = true,
-  minHeight = '300px',
+  minHeight = '400px',
   className = '',
 }: RichTextEditorProps) {
   const [isMounted, setIsMounted] = useState(false)
