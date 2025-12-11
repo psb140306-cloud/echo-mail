@@ -17,7 +17,6 @@ import { Highlight } from '@tiptap/extension-highlight'
 import { useCallback, useEffect, useState } from 'react'
 import { EditorToolbar } from './editor-toolbar'
 import { TableCellMenu } from './table-cell-menu'
-import { TableControls } from './table-controls'
 
 interface RichTextEditorProps {
   content?: string
@@ -125,24 +124,19 @@ export function RichTextEditor({
     )
   }
 
-  const isTableActive = editor?.isActive('table') ?? false
-
   return (
     <div className={`border rounded-md bg-background overflow-hidden ${className}`}>
       {editor && <EditorToolbar editor={editor} />}
-      <div className={`relative ${isTableActive ? 'pl-5 pt-5' : ''}`}>
-        <EditorContent
-          editor={editor}
-          className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
-        />
-        {/* 표 편집 시 컨트롤 표시 */}
-        {editor && isTableActive && (
-          <>
-            <TableControls editor={editor} />
-            <TableCellMenu editor={editor} />
-          </>
-        )}
-      </div>
+      {/* 표 편집 시 셀 메뉴 표시 */}
+      {editor && editor.isActive('table') && (
+        <div className="border-b px-2 py-1 bg-muted/20">
+          <TableCellMenu editor={editor} />
+        </div>
+      )}
+      <EditorContent
+        editor={editor}
+        className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
+      />
     </div>
   )
 }

@@ -62,8 +62,7 @@
       "Bash(findstr:*)",
       "Bash(DATABASE_URL=\"postgresql://postgres:p7%21z%40K9s%23L1h@db.pnbfnxjtjtvftipjfeub.supabase.co:5432/postgres\" npx prisma db push:*)",
       "Bash(npm ls:*)",
-      "Bash(if exist \"c:\\startcoding\\Echo Mail\\.next\" rmdir /s /q \"c:\\startcoding\\Echo Mail\\.next\")",
-      "Bash(git revert:*)"
+      "Bash(if exist \"c:\\startcoding\\Echo Mail\\.next\" rmdir /s /q \"c:\\startcoding\\Echo Mail\\.next\")"
     ],
     "deny": [],
     "ask": []

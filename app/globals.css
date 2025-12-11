@@ -302,7 +302,6 @@
   border-collapse: collapse;
   margin: 1em 0;
   width: 100%;
-  table-layout: fixed;
 }
 
 .ProseMirror th,
@@ -310,49 +309,11 @@
   border: 1px solid hsl(var(--border));
   padding: 0.5em;
   text-align: left;
-  position: relative;
-  vertical-align: top;
-  box-sizing: border-box;
 }
 
 .ProseMirror th {
   background-color: hsl(var(--muted));
   font-weight: 600;
-}
-
-/* 테이블 셀 선택 스타일 */
-.ProseMirror .selectedCell {
-  background-color: rgba(59, 130, 246, 0.25) !important;
-}
-
-/* 테이블 리사이즈 핸들 - 열 */
-.ProseMirror .column-resize-handle {
-  position: absolute;
-  right: -2px;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background-color: hsl(var(--primary));
-  cursor: col-resize;
-  z-index: 20;
-}
-
-/* 테이블 리사이즈 중 커서 */
-.ProseMirror.resize-cursor {
-  cursor: col-resize;
-}
-
-/* 테이블 그립 (전체 선택) */
-.ProseMirror .tableWrapper {
-  overflow-x: auto;
-  margin: 1em 0;
-}
-
-/* 테이블 셀 포커스 스타일 */
-.ProseMirror td:focus,
-.ProseMirror th:focus {
-  outline: 2px solid hsl(var(--primary));
-  outline-offset: -2px;
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
