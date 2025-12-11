@@ -125,16 +125,18 @@ export function RichTextEditor({
     )
   }
 
+  const isTableActive = editor?.isActive('table') ?? false
+
   return (
     <div className={`border rounded-md bg-background overflow-hidden ${className}`}>
       {editor && <EditorToolbar editor={editor} />}
-      <div className="relative pl-5 pt-5">
+      <div className={`relative ${isTableActive ? 'pl-5 pt-5' : ''}`}>
         <EditorContent
           editor={editor}
           className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
         />
         {/* 표 편집 시 컨트롤 표시 */}
-        {editor && editor.isActive('table') && (
+        {editor && isTableActive && (
           <>
             <TableControls editor={editor} />
             <TableCellMenu editor={editor} />
