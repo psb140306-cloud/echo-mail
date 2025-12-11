@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Editor } from '@tiptap/react'
 import { CellSelection } from '@tiptap/pm/tables'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,6 @@ import {
   Grid3X3,
   RowsIcon,
   Columns,
-  Trash2,
 } from 'lucide-react'
 
 interface TableCellMenuProps {
@@ -34,50 +33,81 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
   const [customColor, setCustomColor] = useState('#dbeafe')
+  const [selectedCellCount, setSelectedCellCount] = useState(0)
+  const menuRef = useRef<HTMLDivElement>(null)
 
-  // 테이블 셀 드래그 선택 감지 (여러 셀 선택 시에만 메뉴 표시)
+  // 테이블 셀 선택 감지
   useEffect(() => {
     const checkSelection = () => {
       const isInTable = editor.isActive('table')
+
+      if (!isInTable) {
+        setShowMenu(false)
+        return
+      }
+
       const { selection } = editor.state
 
-      // CellSelection인 경우에만 메뉴 표시 (드래그로 여러 셀 선택)
-      if (isInTable && selection instanceof CellSelection) {
-        // DOM에서 selectedCell 클래스를 가진 요소 수 확인
+      // CellSelection인 경우 (드래그 또는 클릭으로 셀 선택)
+      if (selection instanceof CellSelection) {
         const selectedCells = editor.view.dom.querySelectorAll('.selectedCell')
         const actualCount = selectedCells.length
 
-        // 2개 이상의 셀이 선택된 경우에만 메뉴 표시
-        if (actualCount >= 2) {
-          // 선택 영역의 위치 계산
-          const firstCell = selectedCells[0] as HTMLElement
-          const lastCell = selectedCells[actualCount - 1] as HTMLElement
+        setSelectedCellCount(actualCount)
+
+        // 1개 이상의 셀이 선택된 경우 메뉴 표시
+        if (actualCount >= 1) {
           const editorRect = editor.view.dom.getBoundingClientRect()
+          const editorWrapper = editor.view.dom.parentElement
 
-          // 선택 영역의 오른쪽에 메뉴 배치
-          const lastCellRect = lastCell.getBoundingClientRect()
-          const firstCellRect = firstCell.getBoundingClientRect()
+          // 선택된 셀들의 경계 계산
+          let maxRight = 0
+          let minTop = Infinity
 
-          // 선택 영역의 가장 오른쪽 셀의 오른쪽에 배치
-          const maxRight = Math.max(lastCellRect.right, firstCellRect.right)
-          const minTop = Math.min(lastCellRect.top, firstCellRect.top)
-
-          setMenuPosition({
-            top: minTop - editorRect.top,
-            left: maxRight - editorRect.left + 8,
+          selectedCells.forEach((cell) => {
+            const rect = (cell as HTMLElement).getBoundingClientRect()
+            maxRight = Math.max(maxRight, rect.right)
+            minTop = Math.min(minTop, rect.top)
           })
+
+          // 메뉴 위치 계산 (에디터 영역 내로 제한)
+          let menuLeft = maxRight - editorRect.left + 8
+          let menuTop = minTop - editorRect.top
+
+          // 메뉴가 에디터 오른쪽을 벗어나면 왼쪽에 배치
+          const menuWidth = 200 // 예상 메뉴 너비
+          if (menuLeft + menuWidth > editorRect.width) {
+            // 선택 영역의 왼쪽에 배치
+            const firstCell = selectedCells[0] as HTMLElement
+            const firstCellRect = firstCell.getBoundingClientRect()
+            menuLeft = firstCellRect.left - editorRect.left - menuWidth - 8
+
+            // 그래도 벗어나면 셀 아래에 배치
+            if (menuLeft < 0) {
+              menuLeft = 10
+              const lastCell = selectedCells[actualCount - 1] as HTMLElement
+              menuTop = lastCell.getBoundingClientRect().bottom - editorRect.top + 8
+            }
+          }
+
+          // 상단 제한
+          if (menuTop < 0) menuTop = 10
+
+          setMenuPosition({ top: menuTop, left: menuLeft })
           setShowMenu(true)
         } else {
           setShowMenu(false)
         }
       } else {
+        // 일반 텍스트 선택인 경우 - 테이블 내부에서 커서가 있으면 메뉴 숨김
         setShowMenu(false)
+        setSelectedCellCount(0)
       }
     }
 
     // MutationObserver로 selectedCell 클래스 변화 감지
     const observer = new MutationObserver(() => {
-      checkSelection()
+      setTimeout(checkSelection, 10)
     })
 
     observer.observe(editor.view.dom, {
@@ -96,12 +126,28 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
     }
   }, [editor])
 
-  // 셀 배경색 설정
+  // 셀 배경색 설정 - 직접 DOM 스타일 적용
   const setCellBackground = useCallback((color: string) => {
-    if (color) {
-      editor.chain().focus().setCellAttribute('backgroundColor', color).run()
-    } else {
-      editor.chain().focus().setCellAttribute('backgroundColor', null).run()
+    const selectedCells = editor.view.dom.querySelectorAll('.selectedCell')
+
+    selectedCells.forEach((cell) => {
+      const htmlCell = cell as HTMLElement
+      if (color) {
+        htmlCell.style.backgroundColor = color
+      } else {
+        htmlCell.style.backgroundColor = ''
+      }
+    })
+
+    // TipTap 명령도 시도 (일부 버전에서 동작)
+    try {
+      if (color) {
+        editor.chain().focus().setCellAttribute('backgroundColor', color).run()
+      } else {
+        editor.chain().focus().setCellAttribute('backgroundColor', null).run()
+      }
+    } catch {
+      // 무시
     }
   }, [editor])
 
@@ -111,10 +157,13 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
 
   return (
     <div
-      className="absolute z-50 bg-background border rounded-lg shadow-lg p-2 min-w-[180px]"
+      ref={menuRef}
+      className="absolute z-50 bg-background border rounded-lg shadow-lg p-2 min-w-[200px]"
       style={{
         top: `${menuPosition.top}px`,
         left: `${menuPosition.left}px`,
+        maxHeight: '400px',
+        overflowY: 'auto',
       }}
       onMouseDown={(e) => e.preventDefault()}
     >
@@ -126,6 +175,7 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
           size="sm"
           className="h-7 px-2 text-xs"
           onClick={() => editor.chain().focus().mergeCells().run()}
+          disabled={selectedCellCount < 2}
         >
           <Grid3X3 className="h-3.5 w-3.5 mr-1" />
           셀 병합
