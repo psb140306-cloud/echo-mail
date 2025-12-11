@@ -188,29 +188,18 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
         </Button>
       </div>
 
-      {/* 분할 */}
+      {/* 병합 해제 */}
       <div className="flex items-center justify-between py-1.5 px-1">
-        <span className="text-sm">분할</span>
-        <div className="flex gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => editor.chain().focus().splitCell().run()}
-          >
-            <RowsIcon className="h-3.5 w-3.5 mr-1" />
-            행
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => editor.chain().focus().splitCell().run()}
-          >
-            <Columns className="h-3.5 w-3.5 mr-1" />
-            열
-          </Button>
-        </div>
+        <span className="text-sm">병합 해제</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => editor.chain().focus().splitCell().run()}
+        >
+          <Grid3X3 className="h-3.5 w-3.5 mr-1" />
+          셀 분할
+        </Button>
       </div>
 
       {/* 삽입 */}
