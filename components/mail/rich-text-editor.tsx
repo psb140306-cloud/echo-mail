@@ -127,14 +127,16 @@ export function RichTextEditor({
   return (
     <div className={`border rounded-md bg-background overflow-hidden ${className}`}>
       {editor && <EditorToolbar editor={editor} />}
-      {/* 표 편집 시 셀 메뉴 표시 (드래그 선택 시에만 TableCellMenu 내부에서 처리) */}
-      {editor && editor.isActive('table') && (
-        <TableCellMenu editor={editor} />
-      )}
-      <EditorContent
-        editor={editor}
-        className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
-      />
+      <div className="relative">
+        <EditorContent
+          editor={editor}
+          className="prose-headings:my-2 prose-p:my-1 prose-ul:my-1 prose-ol:my-1"
+        />
+        {/* 표 편집 시 셀 메뉴 표시 (드래그 선택 시에만) */}
+        {editor && editor.isActive('table') && (
+          <TableCellMenu editor={editor} />
+        )}
+      </div>
     </div>
   )
 }
