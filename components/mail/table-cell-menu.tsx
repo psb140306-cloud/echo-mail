@@ -135,111 +135,30 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
   }, [editor])
 
   // 셀을 행으로 분할 (위아래로 나눔)
-  // 1. 병합된 셀이면 splitCell로 분할
-  // 2. 일반 셀인 경우: 현재 셀만 분할되는 효과 구현
+  // 커스텀 ProseMirror 명령 사용
   const splitCellIntoRows = useCallback(() => {
-    // 먼저 splitCell 시도 (병합된 셀 분할)
+    // 먼저 기본 splitCell 시도 (병합된 셀 분할)
     const canSplit = editor.can().splitCell()
 
     if (canSplit) {
       editor.chain().focus().splitCell().run()
     } else {
-      // 일반 셀(1x1)인 경우:
-      // 1. 현재 행 아래에 새 행 추가
-      // 2. 같은 행의 다른 셀들을 각각 아래 셀과 병합 (rowspan=2)
-      const table = editor.view.dom.querySelector('table')
-      if (!table) return
-
-      const selectedCell = editor.view.dom.querySelector('.selectedCell') as HTMLTableCellElement
-      if (!selectedCell) return
-
-      const row = selectedCell.parentElement as HTMLTableRowElement
-      const cellIndex = selectedCell.cellIndex
-      const rowIndex = row.rowIndex
-
-      // 1. 행 추가
-      editor.chain().focus().addRowAfter().run()
-
-      // 2. 같은 열의 다른 셀들을 위 셀과 병합 (현재 셀 제외)
-      setTimeout(() => {
-        const updatedTable = editor.view.dom.querySelector('table')
-        if (!updatedTable) return
-
-        const rows = updatedTable.querySelectorAll('tr')
-        const currentRow = rows[rowIndex]
-        const newRow = rows[rowIndex + 1]
-
-        if (!currentRow || !newRow) return
-
-        const currentCells = currentRow.querySelectorAll('td, th')
-        const newCells = newRow.querySelectorAll('td, th')
-
-        // 현재 셀을 제외한 다른 셀들을 병합
-        const cellsToRemove: HTMLElement[] = []
-        for (let i = 0; i < Math.min(currentCells.length, newCells.length); i++) {
-          if (i !== cellIndex) {
-            const upperCell = currentCells[i] as HTMLElement
-            const lowerCell = newCells[i] as HTMLElement
-
-            // rowspan 설정
-            upperCell.setAttribute('rowspan', '2')
-            cellsToRemove.push(lowerCell)
-          }
-        }
-        // 삭제할 셀들 제거
-        cellsToRemove.forEach(cell => cell.remove())
-      }, 50)
+      // 일반 셀(1x1)인 경우: 커스텀 세로 분할 명령 사용
+      editor.chain().focus().splitCellVertically().run()
     }
   }, [editor])
 
   // 셀을 열로 분할 (좌우로 나눔)
-  // 1. 병합된 셀이면 splitCell로 분할
-  // 2. 일반 셀인 경우: 현재 셀만 분할되는 효과 구현
+  // 커스텀 ProseMirror 명령 사용
   const splitCellIntoCols = useCallback(() => {
-    // 먼저 splitCell 시도 (병합된 셀 분할)
+    // 먼저 기본 splitCell 시도 (병합된 셀 분할)
     const canSplit = editor.can().splitCell()
 
     if (canSplit) {
       editor.chain().focus().splitCell().run()
     } else {
-      // 일반 셀(1x1)인 경우:
-      // 1. 현재 열 옆에 새 열 추가
-      // 2. 같은 열의 다른 셀들을 각각 옆 셀과 병합 (colspan=2)
-      const table = editor.view.dom.querySelector('table')
-      if (!table) return
-
-      const selectedCell = editor.view.dom.querySelector('.selectedCell') as HTMLTableCellElement
-      if (!selectedCell) return
-
-      const row = selectedCell.parentElement as HTMLTableRowElement
-      const cellIndex = selectedCell.cellIndex
-      const rowIndex = row.rowIndex
-
-      // 1. 열 추가
-      editor.chain().focus().addColumnAfter().run()
-
-      // 2. 같은 행의 다른 셀들을 왼쪽 셀과 병합 (현재 셀 제외)
-      setTimeout(() => {
-        const updatedTable = editor.view.dom.querySelector('table')
-        if (!updatedTable) return
-
-        const rows = updatedTable.querySelectorAll('tr')
-
-        // 현재 행을 제외한 다른 행들의 셀을 병합
-        rows.forEach((tableRow, rIndex) => {
-          if (rIndex !== rowIndex) {
-            const cells = tableRow.querySelectorAll('td, th')
-            const leftCell = cells[cellIndex] as HTMLElement
-            const rightCell = cells[cellIndex + 1] as HTMLElement
-
-            if (leftCell && rightCell) {
-              // colspan 설정
-              leftCell.setAttribute('colspan', '2')
-              rightCell.remove()
-            }
-          }
-        })
-      }, 50)
+      // 일반 셀(1x1)인 경우: 커스텀 가로 분할 명령 사용
+      editor.chain().focus().splitCellHorizontally().run()
     }
   }, [editor])
 
