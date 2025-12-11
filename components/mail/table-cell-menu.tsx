@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Editor } from '@tiptap/react'
+import { CellSelection } from '@tiptap/pm/tables'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
@@ -40,29 +41,58 @@ const CELL_COLORS = [
 
 export function TableCellMenu({ editor }: TableCellMenuProps) {
   const [showMenu, setShowMenu] = useState(false)
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
   const [colorPickerOpen, setColorPickerOpen] = useState(false)
   const [customColor, setCustomColor] = useState('#ffffff')
+  const [selectedCellCount, setSelectedCellCount] = useState(0)
 
-  // 테이블 셀 선택 감지
+  // 테이블 셀 드래그 선택 감지 (여러 셀 선택 시에만 메뉴 표시)
   useEffect(() => {
     const checkSelection = () => {
       const isInTable = editor.isActive('table')
       const { selection } = editor.state
 
-      // 셀이 선택되었는지 확인
-      if (isInTable && selection) {
-        setShowMenu(true)
+      // CellSelection인 경우에만 메뉴 표시 (드래그로 여러 셀 선택)
+      if (isInTable && selection instanceof CellSelection) {
+        // 선택된 셀 개수 확인
+        const cellCount = selection.$anchorCell && selection.$headCell ?
+          Math.abs(selection.$headCell.pos - selection.$anchorCell.pos) > 0 ? 2 : 1 : 0
+
+        // DOM에서 selectedCell 클래스를 가진 요소 수 확인
+        const selectedCells = editor.view.dom.querySelectorAll('.selectedCell')
+        const actualCount = selectedCells.length
+
+        setSelectedCellCount(actualCount)
+
+        // 2개 이상의 셀이 선택된 경우에만 메뉴 표시
+        if (actualCount >= 2) {
+          setShowMenu(true)
+        } else {
+          setShowMenu(false)
+          setColorPickerOpen(false)
+        }
       } else {
         setShowMenu(false)
         setColorPickerOpen(false)
+        setSelectedCellCount(0)
       }
     }
+
+    // MutationObserver로 selectedCell 클래스 변화 감지
+    const observer = new MutationObserver(() => {
+      checkSelection()
+    })
+
+    observer.observe(editor.view.dom, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true,
+    })
 
     editor.on('selectionUpdate', checkSelection)
     editor.on('transaction', checkSelection)
 
     return () => {
+      observer.disconnect()
       editor.off('selectionUpdate', checkSelection)
       editor.off('transaction', checkSelection)
     }
@@ -83,7 +113,8 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
   }
 
   return (
-    <div className="flex items-center gap-1 p-1 bg-background border rounded-lg shadow-lg">
+    <div className="border-b px-2 py-1 bg-muted/20">
+      <div className="flex items-center gap-1 p-1 bg-background border rounded-lg shadow-sm">
       {/* 병합 */}
       <Button
         variant="ghost"
@@ -259,6 +290,7 @@ export function TableCellMenu({ editor }: TableCellMenuProps) {
           </div>
         </PopoverContent>
       </Popover>
+      </div>
     </div>
   )
 }

@@ -127,11 +127,9 @@ export function RichTextEditor({
   return (
     <div className={`border rounded-md bg-background overflow-hidden ${className}`}>
       {editor && <EditorToolbar editor={editor} />}
-      {/* 표 편집 시 셀 메뉴 표시 */}
+      {/* 표 편집 시 셀 메뉴 표시 (드래그 선택 시에만 TableCellMenu 내부에서 처리) */}
       {editor && editor.isActive('table') && (
-        <div className="border-b px-2 py-1 bg-muted/20">
-          <TableCellMenu editor={editor} />
-        </div>
+        <TableCellMenu editor={editor} />
       )}
       <EditorContent
         editor={editor}
