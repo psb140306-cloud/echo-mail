@@ -115,70 +115,119 @@ export function RichTextEditor({
     }
   }, [content, editor])
 
-  // 테이블 행 높이 조절 이벤트 핸들러
+  // 테이블 행 높이 조절 핸들 및 이벤트 핸들러
   useEffect(() => {
     if (!editor || !isMounted) return
 
-    const editorDom = editor.view.dom
+    const editorDom = editor.view.dom as HTMLElement
     if (!editorDom) return
 
     let isResizing = false
     let startY = 0
     let startHeight = 0
     let targetRow: HTMLTableRowElement | null = null
-    let lastHoveredCell: HTMLElement | null = null
+    let resizeHandle: HTMLDivElement | null = null
+    let activeHandle: HTMLDivElement | null = null
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isResizing && targetRow) {
-        e.preventDefault()
-        const deltaY = e.clientY - startY
-        const newHeight = Math.max(24, startHeight + deltaY)
-        targetRow.style.height = `${newHeight}px`
-        const cells = targetRow.querySelectorAll('td, th')
-        cells.forEach((cell) => {
-          (cell as HTMLElement).style.height = `${newHeight}px`
-          ;(cell as HTMLElement).style.minHeight = `${newHeight}px`
-        })
-        return
-      }
+    // 리사이즈 핸들 생성 함수
+    const createResizeHandle = (row: HTMLTableRowElement): HTMLDivElement => {
+      const handle = document.createElement('div')
+      handle.className = 'row-resize-handle'
+      handle.style.cssText = `
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background-color: transparent;
+        cursor: row-resize;
+        z-index: 50;
+        pointer-events: auto;
+      `
+      return handle
+    }
 
-      // 커서 변경 로직 - 셀의 아래쪽 테두리 근처인지 확인
+    // 핸들 위치 업데이트
+    const updateHandlePosition = (handle: HTMLDivElement, row: HTMLTableRowElement) => {
+      const rowRect = row.getBoundingClientRect()
+      const editorRect = editorDom.getBoundingClientRect()
+      handle.style.top = `${rowRect.bottom - editorRect.top - 2}px`
+      handle.style.width = `${rowRect.width}px`
+      handle.style.left = `${rowRect.left - editorRect.left}px`
+    }
+
+    // 테이블에 마우스 진입 시 핸들 표시
+    const handleTableMouseMove = (e: MouseEvent) => {
+      if (isResizing) return
+
       const target = e.target as HTMLElement
-      const cell = target.closest('td, th') as HTMLTableCellElement
+      const row = target.closest('tr') as HTMLTableRowElement
+      const table = target.closest('table')
 
-      // 이전 호버 셀의 커서 초기화
-      if (lastHoveredCell && lastHoveredCell !== cell) {
-        lastHoveredCell.style.cursor = ''
-      }
-
-      if (!cell) {
-        lastHoveredCell = null
+      if (!row || !table) {
+        // 핸들 숨기기
+        if (resizeHandle && resizeHandle.parentNode) {
+          resizeHandle.style.backgroundColor = 'transparent'
+        }
         return
       }
 
-      const cellRect = cell.getBoundingClientRect()
-      const distanceFromBottom = cellRect.bottom - e.clientY
+      const rowRect = row.getBoundingClientRect()
+      const distanceFromBottom = rowRect.bottom - e.clientY
 
-      // 셀 하단 10px 영역에서 row-resize 커서 표시
-      if (distanceFromBottom <= 10 && distanceFromBottom >= 0) {
-        cell.style.cursor = 'row-resize'
-        lastHoveredCell = cell
-      } else {
-        cell.style.cursor = ''
-        lastHoveredCell = cell
+      // 행 하단 8px 영역에서 핸들 표시
+      if (distanceFromBottom <= 8 && distanceFromBottom >= -2) {
+        if (!resizeHandle) {
+          resizeHandle = createResizeHandle(row)
+          editorDom.style.position = 'relative'
+          editorDom.appendChild(resizeHandle)
+        }
+
+        updateHandlePosition(resizeHandle, row)
+        resizeHandle.style.backgroundColor = '#3b82f6' // 파란색
+        resizeHandle.dataset.rowIndex = String(Array.from(row.parentNode?.children || []).indexOf(row))
+        targetRow = row
+      } else if (resizeHandle) {
+        resizeHandle.style.backgroundColor = 'transparent'
       }
     }
 
     const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement
+
+      // 리사이즈 핸들 클릭 확인
+      if (target.classList.contains('row-resize-handle') ||
+          (resizeHandle && resizeHandle.style.backgroundColor === 'rgb(59, 130, 246)')) {
+
+        const row = target.closest('tr') as HTMLTableRowElement || targetRow
+        if (!row && !targetRow) return
+
+        e.preventDefault()
+        e.stopPropagation()
+
+        isResizing = true
+        startY = e.clientY
+        if (targetRow) {
+          startHeight = targetRow.offsetHeight
+        }
+
+        activeHandle = resizeHandle
+        if (activeHandle) {
+          activeHandle.style.backgroundColor = '#2563eb' // 진한 파란색
+        }
+
+        document.body.style.cursor = 'row-resize'
+        document.body.style.userSelect = 'none'
+        return
+      }
+
+      // 셀 하단 테두리 근처 클릭 확인
       const cell = target.closest('td, th') as HTMLTableCellElement
       if (!cell) return
 
       const cellRect = cell.getBoundingClientRect()
       const distanceFromBottom = cellRect.bottom - e.clientY
 
-      // 셀 하단 10px 영역에서 드래그 시작
-      if (distanceFromBottom <= 10 && distanceFromBottom >= 0) {
+      if (distanceFromBottom <= 8 && distanceFromBottom >= 0) {
         e.preventDefault()
         e.stopPropagation()
         isResizing = true
@@ -192,32 +241,72 @@ export function RichTextEditor({
       }
     }
 
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing && targetRow) {
+        e.preventDefault()
+        const deltaY = e.clientY - startY
+        const newHeight = Math.max(24, startHeight + deltaY)
+
+        // 행 높이 설정
+        targetRow.style.height = `${newHeight}px`
+
+        // 모든 셀에 높이 적용
+        const cells = targetRow.querySelectorAll('td, th')
+        cells.forEach((cell) => {
+          const cellEl = cell as HTMLElement
+          cellEl.style.height = `${newHeight}px`
+          cellEl.style.minHeight = `${newHeight}px`
+        })
+
+        // 핸들 위치 업데이트
+        if (activeHandle && targetRow) {
+          updateHandlePosition(activeHandle, targetRow)
+        }
+        return
+      }
+
+      // 호버 시 핸들 표시
+      handleTableMouseMove(e)
+    }
+
     const handleMouseUp = () => {
       if (isResizing) {
         isResizing = false
         targetRow = null
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        if (lastHoveredCell) {
-          lastHoveredCell.style.cursor = ''
+
+        if (activeHandle) {
+          activeHandle.style.backgroundColor = 'transparent'
+          activeHandle = null
         }
       }
     }
 
-    // 에디터 DOM에 직접 이벤트 리스너 연결
+    // 테이블 떠날 때 핸들 숨기기
+    const handleMouseLeave = () => {
+      if (!isResizing && resizeHandle) {
+        resizeHandle.style.backgroundColor = 'transparent'
+      }
+    }
+
+    // 이벤트 리스너 연결
     editorDom.addEventListener('mousemove', handleMouseMove)
     editorDom.addEventListener('mousedown', handleMouseDown, { capture: true })
+    editorDom.addEventListener('mouseleave', handleMouseLeave)
     document.addEventListener('mouseup', handleMouseUp)
     document.addEventListener('mousemove', handleMouseMove)
 
     return () => {
       editorDom.removeEventListener('mousemove', handleMouseMove)
       editorDom.removeEventListener('mousedown', handleMouseDown, { capture: true } as EventListenerOptions)
+      editorDom.removeEventListener('mouseleave', handleMouseLeave)
       document.removeEventListener('mouseup', handleMouseUp)
       document.removeEventListener('mousemove', handleMouseMove)
-      // cleanup
-      if (lastHoveredCell) {
-        lastHoveredCell.style.cursor = ''
+
+      // 핸들 정리
+      if (resizeHandle && resizeHandle.parentNode) {
+        resizeHandle.parentNode.removeChild(resizeHandle)
       }
     }
   }, [editor, isMounted])
