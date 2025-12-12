@@ -303,7 +303,11 @@ export async function sendMail(
       return total + recipientCount
     }, 0)
 
-    const recipientCount = Array.isArray(request.to) ? request.to.length : 1
+    // 모든 수신자 수 계산 (to + cc + bcc)
+    const toCount = Array.isArray(request.to) ? request.to.length : 1
+    const ccCount = request.cc ? (Array.isArray(request.cc) ? request.cc.length : 1) : 0
+    const bccCount = request.bcc ? (Array.isArray(request.bcc) ? request.bcc.length : 1) : 0
+    const recipientCount = toCount + ccCount + bccCount
     const limitCheck = checkEmailSendingLimit(plan, currentUsage, recipientCount)
 
     if (!limitCheck.allowed) {
