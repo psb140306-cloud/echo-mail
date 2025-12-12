@@ -370,11 +370,13 @@
 /* 행 높이 조절을 위해 tr, td, th에 position relative 추가 */
 .ProseMirror tr {
   position: relative;
+  transition: height 0.05s ease-out;
 }
 
 .ProseMirror td,
 .ProseMirror th {
   position: relative;
+  transition: height 0.05s ease-out, min-height 0.05s ease-out;
 }
 
 /* 행 리사이즈 오버레이 (document.body에 추가됨) */

@@ -197,12 +197,8 @@ export const RowResizeExtension = Extension.create<RowResizeOptions>({
 
       // window 이벤트 리스너
       windowMouseMoveHandler = (e: MouseEvent) => {
-        if (!currentHoveredRow) return
+        if (!currentHoveredRow || !resizeOverlay) return
 
-        const state = rowResizingPluginKey.getState(view.state)
-        if (!state?.dragging) return
-
-        const { startY, startHeight } = state.dragging
         const deltaY = e.clientY - startY
         const newHeight = Math.max(cellMinHeight, startHeight + deltaY)
 
@@ -214,8 +210,8 @@ export const RowResizeExtension = Extension.create<RowResizeOptions>({
           (c as HTMLElement).style.minHeight = `${newHeight}px`
         })
 
-        // 오버레이 위치 업데이트
-        updateOverlayPosition(currentHoveredRow)
+        // 오버레이를 마우스 Y 위치에 맞춰 이동 (드래그 중 실시간 추적)
+        resizeOverlay.style.top = `${e.clientY - 3}px`
       }
 
       windowMouseUpHandler = (e: MouseEvent) => {
