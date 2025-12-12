@@ -104,9 +104,19 @@ export async function POST(request: NextRequest) {
       // FormData 파싱
       const formData = await request.formData()
       const file = formData.get('file') as File | null
+      const currentCountStr = formData.get('currentCount') as string | null
+      const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0
 
       if (!file) {
         return createErrorResponse('파일이 필요합니다.', 400)
+      }
+
+      // 첨부파일 개수 체크
+      if (currentCount >= limits.maxCount) {
+        return createErrorResponse(
+          `첨부파일 개수 제한을 초과했습니다. 최대 ${limits.maxCount}개까지 첨부 가능합니다.`,
+          400
+        )
       }
 
       // 파일 크기 체크
@@ -177,6 +187,11 @@ export async function POST(request: NextRequest) {
           size: file.size,
           type: file.type,
           url: urlData?.signedUrl,
+          // 플랜 제한 정보 포함 (프론트엔드 동기화용)
+          limits: {
+            maxSize: limits.maxSize,
+            maxCount: limits.maxCount,
+          },
         },
         '파일이 업로드되었습니다.'
       )
@@ -238,6 +253,54 @@ export async function DELETE(request: NextRequest) {
     } catch (error) {
       logger.error('첨부파일 삭제 API 오류:', error)
       return createErrorResponse('파일 삭제에 실패했습니다.')
+    }
+  })
+}
+
+/**
+ * GET /api/mail/attachments/limits - 플랜별 첨부파일 제한 정보 조회
+ */
+export async function GET(request: NextRequest) {
+  return withTenantContext(request, async () => {
+    try {
+      const tenantContext = TenantContext.getInstance()
+      const tenantId = tenantContext.getTenantId()
+
+      if (!tenantId) {
+        return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
+      }
+
+      // 사용자 인증 확인
+      const supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        return createErrorResponse('인증이 필요합니다.', 401)
+      }
+
+      // 테넌트 플랜 확인
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { subscriptionPlan: true },
+      })
+
+      if (!tenant) {
+        return createErrorResponse('테넌트를 찾을 수 없습니다.', 404)
+      }
+
+      const plan = tenant.subscriptionPlan as SubscriptionPlan
+      const limits = ATTACHMENT_LIMITS[plan]
+
+      return createSuccessResponse({
+        maxSize: limits.maxSize,
+        maxCount: limits.maxCount,
+        plan,
+      })
+    } catch (error) {
+      logger.error('첨부파일 제한 조회 API 오류:', error)
+      return createErrorResponse('제한 정보 조회에 실패했습니다.')
     }
   })
 }

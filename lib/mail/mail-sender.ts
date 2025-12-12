@@ -13,6 +13,7 @@ import { checkEmailSendingLimit } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 import { trackEmailUsage } from '@/lib/usage/usage-tracker'
 import { getKSTStartOfMonth } from '@/lib/utils/date'
+import { createAdminClient } from '@/lib/supabase/server'
 
 // 프론트엔드에서 전송하는 첨부파일 형식
 export interface FrontendAttachment {
@@ -24,18 +25,61 @@ export interface FrontendAttachment {
 }
 
 /**
- * 프론트엔드 첨부파일 형식을 nodemailer 형식으로 변환
+ * 첨부파일에 대해 새로운 signed URL을 생성
+ * 예약 발송 시 URL 만료 문제 해결
  */
-export function convertAttachmentsForNodemailer(
+async function refreshAttachmentUrls(
   attachments: FrontendAttachment[]
-): Array<{
+): Promise<FrontendAttachment[]> {
+  if (attachments.length === 0) return attachments
+
+  const supabase = createAdminClient()
+  const refreshedAttachments: FrontendAttachment[] = []
+
+  for (const attachment of attachments) {
+    try {
+      // key가 있으면 새 signed URL 생성 (1시간 유효)
+      if (attachment.key) {
+        const { data } = await supabase.storage
+          .from('attachments')
+          .createSignedUrl(attachment.key, 3600)
+
+        if (data?.signedUrl) {
+          refreshedAttachments.push({
+            ...attachment,
+            url: data.signedUrl,
+          })
+          continue
+        }
+      }
+      // URL 갱신 실패 시 기존 URL 사용 (이미 만료되었을 수 있음)
+      refreshedAttachments.push(attachment)
+    } catch (error) {
+      logger.warn('첨부파일 URL 갱신 실패:', { key: attachment.key, error })
+      refreshedAttachments.push(attachment)
+    }
+  }
+
+  return refreshedAttachments
+}
+
+/**
+ * 프론트엔드 첨부파일 형식을 nodemailer 형식으로 변환
+ * 발송 직전에 새 signed URL 생성하여 URL 만료 문제 해결
+ */
+export async function convertAttachmentsForNodemailer(
+  attachments: FrontendAttachment[]
+): Promise<Array<{
   filename: string
   path?: string
   contentType?: string
-}> {
-  return attachments.map((attachment) => ({
+}>> {
+  // 발송 직전에 새 signed URL 생성
+  const refreshedAttachments = await refreshAttachmentUrls(attachments)
+
+  return refreshedAttachments.map((attachment) => ({
     filename: attachment.name,
-    path: attachment.url, // URL을 path로 사용 (nodemailer가 URL에서 다운로드)
+    path: attachment.url,
     contentType: attachment.type,
   }))
 }
@@ -416,9 +460,9 @@ export interface SendEmailRequest {
 export async function sendEmail(
   request: SendEmailRequest
 ): Promise<SendMailResult> {
-  // 첨부파일 변환
+  // 첨부파일 변환 (새 signed URL 생성하여 만료 문제 해결)
   const convertedAttachments = request.attachments
-    ? convertAttachmentsForNodemailer(request.attachments)
+    ? await convertAttachmentsForNodemailer(request.attachments)
     : undefined
 
   // sendMail 호출 (userId는 'system'으로 설정)

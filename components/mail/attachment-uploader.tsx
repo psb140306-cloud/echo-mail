@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
@@ -23,11 +23,16 @@ export interface AttachmentFile {
   url?: string
 }
 
+interface AttachmentLimits {
+  maxSize: number
+  maxCount: number
+}
+
 interface AttachmentUploaderProps {
   attachments: AttachmentFile[]
   onAttachmentsChange: (attachments: AttachmentFile[]) => void
-  maxFiles?: number
-  maxSize?: number // bytes
+  maxFiles?: number  // deprecated: 백엔드 플랜 제한 사용
+  maxSize?: number   // deprecated: 백엔드 플랜 제한 사용
   disabled?: boolean
 }
 
@@ -61,15 +66,49 @@ function getFileIcon(type: string) {
 export function AttachmentUploader({
   attachments,
   onAttachmentsChange,
-  maxFiles = 10,
-  maxSize = 25 * 1024 * 1024, // 25MB 기본값
+  maxFiles: propMaxFiles,  // props로 받은 값은 fallback으로만 사용
+  maxSize: propMaxSize,
   disabled = false,
 }: AttachmentUploaderProps) {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [dragActive, setDragActive] = useState(false)
+  const [limits, setLimits] = useState<AttachmentLimits>({
+    maxSize: propMaxSize ?? 25 * 1024 * 1024,  // 초기값: props 또는 기본값
+    maxCount: propMaxFiles ?? 10,
+  })
+  const [limitsLoaded, setLimitsLoaded] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  // 플랜별 첨부파일 제한 정보 로드
+  useEffect(() => {
+    const fetchLimits = async () => {
+      try {
+        const response = await fetch('/api/mail/attachments')
+        if (response.ok) {
+          const result = await response.json()
+          if (result.data) {
+            setLimits({
+              maxSize: result.data.maxSize,
+              maxCount: result.data.maxCount,
+            })
+          }
+        }
+      } catch (error) {
+        // 실패 시 기본값 유지
+        console.warn('첨부파일 제한 정보 로드 실패:', error)
+      } finally {
+        setLimitsLoaded(true)
+      }
+    }
+
+    fetchLimits()
+  }, [])
+
+  // 편의를 위한 변수
+  const maxFiles = limits.maxCount
+  const maxSize = limits.maxSize
 
   // 파일 업로드 핸들러
   const uploadFile = useCallback(
@@ -107,6 +146,7 @@ export function AttachmentUploader({
       try {
         const formData = new FormData()
         formData.append('file', file)
+        formData.append('currentCount', attachments.length.toString())
 
         const response = await fetch('/api/mail/attachments', {
           method: 'POST',
@@ -117,6 +157,14 @@ export function AttachmentUploader({
 
         if (!response.ok) {
           throw new Error(result.message || '파일 업로드에 실패했습니다.')
+        }
+
+        // 응답에 포함된 제한 정보로 업데이트
+        if (result.data?.limits) {
+          setLimits({
+            maxSize: result.data.limits.maxSize,
+            maxCount: result.data.limits.maxCount,
+          })
         }
 
         return result.data as AttachmentFile

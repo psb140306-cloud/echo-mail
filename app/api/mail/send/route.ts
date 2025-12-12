@@ -103,9 +103,9 @@ export async function POST(request: NextRequest) {
       const { data, error } = await parseAndValidate(request, sendMailSchema)
       if (error) return error
 
-      // 첨부파일 변환 (프론트엔드 형식 → nodemailer 형식)
+      // 첨부파일 변환 (프론트엔드 형식 → nodemailer 형식, 새 signed URL 생성)
       const convertedAttachments = data.attachments
-        ? convertAttachmentsForNodemailer(data.attachments)
+        ? await convertAttachmentsForNodemailer(data.attachments)
         : undefined
 
       // 메일 발송
