@@ -381,6 +381,11 @@
 .row-resize-overlay {
   pointer-events: auto !important;
   cursor: row-resize !important;
+  transition: background-color 0.1s ease;
+}
+
+.row-resize-overlay:hover {
+  background-color: #2563eb !important;
 }
 
 /* 테이블 그립 (전체 선택) */
