@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { Link } from '@tiptap/extension-link'
 import { Image } from '@tiptap/extension-image'
 import { Table } from '@tiptap/extension-table'
-import { TableRow } from '@tiptap/extension-table-row'
+import { CustomTableRow } from '@/lib/tiptap/custom-table-row'
 import { CustomTableCell } from '@/lib/tiptap/custom-table-cell'
 import { CustomTableHeader } from '@/lib/tiptap/custom-table-header'
 import { SplitCellExtension } from '@/lib/tiptap/split-cell-extension'
@@ -69,7 +69,7 @@ export function RichTextEditor({
           style: 'border-collapse: collapse; border: 1px solid #1f2937;',
         },
       }),
-      TableRow,
+      CustomTableRow,
       CustomTableCell.configure({
         HTMLAttributes: {
           style: 'border: 1px solid #1f2937; padding: 8px;',

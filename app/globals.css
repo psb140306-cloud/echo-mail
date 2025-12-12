@@ -363,31 +363,8 @@
   cursor: row-resize !important;
 }
 
-.ProseMirror .row-resize-target {
-  position: relative;
-}
-
-.ProseMirror .row-resize-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  height: 4px;
-  background-color: #3b82f6;
-  cursor: row-resize;
-  z-index: 100;
-  pointer-events: none;
-}
-
-.ProseMirror .row-resize-handle-active {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -2px;
-  height: 4px;
-  background-color: #3b82f6;
-  cursor: row-resize;
-  z-index: 50;
+.ProseMirror.row-resize-cursor * {
+  cursor: row-resize !important;
 }
 
 /* 행 높이 조절을 위해 tr, td, th에 position relative 추가 */
@@ -398,6 +375,12 @@
 .ProseMirror td,
 .ProseMirror th {
   position: relative;
+}
+
+/* 행 리사이즈 오버레이 (document.body에 추가됨) */
+.row-resize-overlay {
+  pointer-events: auto !important;
+  cursor: row-resize !important;
 }
 
 /* 테이블 그립 (전체 선택) */
