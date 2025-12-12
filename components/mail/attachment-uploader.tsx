@@ -31,6 +31,7 @@ interface AttachmentLimits {
 interface AttachmentUploaderProps {
   attachments: AttachmentFile[]
   onAttachmentsChange: (attachments: AttachmentFile[]) => void
+  onUploadingChange?: (uploading: boolean) => void  // 업로드 상태 콜백 (전송 버튼 제어용)
   maxFiles?: number  // deprecated: 백엔드 플랜 제한 사용
   maxSize?: number   // deprecated: 백엔드 플랜 제한 사용
   disabled?: boolean
@@ -66,11 +67,18 @@ function getFileIcon(type: string) {
 export function AttachmentUploader({
   attachments,
   onAttachmentsChange,
+  onUploadingChange,
   maxFiles: propMaxFiles,  // props로 받은 값은 fallback으로만 사용
   maxSize: propMaxSize,
   disabled = false,
 }: AttachmentUploaderProps) {
-  const [uploading, setUploading] = useState(false)
+  const [uploading, setUploadingState] = useState(false)
+
+  // uploading 상태 변경 시 콜백 호출
+  const setUploading = (value: boolean) => {
+    setUploadingState(value)
+    onUploadingChange?.(value)
+  }
   const [uploadProgress, setUploadProgress] = useState(0)
   const [dragActive, setDragActive] = useState(false)
   const [limits, setLimits] = useState<AttachmentLimits>({

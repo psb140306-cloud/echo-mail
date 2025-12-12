@@ -14,15 +14,7 @@ import {
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { createClient } from '@/lib/supabase/server'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
-
-// 플랜별 첨부파일 제한
-const ATTACHMENT_LIMITS: Record<SubscriptionPlan, { maxSize: number; maxCount: number }> = {
-  FREE_TRIAL: { maxSize: 5 * 1024 * 1024, maxCount: 3 }, // 5MB, 3개
-  STARTER: { maxSize: 10 * 1024 * 1024, maxCount: 5 }, // 10MB, 5개
-  PROFESSIONAL: { maxSize: 25 * 1024 * 1024, maxCount: 10 }, // 25MB, 10개
-  BUSINESS: { maxSize: 50 * 1024 * 1024, maxCount: 20 }, // 50MB, 20개
-  ENTERPRISE: { maxSize: 100 * 1024 * 1024, maxCount: 50 }, // 100MB, 50개
-}
+import { ATTACHMENT_LIMITS } from '@/lib/subscription/attachment-limits'
 
 // 허용 확장자
 const ALLOWED_EXTENSIONS = [

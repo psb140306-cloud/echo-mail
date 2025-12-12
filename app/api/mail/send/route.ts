@@ -21,6 +21,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sendMail, convertAttachmentsForNodemailer } from '@/lib/mail/mail-sender'
 import { canSendMail } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
+import { validateAttachments } from '@/lib/subscription/attachment-limits'
 
 // 첨부파일 스키마 (프론트엔드에서 전송하는 형식)
 const attachmentSchema = z.object({
@@ -103,9 +104,17 @@ export async function POST(request: NextRequest) {
       const { data, error } = await parseAndValidate(request, sendMailSchema)
       if (error) return error
 
-      // 첨부파일 변환 (프론트엔드 형식 → nodemailer 형식, 새 signed URL 생성)
+      // 3. 첨부파일 플랜 제한 검증
+      if (data.attachments && data.attachments.length > 0) {
+        const attachmentValidation = validateAttachments(data.attachments, plan)
+        if (!attachmentValidation.valid) {
+          return createErrorResponse(attachmentValidation.error!, 400)
+        }
+      }
+
+      // 첨부파일 변환 (프론트엔드 형식 → nodemailer 형식, 테넌트 검증 및 새 signed URL 생성)
       const convertedAttachments = data.attachments
-        ? await convertAttachmentsForNodemailer(data.attachments)
+        ? await convertAttachmentsForNodemailer(data.attachments, tenantId)
         : undefined
 
       // 메일 발송

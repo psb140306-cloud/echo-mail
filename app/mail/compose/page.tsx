@@ -44,6 +44,7 @@ export default function ComposeMailPage() {
   const [selectedSignature, setSelectedSignature] = useState<{ id: string; content: string } | null>(null)
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null)
   const [editorKey, setEditorKey] = useState(0) // 에디터 리셋용
+  const [uploading, setUploading] = useState(false) // 첨부파일 업로드 중 상태
 
   // 주소록 팝업 상태
   const [addressBookOpen, setAddressBookOpen] = useState(false)
@@ -468,6 +469,7 @@ export default function ComposeMailPage() {
               <AttachmentUploader
                 attachments={attachments}
                 onAttachmentsChange={setAttachments}
+                onUploadingChange={setUploading}
                 disabled={sending}
               />
             </div>
@@ -492,11 +494,16 @@ export default function ComposeMailPage() {
               >
                 취소
               </Button>
-              <Button onClick={handleSend} disabled={sending}>
+              <Button onClick={handleSend} disabled={sending || uploading}>
                 {sending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     {scheduledAt ? '예약 중...' : '발송 중...'}
+                  </>
+                ) : uploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    업로드 중...
                   </>
                 ) : scheduledAt ? (
                   <>

@@ -25,11 +25,23 @@ export interface FrontendAttachment {
 }
 
 /**
+ * 첨부파일 key가 해당 테넌트 소유인지 검증
+ * 교차 테넌트 접근 및 SSRF 방지
+ */
+function validateAttachmentKey(key: string, tenantId: string): boolean {
+  // key 형식: mail-attachments/{tenantId}/{파일명}
+  const expectedPrefix = `mail-attachments/${tenantId}/`
+  return key.startsWith(expectedPrefix)
+}
+
+/**
  * 첨부파일에 대해 새로운 signed URL을 생성
  * 예약 발송 시 URL 만료 문제 해결
+ * 테넌트 소유권 검증으로 교차 테넌트 접근 방지
  */
 async function refreshAttachmentUrls(
-  attachments: FrontendAttachment[]
+  attachments: FrontendAttachment[],
+  tenantId: string
 ): Promise<FrontendAttachment[]> {
   if (attachments.length === 0) return attachments
 
@@ -37,26 +49,38 @@ async function refreshAttachmentUrls(
   const refreshedAttachments: FrontendAttachment[] = []
 
   for (const attachment of attachments) {
-    try {
-      // key가 있으면 새 signed URL 생성 (1시간 유효)
-      if (attachment.key) {
-        const { data } = await supabase.storage
-          .from('attachments')
-          .createSignedUrl(attachment.key, 3600)
+    // key가 없으면 첨부파일 스킵 (보안: 외부 URL 차단)
+    if (!attachment.key) {
+      logger.warn('첨부파일 key 누락 - 스킵:', { name: attachment.name })
+      continue
+    }
 
-        if (data?.signedUrl) {
-          refreshedAttachments.push({
-            ...attachment,
-            url: data.signedUrl,
-          })
-          continue
-        }
+    // 테넌트 소유권 검증 (보안: 교차 테넌트 접근 차단)
+    if (!validateAttachmentKey(attachment.key, tenantId)) {
+      logger.warn('첨부파일 테넌트 검증 실패 - 스킵:', {
+        key: attachment.key,
+        tenantId,
+        name: attachment.name
+      })
+      continue
+    }
+
+    try {
+      // 새 signed URL 생성 (1시간 유효)
+      const { data } = await supabase.storage
+        .from('attachments')
+        .createSignedUrl(attachment.key, 3600)
+
+      if (data?.signedUrl) {
+        refreshedAttachments.push({
+          ...attachment,
+          url: data.signedUrl,
+        })
+      } else {
+        logger.warn('첨부파일 URL 생성 실패 - 스킵:', { key: attachment.key })
       }
-      // URL 갱신 실패 시 기존 URL 사용 (이미 만료되었을 수 있음)
-      refreshedAttachments.push(attachment)
     } catch (error) {
-      logger.warn('첨부파일 URL 갱신 실패:', { key: attachment.key, error })
-      refreshedAttachments.push(attachment)
+      logger.warn('첨부파일 URL 갱신 실패 - 스킵:', { key: attachment.key, error })
     }
   }
 
@@ -66,16 +90,18 @@ async function refreshAttachmentUrls(
 /**
  * 프론트엔드 첨부파일 형식을 nodemailer 형식으로 변환
  * 발송 직전에 새 signed URL 생성하여 URL 만료 문제 해결
+ * 테넌트 소유권 검증으로 보안 강화
  */
 export async function convertAttachmentsForNodemailer(
-  attachments: FrontendAttachment[]
+  attachments: FrontendAttachment[],
+  tenantId: string
 ): Promise<Array<{
   filename: string
   path?: string
   contentType?: string
 }>> {
-  // 발송 직전에 새 signed URL 생성
-  const refreshedAttachments = await refreshAttachmentUrls(attachments)
+  // 발송 직전에 새 signed URL 생성 (테넌트 검증 포함)
+  const refreshedAttachments = await refreshAttachmentUrls(attachments, tenantId)
 
   return refreshedAttachments.map((attachment) => ({
     filename: attachment.name,
@@ -460,9 +486,9 @@ export interface SendEmailRequest {
 export async function sendEmail(
   request: SendEmailRequest
 ): Promise<SendMailResult> {
-  // 첨부파일 변환 (새 signed URL 생성하여 만료 문제 해결)
+  // 첨부파일 변환 (테넌트 검증 및 새 signed URL 생성)
   const convertedAttachments = request.attachments
-    ? await convertAttachmentsForNodemailer(request.attachments)
+    ? await convertAttachmentsForNodemailer(request.attachments, request.tenantId)
     : undefined
 
   // sendMail 호출 (userId는 'system'으로 설정)
