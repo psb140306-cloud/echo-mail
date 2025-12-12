@@ -358,25 +358,45 @@
   cursor: col-resize;
 }
 
-/* 테이블 행 높이 조절 핸들 */
-.ProseMirror .row-resize-handle {
+/* 테이블 행 높이 조절 */
+.ProseMirror.row-resize-cursor {
+  cursor: row-resize !important;
+}
+
+.ProseMirror .row-resize-target {
+  position: relative;
+}
+
+.ProseMirror .row-resize-line {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -3px;
-  height: 6px;
-  background-color: transparent;
+  bottom: -2px;
+  height: 4px;
+  background-color: #3b82f6;
   cursor: row-resize;
-  z-index: 20;
+  z-index: 100;
+  pointer-events: none;
 }
 
-.ProseMirror .row-resize-handle:hover,
-.ProseMirror .row-resize-handle:active {
-  background-color: hsl(var(--primary));
+.ProseMirror .row-resize-handle-active {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 4px;
+  background-color: #3b82f6;
+  cursor: row-resize;
+  z-index: 50;
 }
 
-/* 행 높이 조절을 위해 tr에 position relative 추가 */
+/* 행 높이 조절을 위해 tr, td, th에 position relative 추가 */
 .ProseMirror tr {
+  position: relative;
+}
+
+.ProseMirror td,
+.ProseMirror th {
   position: relative;
 }
 
