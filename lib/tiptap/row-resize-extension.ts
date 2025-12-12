@@ -25,45 +25,44 @@ function domCellAround(target: EventTarget | null): HTMLTableCellElement | null 
 function findTableAndRowByElement(
   row: HTMLTableRowElement,
   view: EditorView
-): { rowPos: number; rowIndex: number } | null {
+): { rowPos: number; rowIndex: number; cellInsideRow: number } | null {
   const table = row.closest('table')
   if (!table) return null
 
-  // 테이블의 첫 번째 셀에서 ProseMirror 위치 찾기
-  const firstCell = table.querySelector('td, th')
-  if (!firstCell) return null
+  // 해당 행의 첫 번째 셀에서 ProseMirror 위치 찾기
+  const firstCellInRow = row.querySelector('td, th')
+  if (!firstCellInRow) return null
 
   try {
-    const cellPos = view.posAtDOM(firstCell, 0)
-    const $pos = view.state.doc.resolve(cellPos)
+    // 행 내부 셀의 위치를 얻음
+    const cellInsideRow = view.posAtDOM(firstCellInRow, 0)
+    const $cellPos = view.state.doc.resolve(cellInsideRow)
 
-    // 테이블 노드 찾기
+    // 테이블과 행 노드 찾기
     let tableDepth = -1
-    for (let d = $pos.depth; d > 0; d--) {
-      if ($pos.node(d).type.name === 'table') {
+    let rowDepth = -1
+    for (let d = $cellPos.depth; d > 0; d--) {
+      const nodeName = $cellPos.node(d).type.name
+      if (nodeName === 'tableRow' && rowDepth === -1) {
+        rowDepth = d
+      }
+      if (nodeName === 'table') {
         tableDepth = d
         break
       }
     }
-    if (tableDepth === -1) return null
+    if (tableDepth === -1 || rowDepth === -1) return null
 
-    const tableNode = $pos.node(tableDepth)
-    const tableStart = $pos.start(tableDepth)
+    // 행의 시작 위치
+    const rowPos = $cellPos.before(rowDepth)
 
     // 행 인덱스 찾기
     const tbody = row.parentNode
     const rows = tbody?.children
     if (!rows) return null
     const rowIndex = Array.from(rows).indexOf(row)
-    if (rowIndex === -1) return null
 
-    // 행 위치 계산
-    let rowPos = tableStart
-    for (let i = 0; i < rowIndex; i++) {
-      rowPos += tableNode.child(i).nodeSize
-    }
-
-    return { rowPos, rowIndex }
+    return { rowPos, rowIndex, cellInsideRow }
   } catch (e) {
     console.error('findTableAndRowByElement error:', e)
     return null
@@ -245,19 +244,29 @@ export const RowResizeExtension = Extension.create<RowResizeOptions>({
 
         // ProseMirror 문서에 높이 저장
         try {
-          const $pos = view.state.doc.resolve(rowPos)
+          // rowPos는 행의 시작 위치
+          const rowNode = view.state.doc.nodeAt(rowPos)
 
-          // tableRow 노드 찾기
-          for (let d = $pos.depth; d > 0; d--) {
-            const node = $pos.node(d)
-            if (node.type.name === 'tableRow') {
-              const pos = $pos.before(d)
-              const tr = view.state.tr.setNodeMarkup(pos, null, {
-                ...node.attrs,
-                height: newHeight
-              })
-              view.dispatch(tr)
-              break
+          if (rowNode && rowNode.type.name === 'tableRow') {
+            const tr = view.state.tr.setNodeMarkup(rowPos, null, {
+              ...rowNode.attrs,
+              height: newHeight
+            })
+            view.dispatch(tr)
+          } else {
+            // fallback: rowPos + 1 위치에서 행 찾기
+            const $pos = view.state.doc.resolve(rowPos + 1)
+            for (let d = $pos.depth; d > 0; d--) {
+              const node = $pos.node(d)
+              if (node.type.name === 'tableRow') {
+                const pos = $pos.before(d)
+                const tr = view.state.tr.setNodeMarkup(pos, null, {
+                  ...node.attrs,
+                  height: newHeight
+                })
+                view.dispatch(tr)
+                break
+              }
             }
           }
         } catch (e) {
