@@ -221,197 +221,173 @@ export default function MailDetailPage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
           {/* 메일 본문 */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <Mail className="h-6 w-6 mt-1 text-muted-foreground" />
-                    <div className="flex-1">
-                      <CardTitle className="text-xl mb-2">
-                        {email.subject || '(제목 없음)'}
-                      </CardTitle>
-                      <div className="flex flex-wrap gap-2">
-                        {email.isOrder && (
-                          <Badge variant="default">발주 메일</Badge>
-                        )}
-                        {email.company && (
-                          <Badge variant="outline">{email.company.name}</Badge>
-                        )}
-                        {email.hasAttachment && (
-                          <Badge variant="secondary" className="gap-1">
-                            <Paperclip className="h-3 w-3" />
-                            첨부파일
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground space-y-1 pl-9">
-                    <div>
-                      <span className="font-medium">발신자:</span> {email.sender}
-                    </div>
-                    <div>
-                      <span className="font-medium">수신일시:</span>{' '}
-                      {format(new Date(email.receivedAt), 'yyyy년 MM월 dd일 HH:mm:ss', {
-                        locale: ko,
-                      })}
+          <Card>
+            <CardHeader>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Mail className="h-6 w-6 mt-1 text-muted-foreground" />
+                  <div className="flex-1">
+                    <CardTitle className="text-xl mb-2">
+                      {email.subject || '(제목 없음)'}
+                    </CardTitle>
+                    <div className="flex flex-wrap gap-2">
+                      {email.isOrder && (
+                        <Badge variant="default">발주 메일</Badge>
+                      )}
+                      {email.company && (
+                        <Badge variant="outline" className="gap-1">
+                          <Building2 className="h-3 w-3" />
+                          {email.company.name}
+                        </Badge>
+                      )}
+                      {email.company && (
+                        <Badge variant="secondary" className="gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {email.company.region}
+                        </Badge>
+                      )}
+                      {email.hasAttachment && (
+                        <Badge variant="secondary" className="gap-1">
+                          <Paperclip className="h-3 w-3" />
+                          첨부파일
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="border-t pt-4">
-                  {email.bodyHtml ? (
-                    <div
-                      className="prose prose-sm max-w-none dark:prose-invert"
-                      dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
-                    />
-                  ) : email.body ? (
-                    <pre className="text-sm whitespace-pre-wrap bg-muted p-4 rounded-lg">
-                      {email.body}
-                    </pre>
-                  ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      본문이 없습니다.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 첨부파일 */}
-            {email.attachments && email.attachments.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Paperclip className="h-4 w-4" />
-                    첨부파일 ({email.attachments.length}개)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {email.attachments.map((attachment) => (
-                      <div
-                        key={attachment.id}
-                        className="flex items-center justify-between bg-muted p-3 rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Paperclip className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <div className="text-sm font-medium">
-                              {attachment.filename}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {formatFileSize(attachment.size)}
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => downloadAttachment(attachment)}
-                          className="gap-1"
-                        >
-                          <Download className="h-4 w-4" />
-                          다운로드
-                        </Button>
-                      </div>
-                    ))}
+                <div className="text-sm text-muted-foreground space-y-1 pl-9">
+                  <div>
+                    <span className="font-medium">발신자:</span> {email.sender}
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                  <div>
+                    <span className="font-medium">수신일시:</span>{' '}
+                    {format(new Date(email.receivedAt), 'yyyy년 MM월 dd일 HH:mm:ss', {
+                      locale: ko,
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="border-t pt-4">
+                {email.bodyHtml ? (
+                  <div
+                    className="prose prose-sm max-w-none dark:prose-invert"
+                    dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
+                  />
+                ) : email.body ? (
+                  <pre className="text-sm whitespace-pre-wrap bg-muted p-4 rounded-lg">
+                    {email.body}
+                  </pre>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    본문이 없습니다.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* 사이드바: 알림 내역 및 업체 정보 */}
-          <div className="space-y-6">
-            {/* 알림 발송 내역 */}
+          {/* 첨부파일 */}
+          {email.attachments && email.attachments.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Bell className="h-4 w-4" />
-                  알림 발송 내역
+                  <Paperclip className="h-4 w-4" />
+                  첨부파일 ({email.attachments.length}개)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {email.notifications && email.notifications.length > 0 ? (
-                  <div className="space-y-3">
-                    {email.notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className="bg-muted p-3 rounded-lg space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <Badge
-                            variant={
-                              notification.status === 'SENT' ||
-                              notification.status === 'DELIVERED'
-                                ? 'default'
-                                : notification.status === 'PENDING'
-                                ? 'secondary'
-                                : 'destructive'
-                            }
-                          >
-                            {notification.status}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {notification.type}
-                          </span>
-                        </div>
-                        <div className="text-sm">{notification.recipient}</div>
-                        {notification.sentAt && (
+                <div className="space-y-2">
+                  {email.attachments.map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className="flex items-center justify-between bg-muted p-3 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="text-sm font-medium">
+                            {attachment.filename}
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            발송:{' '}
-                            {format(new Date(notification.sentAt), 'MM/dd HH:mm')}
+                            {formatFileSize(attachment.size)}
                           </div>
-                        )}
-                        {notification.errorMessage && (
-                          <div className="text-xs text-destructive">
-                            {notification.errorMessage}
-                          </div>
-                        )}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    발송된 알림이 없습니다.
-                  </p>
-                )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => downloadAttachment(attachment)}
+                        className="gap-1"
+                      >
+                        <Download className="h-4 w-4" />
+                        다운로드
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
+          )}
 
-            {/* 매칭된 업체 정보 */}
-            {email.company && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    매칭된 업체
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-sm text-muted-foreground">업체명</div>
-                      <div className="font-medium">{email.company.name}</div>
+          {/* 알림 발송 내역 - 하단 배치 */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                알림 발송 내역
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {email.notifications && email.notifications.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {email.notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className="bg-muted p-3 rounded-lg space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <Badge
+                          variant={
+                            notification.status === 'SENT' ||
+                            notification.status === 'DELIVERED'
+                              ? 'default'
+                              : notification.status === 'PENDING'
+                              ? 'secondary'
+                              : 'destructive'
+                          }
+                        >
+                          {notification.status}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {notification.type}
+                        </span>
+                      </div>
+                      <div className="text-sm">{notification.recipient}</div>
+                      {notification.sentAt && (
+                        <div className="text-xs text-muted-foreground">
+                          발송:{' '}
+                          {format(new Date(notification.sentAt), 'MM/dd HH:mm')}
+                        </div>
+                      )}
+                      {notification.errorMessage && (
+                        <div className="text-xs text-destructive">
+                          {notification.errorMessage}
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">이메일</div>
-                      <div className="text-sm">{email.company.email}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{email.company.region}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  발송된 알림이 없습니다.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>
