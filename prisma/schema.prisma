@@ -213,9 +213,12 @@ model EmailLog {
   size       Int?    // 메일 크기 (bytes)
   isOrder    Boolean @default(false) // 발주 메일 여부 (빠른 필터링용)
 
-  // 첨부파일 정보
+  // IMAP 정보 (첨부파일 실시간 fetch용)
+  imapUid    Int?    // IMAP UID (메일함 내 고유 번호)
+
+  // 첨부파일 정보 (메타데이터만 저장, content는 IMAP에서 실시간 fetch)
   hasAttachment Boolean @default(false)
-  attachments   Json? // 첨부파일 목록
+  attachments   Json? // 첨부파일 메타데이터 (filename, size, contentType, partId)
 
   // 처리 상태
   status      EmailStatus @default(RECEIVED)

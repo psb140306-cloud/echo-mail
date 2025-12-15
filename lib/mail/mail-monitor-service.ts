@@ -182,7 +182,7 @@ export class MailMonitorService {
 
           const searchCriteria = {
             since: today, // 오늘 도착한 메일만
-            unseen: true, // 읽지 않은 메일만
+            // unseen 조건 제거 - 읽은 메일도 수집
           }
 
           logger.info(`[MailMonitor] IMAP 전체 검색 시작:`, { searchCriteria })
@@ -240,7 +240,7 @@ export class MailMonitorService {
               const searchCriteria = {
                 from: email,
                 since: today,
-                unseen: true,
+                // unseen 조건 제거 - 읽은 메일도 수집
               }
 
               logger.info(`[MailMonitor] IMAP 검색 시작:`, { email, searchCriteria })
@@ -548,15 +548,16 @@ export class MailMonitorService {
             folder: 'INBOX', // 기본 메일함
             size: emailSize, // 메일 크기
             isOrder: isOrderEmail, // 발주 메일 여부 (등록 업체 + 키워드)
+            imapUid: message.uid, // IMAP UID 저장 (첨부파일 실시간 fetch용)
             hasAttachment: parsedEmail.attachments.length > 0,
             attachments: parsedEmail.attachments.length > 0
-              ? parsedEmail.attachments.map((att) => ({
+              ? parsedEmail.attachments.map((att, index) => ({
                   id: `att-${Date.now()}-${Math.random().toString(36).substring(7)}`,
                   filename: att.filename,
                   contentType: att.contentType,
                   size: att.size,
-                  // Base64로 인코딩된 파일 내용 저장 (10MB 제한)
-                  content: att.size <= 10 * 1024 * 1024 ? att.content.toString('base64') : null,
+                  partId: String(index + 1), // 첨부파일 파트 번호 (IMAP fetch용)
+                  // content는 저장하지 않음 - 다운로드 시 IMAP에서 실시간 fetch
                 }))
               : [],
             status,
