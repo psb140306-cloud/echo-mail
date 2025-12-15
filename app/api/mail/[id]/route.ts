@@ -48,13 +48,33 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return createErrorResponse('메일 ID가 필요합니다.', 400)
       }
 
-      // 메일 조회 (관련 데이터 포함)
+      // 메일 조회 (select로 필요한 필드만 - egress 절감)
       const email = await prisma.emailLog.findFirst({
         where: {
           id,
           tenantId, // 테넌트 격리
         },
-        include: {
+        select: {
+          id: true,
+          messageId: true,
+          sender: true,
+          senderName: true,
+          recipient: true,
+          subject: true,
+          body: true,
+          bodyHtml: true,
+          receivedAt: true,
+          isRead: true,
+          folder: true,
+          size: true,
+          isOrder: true,
+          imapUid: true,
+          hasAttachment: true,
+          attachments: true,
+          status: true,
+          processedAt: true,
+          createdAt: true,
+          companyId: true,
           company: {
             select: {
               id: true,
@@ -159,11 +179,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         return createErrorResponse('메일 ID가 필요합니다.', 400)
       }
 
-      // 메일 존재 확인
+      // 메일 존재 확인 (select로 필요한 필드만 - egress 절감)
       const existingEmail = await prisma.emailLog.findFirst({
         where: {
           id,
           tenantId, // 테넌트 격리
+        },
+        select: {
+          id: true,
+          subject: true,
+          isOrder: true,
+          folder: true,
         },
       })
 

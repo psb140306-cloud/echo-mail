@@ -84,6 +84,8 @@ export class MailMonitorService {
   private isRunning = false
   private lastCheckTimes = new Map<string, Date>()
   private companyEmailsCache = new Map<string, { emails: string[]; updatedAt: Date }>()
+  // 처리 완료된 UID 캐시 (테넌트별, 오늘 날짜 기준) - egress 절감용
+  private processedUidsCache = new Map<string, { uids: Set<number>; date: string }>()
 
   /**
    * 모든 활성 테넌트의 메일 확인
@@ -206,6 +208,11 @@ export class MailMonitorService {
                 continue
               }
 
+              // 이미 처리된 UID 스킵 (egress 절감)
+              if (this.isUidProcessed(config.tenantId, message.uid)) {
+                continue
+              }
+
               logger.info(`[MailMonitor] 메일 발견:`, {
                 uid: message.uid,
                 from: message.envelope?.from?.[0]?.address,
@@ -260,6 +267,11 @@ export class MailMonitorService {
                     from: message.envelope?.from?.[0]?.address,
                     subject: message.envelope?.subject,
                   })
+                  continue
+                }
+
+                // 이미 처리된 UID 스킵 (egress 절감)
+                if (this.isUidProcessed(config.tenantId, message.uid)) {
                   continue
                 }
 
@@ -405,13 +417,23 @@ export class MailMonitorService {
 
     try {
       // 중복 이메일 체크 (Message-ID 기반 + 알림 발송 여부 확인)
+      // select로 필요한 필드만 조회하여 egress 절감 (본문 제외)
       const existingEmail = await prisma.emailLog.findFirst({
         where: {
           messageId: messageIdHeader,
           tenantId,
         },
-        include: {
-          notifications: true, // 알림 기록 포함
+        select: {
+          id: true,
+          messageId: true,
+          status: true,
+          notifications: {
+            select: {
+              id: true,
+              status: true,
+              createdAt: true,
+            },
+          },
         },
       })
 
@@ -647,6 +669,9 @@ export class MailMonitorService {
           error: lastError.message,
         })
       }
+
+      // 처리 완료된 UID를 캐시에 추가 (재조회 방지)
+      this.markUidAsProcessed(tenantId, message.uid)
     } catch (error) {
       logger.error('[MailMonitor] 메일 처리 최종 실패:', error)
       // 에러 발생 시에도 설정에 따라 읽음 처리
@@ -1038,6 +1063,38 @@ export class MailMonitorService {
     // 본문 앞 500자만 사용 (성능 및 일관성)
     const contentToHash = emailBody.substring(0, 500)
     return crypto.createHash('md5').update(contentToHash).digest('hex').substring(0, 12)
+  }
+
+  /**
+   * UID가 이미 처리되었는지 확인 (캐시 기반)
+   * 오늘 날짜가 바뀌면 캐시 리셋
+   */
+  private isUidProcessed(tenantId: string, uid: number): boolean {
+    const today = formatKSTDate(new Date())
+    const cache = this.processedUidsCache.get(tenantId)
+
+    // 날짜가 다르면 캐시 리셋
+    if (!cache || cache.date !== today) {
+      return false
+    }
+
+    return cache.uids.has(uid)
+  }
+
+  /**
+   * 처리 완료된 UID를 캐시에 추가
+   */
+  private markUidAsProcessed(tenantId: string, uid: number): void {
+    const today = formatKSTDate(new Date())
+    let cache = this.processedUidsCache.get(tenantId)
+
+    // 날짜가 다르면 새 캐시 생성
+    if (!cache || cache.date !== today) {
+      cache = { uids: new Set(), date: today }
+      this.processedUidsCache.set(tenantId, cache)
+    }
+
+    cache.uids.add(uid)
   }
 }
 
