@@ -37,13 +37,13 @@ export class DeliveryCalculator {
   constructor() {}
 
   /**
-   * UTC Date를 한국 시간대(KST, UTC+9)로 변환
-   * 주의: toLocaleString 방식은 로컬 타임존에 영향을 받으므로 직접 UTC 오프셋 계산
+   * Date 객체 복사 (타임존 변환 없이)
+   * 주의: getKSTComponents()가 이미 timeZone: 'Asia/Seoul'로 KST 해석을 하므로
+   * 별도의 +9시간 보정은 이중 변환 문제를 일으킴
+   * @deprecated 이중 보정 문제로 인해 copyDate()로 대체됨
    */
-  private toKST(date: Date): Date {
-    // KST는 UTC+9 (9시간 = 9 * 60 * 60 * 1000 밀리초)
-    const KST_OFFSET = 9 * 60 * 60 * 1000
-    return new Date(date.getTime() + KST_OFFSET)
+  private copyDate(date: Date): Date {
+    return new Date(date.getTime())
   }
 
   /**
@@ -219,8 +219,8 @@ export class DeliveryCalculator {
     tenantId: string,
     customHolidays?: Date[]
   ): Promise<Date> {
-    // 한국 시간대로 변환
-    let currentDate = this.toKST(startDate)
+    // Date 객체 복사 (getKSTComponents에서 KST 해석하므로 변환 불필요)
+    let currentDate = this.copyDate(startDate)
     let daysAdded = 0
 
     // 무한 루프 방지: 최대 365일까지만 탐색
@@ -449,7 +449,8 @@ export class DeliveryCalculator {
    * 다음 영업일 조회 (한국 시간대 기준)
    */
   async getNextBusinessDay(date: Date, rule?: any, tenantId?: string, customHolidays?: Date[]): Promise<Date> {
-    let nextDay = this.toKST(date)
+    // Date 객체 복사 (getKSTComponents에서 KST 해석하므로 변환 불필요)
+    let nextDay = this.copyDate(date)
     nextDay.setDate(nextDay.getDate() + 1)
 
     // 무한 루프 방지
@@ -495,10 +496,11 @@ export class DeliveryCalculator {
     customHolidays?: Date[]
   ): Promise<number> {
     let count = 0
-    let currentDate = this.toKST(startDate)
-    const kstEndDate = this.toKST(endDate)
+    // Date 객체 복사 (getKSTComponents에서 KST 해석하므로 변환 불필요)
+    let currentDate = this.copyDate(startDate)
+    const copyEndDate = this.copyDate(endDate)
 
-    while (currentDate < kstEndDate) {
+    while (currentDate < copyEndDate) {
       currentDate.setDate(currentDate.getDate() + 1)
 
       if (excludeWeekends && this.isWeekendKST(currentDate)) {
