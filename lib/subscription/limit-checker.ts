@@ -105,9 +105,12 @@ export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
         where: { tenantId },
       }),
 
-      // 담당자 수
+      // 담당자 수 (업체에 연결된 담당자만 카운트, 주소록 제외)
       prisma.contact.count({
-        where: { tenantId },
+        where: {
+          tenantId,
+          companyId: { not: null },
+        },
       }),
 
       // 이번 달 이메일 처리량
