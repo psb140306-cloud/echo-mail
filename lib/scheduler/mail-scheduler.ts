@@ -12,7 +12,7 @@ const prisma = new PrismaClient()
  */
 export class MailScheduler {
   private globalTask: cron.ScheduledTask | null = null
-  private currentInterval: number = 1 // 기본 1분
+  private currentInterval: number = 2 // 기본 2분
   private isInitialized = false
 
   /**
@@ -50,8 +50,8 @@ export class MailScheduler {
       return
     }
 
-    // 고정 1분 간격 사용 (모든 테넌트 동일)
-    const FIXED_INTERVAL = 1
+    // 고정 2분 간격 사용 (모든 테넌트 동일)
+    const FIXED_INTERVAL = 2
     this.currentInterval = FIXED_INTERVAL
 
     logger.info(`[MailScheduler] 활성 테넌트 ${configs.length}개, 고정 간격 ${FIXED_INTERVAL}분`)

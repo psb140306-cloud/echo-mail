@@ -536,7 +536,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label>메일 확인 주기</Label>
                   <p className="text-sm text-muted-foreground">
-                    새 메일은 <span className="font-medium text-primary">1분마다</span> 자동으로 확인됩니다
+                    새 메일은 <span className="font-medium text-primary">2분마다</span> 자동으로 확인됩니다
                   </p>
                 </div>
 
