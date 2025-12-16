@@ -238,48 +238,47 @@ export class MailMonitorService {
                 tenantId: config.tenantId,
               })
 
-            if (headerList.length === 0) {
-              // 새 메일 없음 - 여기서 종료
-            } else {
-              // Stage 2: DB에서 기존 UID 확인
-              const uidsToCheck = headerList.map(h => h.uid)
-              const existingEmails = await prisma.emailLog.findMany({
-                where: {
+              if (headerList.length > 0) {
+                // Stage 2: DB에서 기존 UID 확인
+                const uidsToCheck = headerList.map(h => h.uid)
+                const existingEmails = await prisma.emailLog.findMany({
+                  where: {
+                    tenantId: config.tenantId,
+                    imapUid: { in: uidsToCheck },
+                  },
+                  select: { imapUid: true },
+                })
+                const existingUidSet = new Set(existingEmails.map(e => e.imapUid).filter((uid): uid is number => uid !== null))
+
+                // 새 메일 UID 필터링
+                const newHeaders = headerList.filter(h => !existingUidSet.has(h.uid))
+
+                logger.info(`[MailMonitor] Stage 2 완료 - DB 중복 체크`, {
                   tenantId: config.tenantId,
-                  imapUid: { in: uidsToCheck },
-                },
-                select: { imapUid: true },
-              })
-              const existingUidSet = new Set(existingEmails.map(e => e.imapUid).filter((uid): uid is number => uid !== null))
+                  totalHeaders: headerList.length,
+                  existingInDb: existingUidSet.size,
+                  newMails: newHeaders.length,
+                })
 
-              // 새 메일 UID 필터링
-              const newHeaders = headerList.filter(h => !existingUidSet.has(h.uid))
+                if (newHeaders.length > 0) {
+                  // Stage 3: 새 메일만 본문 다운로드
+                  const newUids = newHeaders.map(h => h.uid)
 
-              logger.info(`[MailMonitor] Stage 2 완료 - DB 중복 체크`, {
-                tenantId: config.tenantId,
-                totalHeaders: headerList.length,
-                existingInDb: existingUidSet.size,
-                newMails: newHeaders.length,
-              })
-
-              if (newHeaders.length > 0) {
-                // Stage 3: 새 메일만 본문 다운로드
-                const newUids = newHeaders.map(h => h.uid)
-
-                for await (const message of client.fetch(newUids, {
-                  envelope: true,
-                  uid: true,
-                  internalDate: true,
-                  source: true, // 새 메일만 본문 다운로드
-                  headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
-                  markSeen: false,
-                })) {
-                  logger.info(`[MailMonitor] 메일 발견 (Stage 3):`, {
-                    uid: message.uid,
-                    from: message.envelope?.from?.[0]?.address,
-                    subject: message.envelope?.subject,
-                  })
-                  messages.push(message)
+                  for await (const message of client.fetch(newUids, {
+                    envelope: true,
+                    uid: true,
+                    internalDate: true,
+                    source: true, // 새 메일만 본문 다운로드
+                    headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
+                    markSeen: false,
+                  })) {
+                    logger.info(`[MailMonitor] 메일 발견 (Stage 3):`, {
+                      uid: message.uid,
+                      from: message.envelope?.from?.[0]?.address,
+                      subject: message.envelope?.subject,
+                    })
+                    messages.push(message)
+                  }
                 }
               }
             }
