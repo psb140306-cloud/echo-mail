@@ -78,6 +78,18 @@ export function getKSTStartOfYesterday(): Date {
 }
 
 /**
+ * KST 기준 N일 전 00:00:00을 UTC Date 객체로 반환
+ * 메일 수집 시 누락 방지를 위해 여유있게 검색할 때 사용
+ * @param days 며칠 전 (기본값: 3)
+ */
+export function getKSTStartOfDaysAgo(days: number = 3): Date {
+  const kst = getKSTComponents()
+  const daysAgo = new Date(Date.UTC(kst.year, kst.month, kst.day - days, 0, 0, 0, 0))
+  daysAgo.setTime(daysAgo.getTime() - KST_OFFSET)
+  return daysAgo
+}
+
+/**
  * KST 기준 특정 날짜의 00:00:00을 UTC Date 객체로 반환
  * @param year KST 년도
  * @param month KST 월 (1-12)

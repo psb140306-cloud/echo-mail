@@ -7,7 +7,7 @@ import { logger } from '@/lib/utils/logger'
 import { createImapClient } from '@/lib/imap/connection'
 import { parseOrderEmail, KeywordOptions } from './email-parser'
 import { sendOrderReceivedNotification } from '@/lib/notifications/notification-service'
-import { getKSTStartOfYesterday, isKSTToday, formatKSTDate } from '@/lib/utils/date'
+import { getKSTStartOfDaysAgo, isKSTToday, formatKSTDate } from '@/lib/utils/date'
 import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 // TODO: 미등록 업체 알림 로직 - 순환 참조 또는 런타임 에러로 인해 임시 비활성화
@@ -174,8 +174,8 @@ export class MailMonitorService {
 
       try {
         const messages = []
-        // 어제 0시(KST)부터 검색 - 워커 재시작/에러 시 누락 방지
-        const since = getKSTStartOfYesterday()
+        // 3일 전(KST)부터 검색 - 워커 재시작/에러/누락 방지 (중복은 Message-ID로 필터링)
+        const since = getKSTStartOfDaysAgo(3)
 
         if (config.effectiveMailMode === 'FULL_INBOX') {
           // FULL_INBOX 모드: 모든 메일 수집 (등록된 업체 제한 없음)
@@ -184,7 +184,7 @@ export class MailMonitorService {
           })
 
           const searchCriteria = {
-            since, // 어제 0시부터 검색 (누락 방지)
+            since, // 3일 전부터 검색 (누락 방지, 중복은 Message-ID로 필터링)
             // unseen 조건 제거 - 읽은 메일도 수집
           }
 
@@ -248,7 +248,7 @@ export class MailMonitorService {
             try {
               const searchCriteria = {
                 from: email,
-                since, // 어제 0시부터 검색 (누락 방지)
+                since, // 3일 전부터 검색 (누락 방지, 중복은 Message-ID로 필터링)
                 // unseen 조건 제거 - 읽은 메일도 수집
               }
 
