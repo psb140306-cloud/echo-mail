@@ -192,40 +192,51 @@ export class MailMonitorService {
 
           try {
             // ========== 2단계 Fetch 최적화 ==========
-            // Stage 1: 헤더만 먼저 조회 (본문 제외 - 트래픽 절감)
-            const headerList: { uid: number; envelope: any; internalDate: Date; headers: any }[] = []
+            // Step 0: search()로 UID 목록 먼저 조회
+            const searchedUids = await client.search(searchCriteria, { uid: true })
 
-            for await (const message of client.fetch(searchCriteria, {
-              envelope: true,
-              uid: true,
-              internalDate: true,
-              headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
-              // source: false (기본값) - 본문 다운로드 안 함
-              markSeen: false,
-            })) {
-              // 스팸 메일 필터링
-              const isSpam = this.checkIfSpam(message.headers)
-              if (isSpam) {
-                logger.debug(`[MailMonitor] 스팸 메일 스킵 (Stage 1):`, { uid: message.uid })
-                continue
-              }
-
-              // 메모리 캐시 체크 (런타임 중복 방지)
-              if (this.isUidProcessed(config.tenantId, message.uid)) {
-                continue
-              }
-
-              headerList.push({
-                uid: message.uid,
-                envelope: message.envelope,
-                internalDate: message.internalDate,
-                headers: message.headers,
-              })
-            }
-
-            logger.info(`[MailMonitor] Stage 1 완료 - 헤더 ${headerList.length}개 조회`, {
+            logger.info(`[MailMonitor] IMAP search 완료 - ${searchedUids.length}개 UID 발견`, {
               tenantId: config.tenantId,
             })
+
+            if (searchedUids.length === 0) {
+              // 검색 결과 없음
+              logger.info(`[MailMonitor] 검색 결과 없음`)
+            } else {
+              // Stage 1: 헤더만 먼저 조회 (본문 제외 - 트래픽 절감)
+              const headerList: { uid: number; envelope: any; internalDate: Date; headers: any }[] = []
+
+              for await (const message of client.fetch(searchedUids, {
+                envelope: true,
+                uid: true,
+                internalDate: true,
+                headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
+                // source: false (기본값) - 본문 다운로드 안 함
+                markSeen: false,
+              })) {
+                // 스팸 메일 필터링
+                const isSpam = this.checkIfSpam(message.headers)
+                if (isSpam) {
+                  logger.debug(`[MailMonitor] 스팸 메일 스킵 (Stage 1):`, { uid: message.uid })
+                  continue
+                }
+
+                // 메모리 캐시 체크 (런타임 중복 방지)
+                if (this.isUidProcessed(config.tenantId, message.uid)) {
+                  continue
+                }
+
+                headerList.push({
+                  uid: message.uid,
+                  envelope: message.envelope,
+                  internalDate: message.internalDate,
+                  headers: message.headers,
+                })
+              }
+
+              logger.info(`[MailMonitor] Stage 1 완료 - 헤더 ${headerList.length}개 조회`, {
+                tenantId: config.tenantId,
+              })
 
             if (headerList.length === 0) {
               // 새 메일 없음 - 여기서 종료
@@ -308,7 +319,17 @@ export class MailMonitorService {
 
               logger.debug(`[MailMonitor] IMAP 헤더 검색 (Stage 1):`, { email })
 
-              for await (const message of client.fetch(searchCriteria, {
+              // Step 0: search()로 UID 목록 먼저 조회 (ImapFlow fetch 버그 방지)
+              const searchedUids = await client.search(searchCriteria, { uid: true })
+
+              if (searchedUids.length === 0) {
+                logger.debug(`[MailMonitor] ${email} - 검색 결과 없음`)
+                continue
+              }
+
+              logger.debug(`[MailMonitor] ${email} - ${searchedUids.length}개 UID 발견`)
+
+              for await (const message of client.fetch(searchedUids, {
                 envelope: true,
                 uid: true,
                 internalDate: true,
