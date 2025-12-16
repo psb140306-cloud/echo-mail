@@ -372,19 +372,9 @@ export class MailMonitorService {
     // autoMarkAsRead 설정 조회
     const mailConfig = await this.getMailConfig(tenantId)
 
-    // [KST 날짜 필터] IMAP since는 날짜만 비교하므로 어제 메일도 잡힐 수 있음
-    // KST 기준 오늘이 아닌 메일은 스킵 (알림 발송 안 함)
-    if (date && !isKSTToday(date)) {
-      logger.info('[MailMonitor] KST 기준 오늘이 아닌 메일 - 스킵', {
-        tenantId,
-        uid: message.uid,
-        from: from?.address,
-        subject,
-        mailDate: date?.toISOString(),
-        mailDateKST: formatKSTDate(date),
-      })
-      return
-    }
+    // [KST 날짜 확인] 오늘 메일인지 확인 (알림 발송 여부 결정용)
+    // 어제 메일도 저장은 하되, 알림은 오늘 메일만 발송
+    const isTodayMail = date ? isKSTToday(date) : true
 
     // 실제 Message-ID 헤더 추출
     let messageIdHeader = message.headers?.['message-id']?.[0]
@@ -603,8 +593,9 @@ export class MailMonitorService {
         throw new Error('EmailLog를 찾을 수 없습니다')
       }
 
-      // 알림 발송: 등록 업체의 발주 메일인 경우에만
-      if (isOrderEmail && company) {
+      // 알림 발송: 등록 업체의 발주 메일 + 오늘 메일인 경우에만
+      // 어제 메일은 저장만 하고 알림 발송 안 함 (중복 알림 방지)
+      if (isOrderEmail && company && isTodayMail) {
         try {
           logger.info('[MailMonitor] 알림 발송 시작', {
             companyId: company.id,
@@ -645,6 +636,15 @@ export class MailMonitorService {
             error: lastError.message,
           })
         }
+      } else if (isOrderEmail && company && !isTodayMail) {
+        // 어제 발주 메일 - 저장만 하고 알림 발송 안 함
+        logger.info('[MailMonitor] 어제 발주 메일 저장 완료 (알림 스킵)', {
+          emailLogId: emailLog.id,
+          companyId: company.id,
+          companyName: company.name,
+          mailDate: date?.toISOString(),
+          mailDateKST: date ? formatKSTDate(date) : 'unknown',
+        })
       } else {
         // 일반 메일 (FULL_INBOX 모드) - 알림 없이 저장만
         logger.info('[MailMonitor] 일반 메일 저장 완료 (알림 없음)', {
