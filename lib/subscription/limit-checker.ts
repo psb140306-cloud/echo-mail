@@ -100,9 +100,9 @@ export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
     })
 
     const [companies, contacts, emailsThisMonth, notificationsThisMonth] = await Promise.all([
-      // 업체 수
+      // 업체 수 (수동 등록 업체만 카운트, 주소록 가져오기용 가상 회사 제외)
       prisma.company.count({
-        where: { tenantId },
+        where: { tenantId, isManual: true },
       }),
 
       // 담당자 수 (수동 등록 업체의 담당자만 카운트, 주소록 가져오기 제외)
