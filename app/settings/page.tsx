@@ -44,7 +44,6 @@ interface TenantSettings {
     username: string
     password: string
     useSSL: boolean
-    checkInterval: number
     enabled: boolean
     autoMarkAsRead: boolean
   }
@@ -89,7 +88,6 @@ export default function SettingsPage() {
       username: '',
       password: '',
       useSSL: true,
-      checkInterval: 5,
       enabled: false,
       autoMarkAsRead: true, // 기본값 true - 처리된 메일 자동 읽음 처리
     },
@@ -536,22 +534,9 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="check-interval">확인 주기 (분)</Label>
-                  <Input
-                    id="check-interval"
-                    type="number"
-                    min="1"
-                    max="5"
-                    value={settings.mailServer.checkInterval}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        mailServer: { ...settings.mailServer, checkInterval: parseInt(e.target.value) },
-                      })
-                    }
-                  />
-                  <p className="text-sm text-gray-500">
-                    1~5분 사이로 설정 가능합니다
+                  <Label>메일 확인 주기</Label>
+                  <p className="text-sm text-muted-foreground">
+                    새 메일은 <span className="font-medium text-primary">3분마다</span> 자동으로 확인됩니다
                   </p>
                 </div>
 

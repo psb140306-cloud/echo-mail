@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
 
       logger.info('[Scheduler] 스케줄 재로드 완료', {
         tenantId,
-        activeSchedules: status.activeSchedules,
+        isRunning: status.isRunning,
+        intervalMinutes: status.intervalMinutes,
       })
 
       return createSuccessResponse(
