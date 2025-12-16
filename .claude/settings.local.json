@@ -66,7 +66,8 @@
       "Bash(AI추천\" 형태로 표시됨\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(if exist nul del nul)",
       "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: 메일 상세 페이지 레이아웃 개선 - 알림 발송 내역 하단 배치\n\n- 3컬럼 그리드를 단일 컬럼 레이아웃으로 변경하여 메일 본문 영역 확장\n- 업체 정보를 별도 카드에서 헤더 배지로 통합\n- 알림 발송 내역을 오른쪽 사이드바에서 하단으로 이동\n- 알림 내역에 반응형 그리드 적용 (sm:2열, lg:3열)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(npx prisma migrate dev:*)"
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(DAUM_MAIL_USER=\"psb140306@daum.net\" DAUM_MAIL_PASS=\"xoguswns369!\" npx tsx scripts/check-imap-latest.ts)"
     ],
     "deny": [],
     "ask": []
