@@ -193,10 +193,13 @@ export class MailMonitorService {
           try {
             // ========== 2단계 Fetch 최적화 ==========
             // Step 0: search()로 UID 목록 먼저 조회
-            const searchedUids = await client.search(searchCriteria, { uid: true })
+            const searchResult = await client.search(searchCriteria, { uid: true })
+            // search()가 false를 반환하거나 빈 배열일 수 있음
+            const searchedUids = Array.isArray(searchResult) ? searchResult : []
 
             logger.info(`[MailMonitor] IMAP search 완료 - ${searchedUids.length}개 UID 발견`, {
               tenantId: config.tenantId,
+              uidsPreview: searchedUids.slice(-5), // 마지막 5개 UID 미리보기
             })
 
             if (searchedUids.length === 0) {
@@ -206,14 +209,15 @@ export class MailMonitorService {
               // Stage 1: 헤더만 먼저 조회 (본문 제외 - 트래픽 절감)
               const headerList: { uid: number; envelope: any; internalDate: Date; headers: any }[] = []
 
-              for await (const message of client.fetch(searchedUids, {
+              // UID 배열을 SequenceString으로 변환하여 fetch (uid: true 옵션 필수)
+              const uidRange = searchedUids.join(',')
+              for await (const message of client.fetch(uidRange, {
                 envelope: true,
                 uid: true,
                 internalDate: true,
                 headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
                 // source: false (기본값) - 본문 다운로드 안 함
-                markSeen: false,
-              })) {
+              }, { uid: true })) {
                 // 스팸 메일 필터링
                 const isSpam = this.checkIfSpam(message.headers)
                 if (isSpam) {
@@ -263,15 +267,15 @@ export class MailMonitorService {
                 if (newHeaders.length > 0) {
                   // Stage 3: 새 메일만 본문 다운로드
                   const newUids = newHeaders.map(h => h.uid)
+                  const newUidRange = newUids.join(',')
 
-                  for await (const message of client.fetch(newUids, {
+                  for await (const message of client.fetch(newUidRange, {
                     envelope: true,
                     uid: true,
                     internalDate: true,
                     source: true, // 새 메일만 본문 다운로드
                     headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
-                    markSeen: false,
-                  })) {
+                  }, { uid: true })) {
                     logger.info(`[MailMonitor] 메일 발견 (Stage 3):`, {
                       uid: message.uid,
                       from: message.envelope?.from?.[0]?.address,
@@ -319,7 +323,8 @@ export class MailMonitorService {
               logger.debug(`[MailMonitor] IMAP 헤더 검색 (Stage 1):`, { email })
 
               // Step 0: search()로 UID 목록 먼저 조회 (ImapFlow fetch 버그 방지)
-              const searchedUids = await client.search(searchCriteria, { uid: true })
+              const searchResult = await client.search(searchCriteria, { uid: true })
+              const searchedUids = Array.isArray(searchResult) ? searchResult : []
 
               if (searchedUids.length === 0) {
                 logger.debug(`[MailMonitor] ${email} - 검색 결과 없음`)
@@ -328,14 +333,14 @@ export class MailMonitorService {
 
               logger.debug(`[MailMonitor] ${email} - ${searchedUids.length}개 UID 발견`)
 
-              for await (const message of client.fetch(searchedUids, {
+              const uidRange = searchedUids.join(',')
+              for await (const message of client.fetch(uidRange, {
                 envelope: true,
                 uid: true,
                 internalDate: true,
                 headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
                 // source: false (기본값) - 본문 다운로드 안 함
-                markSeen: false,
-              })) {
+              }, { uid: true })) {
                 // 스팸 메일 필터링
                 const isSpam = this.checkIfSpam(message.headers)
                 if (isSpam) {
@@ -390,15 +395,15 @@ export class MailMonitorService {
             if (newHeaders.length > 0) {
               // Stage 3: 새 메일만 본문 다운로드
               const newUids = newHeaders.map(h => h.uid)
+              const newUidRange = newUids.join(',')
 
-              for await (const message of client.fetch(newUids, {
+              for await (const message of client.fetch(newUidRange, {
                 envelope: true,
                 uid: true,
                 internalDate: true,
                 source: true, // 새 메일만 본문 다운로드
                 headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
-                markSeen: false,
-              })) {
+              }, { uid: true })) {
                 logger.info(`[MailMonitor] 메일 발견 (Stage 3):`, {
                   uid: message.uid,
                   from: message.envelope?.from?.[0]?.address,
