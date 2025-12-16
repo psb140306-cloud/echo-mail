@@ -4,9 +4,11 @@
  */
 
 const KST_OFFSET = 9 * 60 * 60 * 1000 // UTC+9 (밀리초)
+const KST_OFFSET_HOURS = 9
 
 /**
- * 현재 KST 시간을 Date 객체로 반환
+ * 현재 시간의 KST 날짜 컴포넌트를 반환
+ * 주의: 반환되는 Date의 timestamp는 실제 현재 시간이 아닌 KST 표현용 값
  */
 export function getKSTNow(): Date {
   const now = new Date()
@@ -14,20 +16,43 @@ export function getKSTNow(): Date {
 }
 
 /**
+ * 현재 KST 날짜 컴포넌트를 숫자로 반환 (더 명확한 방식)
+ */
+export function getKSTComponents(): { year: number; month: number; day: number; hour: number; minute: number } {
+  const now = new Date()
+  // UTC 시간에 9시간을 더해 KST 계산
+  const kstHour = now.getUTCHours() + KST_OFFSET_HOURS
+  const kstDate = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    kstHour,
+    now.getUTCMinutes()
+  ))
+  return {
+    year: kstDate.getUTCFullYear(),
+    month: kstDate.getUTCMonth(),
+    day: kstDate.getUTCDate(),
+    hour: kstDate.getUTCHours(),
+    minute: kstDate.getUTCMinutes(),
+  }
+}
+
+/**
  * KST 기준 오늘 00:00:00을 UTC Date 객체로 반환
- * DB 쿼리에 사용 (DB는 UTC로 저장)
+ * DB 쿼리 및 IMAP 검색에 사용 (UTC로 변환됨)
+ *
+ * 예: KST 2025-12-16 03:00 (새벽)
+ *     → UTC 2025-12-15 15:00에 해당하는 Date 반환
+ *     → IMAP SINCE 검색 시 "15-Dec-2025" 이후로 검색됨
  */
 export function getKSTStartOfDay(): Date {
-  const kstNow = getKSTNow()
-  const startOfDay = new Date(Date.UTC(
-    kstNow.getUTCFullYear(),
-    kstNow.getUTCMonth(),
-    kstNow.getUTCDate(),
-    0, 0, 0, 0
-  ))
-  // UTC 기준으로 변환 (KST 00:00 = UTC 전날 15:00)
-  startOfDay.setTime(startOfDay.getTime() - KST_OFFSET)
-  return startOfDay
+  const kst = getKSTComponents()
+  // KST 오늘 00:00:00을 UTC로 변환
+  // KST 00:00 = UTC 전날 15:00 (또는 같은 날 -9시간)
+  const utcDate = new Date(Date.UTC(kst.year, kst.month, kst.day, 0, 0, 0, 0))
+  utcDate.setTime(utcDate.getTime() - KST_OFFSET)
+  return utcDate
 }
 
 /**
@@ -35,14 +60,8 @@ export function getKSTStartOfDay(): Date {
  * DB 쿼리에 사용 (DB는 UTC로 저장)
  */
 export function getKSTStartOfMonth(): Date {
-  const kstNow = getKSTNow()
-  const startOfMonth = new Date(Date.UTC(
-    kstNow.getUTCFullYear(),
-    kstNow.getUTCMonth(),
-    1,
-    0, 0, 0, 0
-  ))
-  // UTC 기준으로 변환
+  const kst = getKSTComponents()
+  const startOfMonth = new Date(Date.UTC(kst.year, kst.month, 1, 0, 0, 0, 0))
   startOfMonth.setTime(startOfMonth.getTime() - KST_OFFSET)
   return startOfMonth
 }
@@ -51,13 +70,9 @@ export function getKSTStartOfMonth(): Date {
  * KST 기준 어제 00:00:00을 UTC Date 객체로 반환
  */
 export function getKSTStartOfYesterday(): Date {
-  const kstNow = getKSTNow()
-  const yesterday = new Date(Date.UTC(
-    kstNow.getUTCFullYear(),
-    kstNow.getUTCMonth(),
-    kstNow.getUTCDate() - 1,
-    0, 0, 0, 0
-  ))
+  const kst = getKSTComponents()
+  // 어제 날짜 계산 (날짜 underflow는 Date.UTC가 자동 처리)
+  const yesterday = new Date(Date.UTC(kst.year, kst.month, kst.day - 1, 0, 0, 0, 0))
   yesterday.setTime(yesterday.getTime() - KST_OFFSET)
   return yesterday
 }
