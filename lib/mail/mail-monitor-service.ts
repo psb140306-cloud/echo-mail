@@ -195,6 +195,7 @@ export class MailMonitorService {
               envelope: true,
               source: true,
               uid: true,
+              internalDate: true, // 실제 수신 시간 (IMAP INTERNALDATE)
               headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
               markSeen: false,
             })) {
@@ -257,6 +258,7 @@ export class MailMonitorService {
                 envelope: true,
                 source: true,
                 uid: true,
+                internalDate: true, // 실제 수신 시간 (IMAP INTERNALDATE)
                 headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
                 markSeen: false,
               })) {
@@ -357,7 +359,10 @@ export class MailMonitorService {
     // MIME 인코딩된 제목 디코딩 (예: =?utf-8?B?...?= → 한글)
     const rawSubject = message.envelope.subject
     const subject = decodeMimeHeader(rawSubject)
-    const date = message.envelope.date
+    // internalDate: 메일이 서버에 도착한 실제 시간 (IMAP INTERNALDATE)
+    // envelope.date: 발신자가 메일을 보낸 시간 (Date 헤더) - 부정확할 수 있음
+    const receivedDate = message.internalDate || message.envelope.date
+    const sentDate = message.envelope.date // 발송 시간은 별도 보관
     const maxRetries = 3
     let lastError: Error | null = null
 
@@ -374,7 +379,7 @@ export class MailMonitorService {
 
     // [KST 날짜 확인] 오늘 메일인지 확인 (알림 발송 여부 결정용)
     // 어제 메일도 저장은 하되, 알림은 오늘 메일만 발송
-    const isTodayMail = date ? isKSTToday(date) : true
+    const isTodayMail = receivedDate ? isKSTToday(receivedDate) : true
 
     // 실제 Message-ID 헤더 추출
     let messageIdHeader = message.headers?.['message-id']?.[0]
@@ -383,9 +388,8 @@ export class MailMonitorService {
     // 중요: bodyHash 대신 UID 사용 (IMAP UID는 같은 메일함에서 고유하고 안정적)
     // 이전 문제: bodyHash가 IMAP fetch마다 달라져서 같은 메일에 다른 emailLogId 생성
     if (!messageIdHeader) {
-      const dateStr = date ? date.toISOString().split('T')[0] : 'unknown'
+      const dateStr = receivedDate ? receivedDate.toISOString().split('T')[0] : 'unknown'
       const sender = from?.address || 'unknown'
-      const subjectStr = subject || 'no-subject'
 
       // UID 기반 fallback ID (안정적)
       messageIdHeader = `fallback-${tenantId}-uid${message.uid}-${sender}-${dateStr}`
@@ -401,7 +405,8 @@ export class MailMonitorService {
       messageId: messageIdHeader,
       from: from?.address,
       subject,
-      date,
+      receivedDate, // IMAP INTERNALDATE (실제 수신 시간)
+      sentDate, // envelope.date (발신 시간)
     })
 
     let emailLogId: string | undefined
@@ -468,7 +473,7 @@ export class MailMonitorService {
         fromName: from?.name || '',
         subject: subject || '',
         body: emailContent,
-        receivedDate: date,
+        receivedDate: receivedDate,
       }, keywordOptions)
 
       // 1단계: 등록된 업체인지 확인
@@ -484,7 +489,7 @@ export class MailMonitorService {
           companyName: company.name,
           hasOrderKeywords: parsedData.hasOrderKeywords,
           isOrderEmail,
-          emailReceivedAt: date,
+          emailReceivedAt: receivedDate,
         })
       }
 
@@ -554,7 +559,7 @@ export class MailMonitorService {
             senderName: senderName, // 발신자 이름 (예: "잡코리아 | AI추천")
             recipient: '', // IMAP에서는 수신자 정보 없음
             subject: subject || '',
-            receivedAt: date,
+            receivedAt: receivedDate, // IMAP INTERNALDATE (실제 수신 시간)
             body: parsedEmail.textBody, // Plain text 본문
             bodyHtml: parsedEmail.htmlBody, // HTML 본문
             isRead: false, // 새 메일은 읽지 않음
@@ -642,8 +647,8 @@ export class MailMonitorService {
           emailLogId: emailLog.id,
           companyId: company.id,
           companyName: company.name,
-          mailDate: date?.toISOString(),
-          mailDateKST: date ? formatKSTDate(date) : 'unknown',
+          mailReceivedAt: receivedDate?.toISOString(),
+          mailReceivedAtKST: receivedDate ? formatKSTDate(receivedDate) : 'unknown',
         })
       } else {
         // 일반 메일 (FULL_INBOX 모드) - 알림 없이 저장만
