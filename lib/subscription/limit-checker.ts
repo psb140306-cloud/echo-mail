@@ -109,7 +109,7 @@ export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
       prisma.contact.count({
         where: {
           tenantId,
-          NOT: { companyId: null },
+          company: { isNot: null },
         },
       }),
 
