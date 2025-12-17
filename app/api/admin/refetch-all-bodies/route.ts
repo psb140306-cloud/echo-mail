@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { createImapClient } from '@/lib/imap/connection'
 import { simpleParser } from 'mailparser'
@@ -13,7 +13,6 @@ export const maxDuration = 300 // 5분 타임아웃
  * 인증 없이 실행 가능 (일회성 복구용)
  */
 export async function GET(request: NextRequest) {
-  const prisma = new PrismaClient()
   const results: any[] = []
 
   try {
@@ -159,8 +158,6 @@ export async function GET(request: NextRequest) {
 
     logger.info(`[RefetchAllBodies] 전체 완료`, { results })
 
-    await prisma.$disconnect()
-
     return NextResponse.json({
       success: true,
       message: '메일 본문 재수집 완료',
@@ -168,7 +165,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     logger.error('[RefetchAllBodies] 전체 오류:', error)
-    await prisma.$disconnect()
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
