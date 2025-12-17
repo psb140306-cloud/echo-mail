@@ -10,16 +10,17 @@ export const maxDuration = 300 // 5분 타임아웃
 /**
  * GET /api/admin/refetch-all-bodies
  *
+ * IMAP에서 메일을 가져와서 DB의 EmailLog와 매칭하여 본문 업데이트
+ * Message-ID 검색이 안 되는 서버를 위해 전체 fetch 후 매칭 방식 사용
+ *
  * Query params:
  * - reset=true: DB 리셋만 수행 (senderName, body, bodyHtml = NULL)
- * - skip=0: 건너뛸 메일 수 (페이지네이션)
- * - limit=50: 처리할 메일 수 (기본 50개)
+ * - limit=100: IMAP에서 가져올 최근 메일 수
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const resetOnly = searchParams.get('reset') === 'true'
-  const skip = parseInt(searchParams.get('skip') || '0', 10)
-  const limit = parseInt(searchParams.get('limit') || '50', 10)
+  const limit = parseInt(searchParams.get('limit') || '100', 10)
 
   try {
     // reset=true인 경우 DB 리셋만 수행
@@ -73,11 +74,10 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const account = activeConfigs[0] // 첫 번째 테넌트만 처리
-    const results: any = { tenantId: account.tenantId }
+    const account = activeConfigs[0]
 
-    // body가 NULL인 메일만 조회 (아직 처리 안 된 것)
-    const emails = await prisma.emailLog.findMany({
+    // body가 NULL인 메일의 messageId 조회
+    const emailsToUpdate = await prisma.emailLog.findMany({
       where: {
         tenantId: account.tenantId,
         body: null,
@@ -85,23 +85,10 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         messageId: true,
-        subject: true,
-        sender: true,
-      },
-      orderBy: { receivedAt: 'desc' },
-      skip,
-      take: limit,
-    })
-
-    // 전체 남은 개수 확인
-    const remainingCount = await prisma.emailLog.count({
-      where: {
-        tenantId: account.tenantId,
-        body: null,
       },
     })
 
-    if (emails.length === 0) {
+    if (emailsToUpdate.length === 0) {
       return NextResponse.json({
         success: true,
         message: '처리할 메일이 없습니다.',
@@ -109,7 +96,14 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    logger.info(`[RefetchAllBodies] ${emails.length}개 메일 처리 시작 (남은 개수: ${remainingCount})`)
+    // messageId를 키로 하는 Map 생성
+    const emailMap = new Map<string, string>()
+    for (const email of emailsToUpdate) {
+      const cleanId = email.messageId.replace(/^<|>$/g, '')
+      emailMap.set(cleanId, email.id)
+    }
+
+    logger.info(`[RefetchAllBodies] ${emailsToUpdate.length}개 메일 업데이트 필요`)
 
     // IMAP 연결
     const client = createImapClient({
@@ -125,72 +119,86 @@ export async function GET(request: NextRequest) {
     try {
       await client.mailboxOpen('INBOX')
 
-      let updatedCount = 0
-      let notFoundCount = 0
+      // 최근 N개 메일의 UID 목록 가져오기
+      const mailboxStatus = client.mailbox
+      const totalMessages = mailboxStatus?.exists || 0
 
-      for (const email of emails) {
+      if (totalMessages === 0) {
+        await client.logout()
+        return NextResponse.json({
+          success: true,
+          message: 'IMAP 메일함이 비어있습니다.',
+          remaining: emailsToUpdate.length,
+        })
+      }
+
+      // 시퀀스 번호로 최근 메일 범위 계산
+      const startSeq = Math.max(1, totalMessages - limit + 1)
+      const seqRange = `${startSeq}:${totalMessages}`
+
+      logger.info(`[RefetchAllBodies] IMAP에서 시퀀스 ${seqRange} (${limit}개) 가져오기`)
+
+      let updatedCount = 0
+      let processedCount = 0
+
+      // 시퀀스 번호로 fetch (uid: false)
+      for await (const msg of client.fetch(seqRange, {
+        envelope: true,
+        source: true,
+      })) {
+        processedCount++
+
+        if (!msg.envelope?.messageId) continue
+
+        const msgId = msg.envelope.messageId.replace(/^<|>$/g, '')
+        const emailId = emailMap.get(msgId)
+
+        if (!emailId) continue // DB에 없는 메일
+
+        if (!msg.source) continue
+
         try {
-          const cleanMessageId = email.messageId.replace(/^<|>$/g, '')
-          const searchResult = await client.search({
-            header: { 'message-id': cleanMessageId },
+          const parsed = await simpleParser(msg.source)
+          const senderName = parsed.from?.value?.[0]?.name || null
+          const body = parsed.text || ''
+          const bodyHtml = parsed.html || null
+
+          await prisma.emailLog.update({
+            where: { id: emailId },
+            data: {
+              senderName,
+              body,
+              bodyHtml,
+            },
           })
 
-          if (searchResult.length === 0) {
-            notFoundCount++
-            // IMAP에서 못 찾은 메일은 빈 문자열로 표시 (다음 배치에서 제외)
-            await prisma.emailLog.update({
-              where: { id: email.id },
-              data: { body: '' },
-            })
-            continue
-          }
-
-          // UID 모드로 fetch
-          const messages = client.fetch(searchResult[0], {
-            envelope: true,
-            source: true,
-          }, { uid: true })
-
-          for await (const msg of messages) {
-            if (!msg.source) continue
-
-            const parsed = await simpleParser(msg.source)
-            const senderName = parsed.from?.value?.[0]?.name || null
-            const body = parsed.text || ''
-            const bodyHtml = parsed.html || null
-
-            await prisma.emailLog.update({
-              where: { id: email.id },
-              data: {
-                senderName,
-                body,
-                bodyHtml,
-              },
-            })
-
-            updatedCount++
-            break
-          }
-        } catch (error) {
-          logger.warn(`[RefetchAllBodies] 메일 처리 실패: ${email.messageId}`)
+          updatedCount++
+          emailMap.delete(msgId) // 처리 완료된 것은 제거
+        } catch (parseError) {
+          logger.warn(`[RefetchAllBodies] 파싱 실패: ${msgId}`)
         }
       }
 
       await client.logout()
 
-      results.processed = emails.length
-      results.updated = updatedCount
-      results.notFound = notFoundCount
-      results.remaining = remainingCount - emails.length
+      // 남은 개수 확인
+      const remainingCount = await prisma.emailLog.count({
+        where: {
+          tenantId: account.tenantId,
+          body: null,
+        },
+      })
 
-      logger.info(`[RefetchAllBodies] 완료`, results)
+      logger.info(`[RefetchAllBodies] 완료: ${updatedCount}개 업데이트, ${remainingCount}개 남음`)
 
       return NextResponse.json({
         success: true,
         message: `${updatedCount}개 메일 업데이트 완료`,
-        ...results,
-        nextUrl: results.remaining > 0
-          ? `/api/admin/refetch-all-bodies?skip=0&limit=${limit}`
+        imapProcessed: processedCount,
+        updated: updatedCount,
+        remaining: remainingCount,
+        nextUrl: remainingCount > 0
+          ? `/api/admin/refetch-all-bodies?limit=${limit}`
           : null,
       })
     } catch (imapError) {
