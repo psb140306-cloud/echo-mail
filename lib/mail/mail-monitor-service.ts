@@ -352,8 +352,10 @@ export class MailMonitorService {
 
                 if (newHeaders.length > 0) {
                   // Stage 3: 새 메일만 본문 다운로드
+                  // UID 기반 Map으로 수집 (ImapFlow가 순서를 보장하지 않으므로)
                   const newUids = newHeaders.map(h => h.uid)
                   const newUidRange = newUids.join(',')
+                  const messageMap = new Map<number, any>()
 
                   for await (const message of client.fetch(newUidRange, {
                     envelope: true,
@@ -362,12 +364,22 @@ export class MailMonitorService {
                     source: true, // 새 메일만 본문 다운로드
                     headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
                   }, { uid: true })) {
-                    logger.info(`[MailMonitor] 메일 발견 (Stage 3):`, {
-                      uid: message.uid,
-                      from: message.envelope?.from?.[0]?.address,
-                      subject: message.envelope?.subject,
-                    })
-                    messages.push(message)
+                    messageMap.set(message.uid, message)
+                  }
+
+                  // newHeaders 순서대로 메시지 추가 (UID로 정확히 매칭)
+                  for (const header of newHeaders) {
+                    const message = messageMap.get(header.uid)
+                    if (message) {
+                      logger.info(`[MailMonitor] 메일 발견 (Stage 3):`, {
+                        uid: message.uid,
+                        from: message.envelope?.from?.[0]?.address,
+                        subject: message.envelope?.subject,
+                      })
+                      messages.push(message)
+                    } else {
+                      logger.warn(`[MailMonitor] Stage 3에서 메시지 누락`, { uid: header.uid })
+                    }
                   }
                 }
               }
@@ -484,8 +496,10 @@ export class MailMonitorService {
 
             if (newHeaders.length > 0) {
               // Stage 3: 새 메일만 본문 다운로드
+              // UID 기반 Map으로 수집 (ImapFlow가 순서를 보장하지 않으므로)
               const newUids = newHeaders.map(h => h.uid)
               const newUidRange = newUids.join(',')
+              const messageMap = new Map<number, any>()
 
               for await (const message of client.fetch(newUidRange, {
                 envelope: true,
@@ -494,12 +508,22 @@ export class MailMonitorService {
                 source: true, // 새 메일만 본문 다운로드
                 headers: ['message-id', 'x-spam-status', 'x-spam-flag', 'x-daum-spam'],
               }, { uid: true })) {
-                logger.info(`[MailMonitor] 메일 발견 (Stage 3):`, {
-                  uid: message.uid,
-                  from: message.envelope?.from?.[0]?.address,
-                  subject: message.envelope?.subject,
-                })
-                messages.push(message)
+                messageMap.set(message.uid, message)
+              }
+
+              // newHeaders 순서대로 메시지 추가 (UID로 정확히 매칭)
+              for (const header of newHeaders) {
+                const message = messageMap.get(header.uid)
+                if (message) {
+                  logger.info(`[MailMonitor] 메일 발견 (Stage 3):`, {
+                    uid: message.uid,
+                    from: message.envelope?.from?.[0]?.address,
+                    subject: message.envelope?.subject,
+                  })
+                  messages.push(message)
+                } else {
+                  logger.warn(`[MailMonitor] Stage 3에서 메시지 누락`, { uid: header.uid })
+                }
               }
             }
           }
