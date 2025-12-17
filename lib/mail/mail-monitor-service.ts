@@ -699,8 +699,9 @@ export class MailMonitorService {
                   filename: att.filename,
                   contentType: att.contentType,
                   size: att.size,
-                  partId: String(index + 1), // 첨부파일 파트 번호 (IMAP fetch용)
-                  // content는 저장하지 않음 - 다운로드 시 IMAP에서 실시간 fetch
+                  partId: String(index + 1),
+                  // 첨부파일 콘텐츠를 Base64로 저장 (다운로드 시 IMAP 타임아웃 방지)
+                  content: att.content ? att.content.toString('base64') : null,
                 }))
               : [],
             status,
