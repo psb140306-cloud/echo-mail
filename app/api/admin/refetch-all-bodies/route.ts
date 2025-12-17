@@ -76,15 +76,16 @@ export async function GET(request: NextRequest) {
 
     const account = activeConfigs[0]
 
-    // body가 NULL인 메일의 messageId 조회
+    // body가 NULL인 메일의 imapUid 조회
     const emailsToUpdate = await prisma.emailLog.findMany({
       where: {
         tenantId: account.tenantId,
         body: null,
+        imapUid: { not: null },
       },
       select: {
         id: true,
-        messageId: true,
+        imapUid: true,
       },
     })
 
@@ -96,11 +97,12 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // messageId를 키로 하는 Map 생성
-    const emailMap = new Map<string, string>()
+    // imapUid를 키로 하는 Map 생성
+    const emailMap = new Map<number, string>()
     for (const email of emailsToUpdate) {
-      const cleanId = email.messageId.replace(/^<|>$/g, '')
-      emailMap.set(cleanId, email.id)
+      if (email.imapUid) {
+        emailMap.set(email.imapUid, email.id)
+      }
     }
 
     logger.info(`[RefetchAllBodies] ${emailsToUpdate.length}개 메일 업데이트 필요`)
@@ -119,48 +121,25 @@ export async function GET(request: NextRequest) {
     try {
       await client.mailboxOpen('INBOX')
 
-      // 최근 N개 메일의 UID 목록 가져오기
-      const mailboxStatus = client.mailbox
-      const totalMessages = mailboxStatus?.exists || 0
-
-      if (totalMessages === 0) {
-        await client.logout()
-        return NextResponse.json({
-          success: true,
-          message: 'IMAP 메일함이 비어있습니다.',
-          remaining: emailsToUpdate.length,
-        })
-      }
-
-      // 시퀀스 번호로 최근 메일 범위 계산
-      const startSeq = Math.max(1, totalMessages - limit + 1)
-      const seqRange = `${startSeq}:${totalMessages}`
-
-      logger.info(`[RefetchAllBodies] IMAP에서 시퀀스 ${seqRange} (${limit}개) 가져오기`)
-
       let updatedCount = 0
       let processedCount = 0
 
-      // 시퀀스 번호로 fetch (uid: false)
-      const sampleMsgIds: string[] = []
-      const sampleDbIds: string[] = Array.from(emailMap.keys()).slice(0, 5)
+      // UID 범위로 fetch - DB에 있는 UID 기준
+      const uidsToFetch = Array.from(emailMap.keys())
+      const minUid = Math.min(...uidsToFetch)
+      const maxUid = Math.max(...uidsToFetch)
+      const uidRange = `${minUid}:${maxUid}`
 
-      for await (const msg of client.fetch(seqRange, {
+      logger.info(`[RefetchAllBodies] IMAP UID 범위 ${uidRange} 가져오기 (${uidsToFetch.length}개 대상)`)
+
+      for await (const msg of client.fetch(uidRange, {
         envelope: true,
         source: true,
-      })) {
+        uid: true,
+      }, { uid: true })) {
         processedCount++
 
-        if (!msg.envelope?.messageId) continue
-
-        const msgId = msg.envelope.messageId.replace(/^<|>$/g, '')
-
-        // 디버깅: 처음 5개 메시지ID 샘플 수집
-        if (sampleMsgIds.length < 5) {
-          sampleMsgIds.push(msgId)
-        }
-
-        const emailId = emailMap.get(msgId)
+        const emailId = emailMap.get(msg.uid)
 
         if (!emailId) continue // DB에 없는 메일
 
@@ -206,13 +185,10 @@ export async function GET(request: NextRequest) {
         imapProcessed: processedCount,
         updated: updatedCount,
         remaining: remainingCount,
+        uidRange,
         nextUrl: remainingCount > 0
           ? `/api/admin/refetch-all-bodies?limit=${limit}`
           : null,
-        debug: {
-          sampleImapMsgIds: sampleMsgIds,
-          sampleDbMsgIds: sampleDbIds,
-        },
       })
     } catch (imapError) {
       await client.logout().catch(() => {})
