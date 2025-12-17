@@ -81,13 +81,25 @@ export async function GET(request: NextRequest) {
       where: {
         tenantId: account.tenantId,
         body: null,
-        imapUid: { not: null },
       },
       select: {
         id: true,
         imapUid: true,
       },
     })
+
+    // imapUid가 없는 메일 수 확인
+    const withoutUid = emailsToUpdate.filter(e => !e.imapUid).length
+    const withUid = emailsToUpdate.filter(e => e.imapUid)
+
+    if (withUid.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: `처리할 메일 없음 (총 ${emailsToUpdate.length}개 중 imapUid 있는 메일 0개)`,
+        totalWithoutBody: emailsToUpdate.length,
+        withoutUid,
+      })
+    }
 
     if (emailsToUpdate.length === 0) {
       return NextResponse.json({
@@ -99,7 +111,7 @@ export async function GET(request: NextRequest) {
 
     // imapUid를 키로 하는 Map 생성
     const emailMap = new Map<number, string>()
-    for (const email of emailsToUpdate) {
+    for (const email of withUid) {
       if (email.imapUid) {
         emailMap.set(email.imapUid, email.id)
       }
