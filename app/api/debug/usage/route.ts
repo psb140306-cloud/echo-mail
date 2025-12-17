@@ -4,6 +4,8 @@ import { TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 async function debugUsage(request: NextRequest) {
   try {
     const tenantContext = TenantContext.getInstance()

@@ -4,6 +4,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { TenantContext, prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 
+export const dynamic = 'force-dynamic'
+
 // GET: 템플릿 목록 조회 (내부 핸들러)
 async function getTemplates(request: NextRequest) {
   try {

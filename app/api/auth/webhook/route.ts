@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Supabase Auth Webhook
  * 회원가입 시 자동으로 Tenant와 User 생성

@@ -3,6 +3,8 @@ import { requireSuperAdmin } from '@/lib/middleware/super-admin';
 import { metricsCollector } from '@/lib/monitoring/metrics-collector';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/super-admin/monitoring/api-stats
  * API 엔드포인트 사용량 통계

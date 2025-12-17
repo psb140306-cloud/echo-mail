@@ -8,6 +8,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { mailMonitorService } from '@/lib/mail/mail-monitor-service'
 import { TenantContext } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 메일 모니터링 상태 조회
  */

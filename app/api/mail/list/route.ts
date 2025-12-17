@@ -11,6 +11,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 
+export const dynamic = 'force-dynamic'
+
 // 쿼리 파라미터 스키마
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

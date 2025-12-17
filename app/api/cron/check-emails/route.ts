@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createMailServiceFromEnv } from '@/lib/mail/mail-service'
 import { logger } from '@/lib/utils/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     // Verify cron job authentication

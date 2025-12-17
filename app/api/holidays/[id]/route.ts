@@ -9,6 +9,8 @@ import {
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 공휴일 수정 스키마
 const updateHolidaySchema = z.object({
   name: z

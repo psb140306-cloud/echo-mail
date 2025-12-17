@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { logActivity } from '@/lib/activity/log-activity'
 
+export const dynamic = 'force-dynamic'
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }

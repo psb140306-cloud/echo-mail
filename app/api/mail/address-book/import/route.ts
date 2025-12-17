@@ -5,6 +5,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
 import { parseAddressBookFile, ImportedContact } from '@/lib/utils/address-book-import'
 
+export const dynamic = 'force-dynamic'
+
 // 전화번호 정규화 함수: 다양한 형식을 010-0000-0000으로 변환
 function normalizePhoneNumber(phone: string | undefined | null): string | null {
   if (!phone) return null

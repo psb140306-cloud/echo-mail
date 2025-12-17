@@ -11,6 +11,8 @@ import type { Prisma } from '@prisma/client'
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 
+export const dynamic = 'force-dynamic'
+
 // 납품 규칙 생성 스키마
 const createDeliveryRuleSchema = z.object({
   region: z.string().min(1, '지역은 필수입니다').max(50, '지역은 50자 이하여야 합니다'),

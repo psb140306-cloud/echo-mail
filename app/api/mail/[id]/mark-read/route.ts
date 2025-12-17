@@ -9,6 +9,8 @@ import {
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 interface RouteParams {
   params: {
     id: string

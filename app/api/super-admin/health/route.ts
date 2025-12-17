@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { superAdminGuard } from '@/lib/api/super-admin-guard';
 import { getSystemHealth } from '@/lib/monitoring/health-check';
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const guardResult = await superAdminGuard();

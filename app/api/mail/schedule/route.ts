@@ -5,6 +5,8 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validati
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { SubscriptionPlan } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 // 프로페셔널 이상만 예약 발송 가능
 const PLANS_WITH_SCHEDULE: SubscriptionPlan[] = ['PROFESSIONAL', 'BUSINESS', 'ENTERPRISE']
 

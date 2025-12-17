@@ -23,6 +23,8 @@ import { canSendMail } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 import { validateAttachments } from '@/lib/subscription/attachment-limits'
 
+export const dynamic = 'force-dynamic'
+
 // 첨부파일 스키마 (프론트엔드에서 전송하는 형식)
 const attachmentSchema = z.object({
   key: z.string(),

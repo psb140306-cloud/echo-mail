@@ -11,6 +11,8 @@ import {
 import { SubscriptionService } from '@/lib/subscription/subscription-service'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 
+export const dynamic = 'force-dynamic'
+
 // 구독 생성 스키마
 const createSubscriptionSchema = z.object({
   plan: z.nativeEnum(SubscriptionPlan),

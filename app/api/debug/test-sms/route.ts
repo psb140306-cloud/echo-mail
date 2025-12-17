@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { createSMSProviderFromEnv } from '@/lib/notifications/sms/sms-provider'
 import { logger } from '@/lib/utils/logger'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * SMS 발송 테스트 엔드포인트
  * ⚠️ 보안 주의:

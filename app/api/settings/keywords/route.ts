@@ -4,6 +4,8 @@ import { logger } from '@/lib/utils/logger'
 import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // GET: 키워드 설정 조회
 export async function GET(request: NextRequest) {
   return withTenantContext(request, async () => {

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createAddressBookTemplate } from '@/lib/utils/address-book-import'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     // 템플릿 엑셀 파일 생성

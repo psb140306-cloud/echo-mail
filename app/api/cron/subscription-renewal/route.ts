@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { SubscriptionRenewal } from '@/lib/automation/subscription-renewal'
 import { logger } from '@/lib/utils/logger'
 
+export const dynamic = 'force-dynamic'
+
 export const maxDuration = 300 // 5분 타임아웃
 
 export async function GET(request: NextRequest) {

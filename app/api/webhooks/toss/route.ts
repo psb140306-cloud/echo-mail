@@ -5,6 +5,8 @@ import { TossPaymentService } from '@/lib/payment/toss-payments'
 import { SubscriptionService } from '@/lib/subscription/subscription-service'
 import { SubscriptionStatus } from '@/lib/subscription/plans'
 
+export const dynamic = 'force-dynamic'
+
 // 토스페이먼츠 웹훅 이벤트 타입
 interface TossWebhookEvent {
   eventType: string

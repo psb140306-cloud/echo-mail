@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 업체 수정 스키마
 const updateCompanySchema = z.object({
   name: z

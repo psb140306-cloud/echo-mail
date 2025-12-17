@@ -11,6 +11,8 @@ import {
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 공휴일 생성 스키마
 const createHolidaySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '올바른 날짜 형식이 아닙니다 (YYYY-MM-DD)'),

@@ -7,6 +7,8 @@ import {
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 샘플 배송 규칙 데이터
 const sampleDeliveryRules = [
   {

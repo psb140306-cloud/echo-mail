@@ -7,6 +7,8 @@ import { sendTeamInvitationEmail } from '@/lib/email/team-invitation-email'
 import { logActivity } from '@/lib/activity/log-activity'
 import crypto from 'crypto'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   return withTenantContext(request, async () => {
     try {

@@ -4,6 +4,8 @@ import { logger } from '@/lib/utils/logger'
 import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 활성화된 배송 규칙의 지역 목록 조회
  * 업체 추가 시 지역 드롭다운에 사용

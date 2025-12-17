@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 담당자 생성 스키마
 const createContactSchema = z.object({
   name: z.string().min(1, '담당자명은 필수입니다').max(50, '담당자명은 50자 이하여야 합니다'),

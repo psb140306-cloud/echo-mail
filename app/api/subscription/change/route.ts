@@ -5,6 +5,8 @@ import { logger } from '@/lib/utils/logger'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { PLAN_PRICING } from '@/lib/subscription/plans'
 
+export const dynamic = 'force-dynamic'
+
 async function changePlan(request: NextRequest) {
   try {
     const tenantContext = TenantContext.getInstance()

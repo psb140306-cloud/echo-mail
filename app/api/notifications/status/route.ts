@@ -6,6 +6,8 @@ import { notificationQueue } from '@/lib/notifications/queue/notification-queue'
 import { templateManager } from '@/lib/notifications/templates/template-manager'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 알림 시스템 상태 조회 (내부 핸들러)
 async function getNotificationStatus(request: NextRequest) {
   try {

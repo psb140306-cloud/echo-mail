@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { verifySuperAdmin } from '@/lib/auth/super-admin'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 관리자 전용: 특정 사용자에게 Tenant 강제 생성
  * 사용 케이스:

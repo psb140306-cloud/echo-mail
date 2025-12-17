@@ -9,6 +9,8 @@ import {
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { testImapConnection } from '@/lib/imap/connection'
 
+export const dynamic = 'force-dynamic'
+
 // 메일 서버 테스트 스키마
 const mailTestSchema = z.object({
   host: z.string().min(1, '메일 서버 주소를 입력해주세요'),

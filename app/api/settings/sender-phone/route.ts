@@ -5,6 +5,8 @@ import { TenantContext } from '@/lib/db'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { createNCPCallingNumberServiceFromEnv } from '@/lib/notifications/sms/ncp-calling-number'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 발신번호 조회
  */

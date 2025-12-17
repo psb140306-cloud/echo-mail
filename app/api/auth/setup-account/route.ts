@@ -4,6 +4,8 @@ import { logger } from '@/lib/utils/logger'
 import { templateManager } from '@/lib/notifications/templates/template-manager'
 import { PLAN_PRICING } from '@/lib/subscription/plans'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 회원가입 후 Tenant 생성
  * Supabase Auth 완료 후 프론트엔드에서 호출

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma, TenantContext } from '@/lib/db'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 기본 지역 목록
 const DEFAULT_REGIONS = [
   '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종',

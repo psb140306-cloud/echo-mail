@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/middleware/super-admin';
 import { metricsCollector } from '@/lib/monitoring/metrics-collector';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/super-admin/monitoring/error-stats
  * 에러 통계 조회

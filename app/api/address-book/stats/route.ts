@@ -3,6 +3,8 @@ import { prisma, TenantContext } from '@/lib/db'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
 
+export const dynamic = 'force-dynamic'
+
 async function getStats(request: NextRequest) {
   try {
     const tenantContext = TenantContext.getInstance()

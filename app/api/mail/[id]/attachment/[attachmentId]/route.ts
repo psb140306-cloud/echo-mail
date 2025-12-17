@@ -6,6 +6,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { createImapClient, ImapConfig } from '@/lib/imap/connection'
 import { simpleParser } from 'mailparser'
 
+export const dynamic = 'force-dynamic'
+
 interface RouteParams {
   params: {
     id: string

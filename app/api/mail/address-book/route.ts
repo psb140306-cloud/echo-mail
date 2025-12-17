@@ -14,6 +14,8 @@ import {
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 export interface AddressBookEntry {
   type: 'contact' | 'company'
   id: string

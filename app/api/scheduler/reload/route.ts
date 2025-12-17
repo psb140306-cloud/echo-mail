@@ -8,6 +8,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { mailScheduler } from '@/lib/scheduler/mail-scheduler'
 import { TenantContext } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 스케줄러 상태 조회
  */

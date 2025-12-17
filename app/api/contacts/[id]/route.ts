@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 담당자 수정 스키마
 const updateContactSchema = z.object({
   name: z

@@ -4,6 +4,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 
+export const dynamic = 'force-dynamic'
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }

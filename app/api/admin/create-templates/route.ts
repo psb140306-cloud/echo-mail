@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { templateManager } from '@/lib/notifications/templates/template-manager'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 모든 테넌트에 기본 템플릿 생성 (관리자 전용)
  */

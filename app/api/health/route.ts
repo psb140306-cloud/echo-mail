@@ -3,6 +3,8 @@ import { checkRedisConnection } from '@/lib/redis'
 import { prisma } from '@/lib/db'
 import { getQueueStats } from '@/lib/queue'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const startTime = Date.now()

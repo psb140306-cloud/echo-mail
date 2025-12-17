@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { createSuccessResponse, createErrorResponse } from '@/lib/utils/validation'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 기존 메일의 senderName을 sender 필드에서 파싱하여 업데이트하는 마이그레이션 API
  * sender 형식: "이름" <email@example.com> 또는 이름 <email@example.com>

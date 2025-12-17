@@ -4,6 +4,8 @@ import { logger } from '@/lib/utils/logger'
 import { withTenantContext, requireTenant } from '@/lib/middleware/tenant-context'
 import { createSuccessResponse, createErrorResponse } from '@/lib/utils/validation'
 
+export const dynamic = 'force-dynamic'
+
 // Dashboard에서 기대하는 ActivityLog 형식
 interface Activity {
   id: string

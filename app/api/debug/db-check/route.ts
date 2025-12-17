@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * DEBUG: Vercel 환경에서 실제 DB 연결 확인
  * Production에서는 제거할 것!

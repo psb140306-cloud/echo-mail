@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { superAdminGuard } from '@/lib/api/super-admin-guard';
 
+export const dynamic = 'force-dynamic'
+
 const PLAN_PRICES: Record<string, number> = {
   starter: 29000,
   professional: 79000,

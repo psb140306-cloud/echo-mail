@@ -18,6 +18,8 @@ import {
 } from '@/lib/subscription/plan-checker'
 import { logActivity } from '@/lib/activity/log-activity'
 
+export const dynamic = 'force-dynamic'
+
 // 메일 옵션 스키마
 const mailOptionsSchema = z.object({
   mailMode: z.enum(['ORDER_ONLY', 'FULL_INBOX']),

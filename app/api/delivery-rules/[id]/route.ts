@@ -9,6 +9,8 @@ import {
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 납품 규칙 수정 스키마
 const updateDeliveryRuleSchema = z.object({
   region: z.string().min(1).max(50).optional(),

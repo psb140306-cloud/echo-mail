@@ -4,6 +4,8 @@ import { TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 async function getUsage(request: NextRequest) {
   try {
     // TenantContext에서 tenantId 가져오기

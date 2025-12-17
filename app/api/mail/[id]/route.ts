@@ -6,6 +6,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 
+export const dynamic = 'force-dynamic'
+
 interface RouteParams {
   params: {
     id: string

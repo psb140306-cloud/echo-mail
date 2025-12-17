@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { headers } from 'next/headers'
 
+export const dynamic = 'force-dynamic'
+
 // 문의 유형 매핑
 const inquiryTypeMap: Record<string, 'INQUIRY' | 'DEMO' | 'PARTNERSHIP' | 'SUPPORT' | 'BILLING' | 'OTHER'> = {
   'inquiry': 'INQUIRY',

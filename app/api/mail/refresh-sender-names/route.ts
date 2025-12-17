@@ -8,6 +8,8 @@ import { simpleParser } from 'mailparser'
 // @ts-ignore - libmime에 타입 정의 파일이 없음
 import { decode as decodeMailHeader } from 'libmime'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * MIME 인코딩된 헤더 디코딩
  */

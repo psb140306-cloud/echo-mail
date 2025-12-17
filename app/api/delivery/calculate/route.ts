@@ -13,6 +13,8 @@ import {
 } from '@/lib/utils/delivery-calculator'
 import { TenantContext } from '@/lib/db'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
+
+export const dynamic = 'force-dynamic'
 // 납품일 계산 요청 스키마
 const calculateDeliverySchema = z.object({
   region: z.string().min(1, '지역은 필수입니다'),

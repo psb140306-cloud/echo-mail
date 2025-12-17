@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/utils/logger'
 import { mailMonitorService } from '@/lib/mail/mail-monitor-service'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Vercel Cron Job 엔드포인트
  * 주기적으로 모든 테넌트의 메일함을 확인하고 새 발주 메일 처리

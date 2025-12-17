@@ -5,6 +5,8 @@ import { withTenantRateLimit } from '@/lib/middleware/rate-limiter'
 import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validation'
 import { UsageTracker, UsageType } from '@/lib/usage/usage-tracker'
 
+export const dynamic = 'force-dynamic'
+
 // 사용량 조회
 async function getUsage(request: NextRequest) {
   try {

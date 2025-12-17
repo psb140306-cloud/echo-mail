@@ -5,6 +5,8 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validati
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { SubscriptionPlan } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+
 // 플랜별 템플릿 개수 제한
 const TEMPLATE_LIMITS: Record<SubscriptionPlan, number> = {
   FREE_TRIAL: 3,

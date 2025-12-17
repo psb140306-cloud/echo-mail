@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { superAdminGuard } from '@/lib/api/super-admin-guard';
 
+export const dynamic = 'force-dynamic'
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

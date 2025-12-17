@@ -8,6 +8,8 @@ import { checkCompanyLimit } from '@/lib/subscription/limit-checker'
 import { TenantContext } from '@/lib/db'
 import { withTenantRateLimit } from '@/lib/middleware/rate-limiter'
 
+export const dynamic = 'force-dynamic'
+
 const createCompanySchema = z.object({
   // 업체 정보
   name: z.string().min(1, '업체명은 필수입니다').max(100, '업체명은 100자 이하여야 합니다'),

@@ -5,6 +5,8 @@ import { logger } from '@/lib/utils/logger'
 import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 요청 스키마
 const bulkDeleteSchema = z.object({
   ids: z.array(z.string()).min(1, '삭제할 메일 ID가 필요합니다.'),

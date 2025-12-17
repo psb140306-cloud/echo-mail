@@ -14,6 +14,8 @@ import {
 import { withTenantRateLimit } from '@/lib/middleware/rate-limiter'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 
+export const dynamic = 'force-dynamic'
+
 // 개별 알림 발송 스키마
 const sendNotificationSchema = z.object({
   type: z.nativeEnum(NotificationType, {

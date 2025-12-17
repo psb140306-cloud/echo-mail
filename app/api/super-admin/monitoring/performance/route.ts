@@ -3,6 +3,8 @@ import { requireSuperAdmin } from '@/lib/middleware/super-admin';
 import { metricsCollector } from '@/lib/monitoring/metrics-collector';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/super-admin/monitoring/performance
  * 성능 메트릭 조회

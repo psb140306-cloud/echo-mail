@@ -5,6 +5,8 @@ import { createErrorResponse, createSuccessResponse } from '@/lib/utils/validati
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { generateHolidays } from '@/lib/utils/holiday-calculator'
 
+export const dynamic = 'force-dynamic'
+
 interface RouteParams {
   params: {
     year: string

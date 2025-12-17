@@ -5,6 +5,8 @@ import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
 import { exportAddressBook, ImportedContact } from '@/lib/utils/address-book-import'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   return withTenantContext(request, async () => {
     try {

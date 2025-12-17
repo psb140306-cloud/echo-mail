@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 사용자의 Tenant 상태를 확인하는 API
  * - 로그인 후 tenant가 생성되었는지 확인

@@ -3,6 +3,8 @@ import { requireSuperAdmin } from '@/lib/middleware/super-admin';
 import fs from 'fs/promises';
 import path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/super-admin/monitoring/error-logs
  * 에러 로그 조회 (파일 기반 + 메모리 기반)

@@ -16,6 +16,8 @@ import { createClient } from '@/lib/supabase/server'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 import { ATTACHMENT_LIMITS } from '@/lib/subscription/attachment-limits'
 
+export const dynamic = 'force-dynamic'
+
 // 허용 확장자
 const ALLOWED_EXTENSIONS = [
   // 문서

@@ -12,6 +12,8 @@ import { mailScheduler } from '@/lib/scheduler/mail-scheduler'
 import { hasPermission, Permission, TenantUserRole } from '@/lib/auth/rbac'
 import { createClient } from '@/lib/supabase/server'
 
+export const dynamic = 'force-dynamic'
+
 // 설정 스키마
 const settingsSchema = z.object({
   mailServer: z

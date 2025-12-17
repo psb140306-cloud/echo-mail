@@ -3,6 +3,8 @@ import { requireSuperAdmin } from '@/lib/middleware/super-admin';
 import { metricsCollector } from '@/lib/monitoring/metrics-collector';
 import os from 'os';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/super-admin/monitoring/metrics
  * 실시간 서버 메트릭 조회
