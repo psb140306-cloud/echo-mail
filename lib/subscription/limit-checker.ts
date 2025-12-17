@@ -113,11 +113,12 @@ export async function getTenantUsage(tenantId: string): Promise<UsageStats> {
         },
       }),
 
-      // 이번 달 이메일 처리량
+      // 이번 달 발주 메일 처리량 (isOrder: true인 메일만)
       prisma.emailLog.count({
         where: {
           tenantId,
           createdAt: { gte: startOfMonth },
+          isOrder: true,
         },
       }),
 
