@@ -16,25 +16,37 @@ export async function GET(request: NextRequest) {
   const results: any[] = []
 
   try {
-    // 모든 메일 설정 조회
-    const emailAccounts = await prisma.emailAccount.findMany({
+    // SystemConfig에서 메일 설정 조회
+    const mailConfigs = await prisma.systemConfig.findMany({
       where: {
-        isActive: true,
-      },
-      select: {
-        tenantId: true,
-        imapHost: true,
-        imapPort: true,
-        imapSecure: true,
-        email: true,
-        password: true,
+        key: { startsWith: 'mailServer.' },
       },
     })
 
-    logger.info(`[RefetchAllBodies] ${emailAccounts.length}개 테넌트 처리 시작`)
+    // 테넌트별로 그룹화
+    const tenantConfigMap = new Map<string, Record<string, any>>()
+    for (const config of mailConfigs) {
+      if (!tenantConfigMap.has(config.tenantId)) {
+        tenantConfigMap.set(config.tenantId, { tenantId: config.tenantId })
+      }
+      const [, field] = config.key.split('.')
+      const tenantConfig = tenantConfigMap.get(config.tenantId)!
+      try {
+        tenantConfig[field] = JSON.parse(config.value)
+      } catch {
+        tenantConfig[field] = config.value
+      }
+    }
 
-    for (const account of emailAccounts) {
-      if (!account.imapHost) continue
+    // 활성화된 설정만 필터링
+    const activeConfigs = Array.from(tenantConfigMap.values()).filter(
+      (c) => c.enabled === true && c.host && c.port && c.username && c.password
+    )
+
+    logger.info(`[RefetchAllBodies] ${activeConfigs.length}개 테넌트 처리 시작`)
+
+    for (const account of activeConfigs) {
+      if (!account.host) continue
 
       try {
         // 해당 테넌트의 모든 메일 조회
@@ -62,11 +74,11 @@ export async function GET(request: NextRequest) {
 
         // IMAP 연결
         const client = createImapClient({
-          host: account.imapHost,
-          port: account.imapPort,
-          secure: account.imapSecure,
-          user: account.email,
+          host: account.host,
+          port: account.port,
+          username: account.username,
           password: account.password,
+          useSSL: account.useSSL !== false,
         })
 
         await client.connect()
