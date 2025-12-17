@@ -17,29 +17,30 @@ export async function GET(request: NextRequest) {
 
   try {
     // 모든 메일 설정 조회
-    const mailConfigs = await prisma.mailConfig.findMany({
+    const emailAccounts = await prisma.emailAccount.findMany({
       where: {
         imapHost: { not: null },
+        isActive: true,
       },
       select: {
         tenantId: true,
         imapHost: true,
         imapPort: true,
         imapSecure: true,
-        username: true,
+        email: true,
         password: true,
       },
     })
 
-    logger.info(`[RefetchAllBodies] ${mailConfigs.length}개 테넌트 처리 시작`)
+    logger.info(`[RefetchAllBodies] ${emailAccounts.length}개 테넌트 처리 시작`)
 
-    for (const config of mailConfigs) {
-      if (!config.imapHost) continue
+    for (const account of emailAccounts) {
+      if (!account.imapHost) continue
 
       try {
         // 해당 테넌트의 모든 메일 조회
         const emails = await prisma.emailLog.findMany({
-          where: { tenantId: config.tenantId },
+          where: { tenantId: account.tenantId },
           select: {
             id: true,
             messageId: true,
@@ -51,22 +52,22 @@ export async function GET(request: NextRequest) {
 
         if (emails.length === 0) {
           results.push({
-            tenantId: config.tenantId,
+            tenantId: account.tenantId,
             status: 'skipped',
             reason: 'no emails',
           })
           continue
         }
 
-        logger.info(`[RefetchAllBodies] 테넌트 ${config.tenantId}: ${emails.length}개 메일 처리`)
+        logger.info(`[RefetchAllBodies] 테넌트 ${account.tenantId}: ${emails.length}개 메일 처리`)
 
         // IMAP 연결
         const client = createImapClient({
-          host: config.imapHost,
-          port: config.imapPort,
-          secure: config.imapSecure,
-          user: config.username,
-          password: config.password,
+          host: account.imapHost,
+          port: account.imapPort,
+          secure: account.imapSecure,
+          user: account.email,
+          password: account.password,
         })
 
         await client.connect()
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest) {
           await client.logout()
 
           results.push({
-            tenantId: config.tenantId,
+            tenantId: account.tenantId,
             status: 'success',
             total: emails.length,
             updated: updatedCount,
@@ -141,18 +142,18 @@ export async function GET(request: NextRequest) {
             mismatch: mismatchCount,
           })
 
-          logger.info(`[RefetchAllBodies] 테넌트 ${config.tenantId} 완료: ${updatedCount}개 업데이트, ${mismatchCount}개 불일치`)
+          logger.info(`[RefetchAllBodies] 테넌트 ${account.tenantId} 완료: ${updatedCount}개 업데이트, ${mismatchCount}개 불일치`)
         } catch (imapError) {
           await client.logout().catch(() => {})
           throw imapError
         }
       } catch (error) {
         results.push({
-          tenantId: config.tenantId,
+          tenantId: account.tenantId,
           status: 'error',
           error: error instanceof Error ? error.message : 'Unknown error',
         })
-        logger.error(`[RefetchAllBodies] 테넌트 ${config.tenantId} 오류:`, error)
+        logger.error(`[RefetchAllBodies] 테넌트 ${account.tenantId} 오류:`, error)
       }
     }
 
