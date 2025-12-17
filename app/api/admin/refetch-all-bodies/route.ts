@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
     // 모든 메일 설정 조회
     const emailAccounts = await prisma.emailAccount.findMany({
       where: {
-        imapHost: { not: null },
         isActive: true,
       },
       select: {
