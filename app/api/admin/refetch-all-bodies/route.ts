@@ -16,7 +16,17 @@ export async function GET(request: NextRequest) {
   const results: any[] = []
 
   try {
-    // SystemConfig에서 메일 설정 조회
+    // Step 1: 모든 EmailLog의 senderName, body, bodyHtml을 NULL로 리셋
+    const resetResult = await prisma.emailLog.updateMany({
+      data: {
+        senderName: null,
+        body: null,
+        bodyHtml: null,
+      },
+    })
+    logger.info(`[RefetchAllBodies] ${resetResult.count}개 메일 데이터 리셋 완료`)
+
+    // Step 2: SystemConfig에서 메일 설정 조회
     const mailConfigs = await prisma.systemConfig.findMany({
       where: {
         key: { startsWith: 'mailServer.' },
