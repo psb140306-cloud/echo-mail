@@ -100,14 +100,16 @@ export async function POST(request: NextRequest) {
             const cleanMessageId = email.messageId.replace(/^<|>$/g, '')
 
             // IMAP에서 해당 메일 검색
-            const searchResult = await client.search({
-              header: { 'message-id': cleanMessageId }
-            })
+            const searchResult = await client.search(
+              {
+                header: { 'message-id': cleanMessageId },
+              },
+              { uid: true }
+            )
 
             if (searchResult.length > 0) {
-              // 첫 번째 결과의 source를 가져와서 mailparser로 파싱
-              // searchResult는 UID 배열이므로 { uid: true } 옵션 필수
-              const messages = client.fetch(searchResult[0], { envelope: true, source: true }, { uid: true })
+              const uidRange = searchResult.join(',')
+              const messages = client.fetch(uidRange, { envelope: true, source: true }, { uid: true })
 
               for await (const msg of messages) {
                 let senderName: string | null = null
@@ -116,6 +118,15 @@ export async function POST(request: NextRequest) {
                 if (msg.source) {
                   try {
                     const parsed = await simpleParser(msg.source)
+                    // 안전장치: message-id가 다르면 다른 메일이므로 업데이트 금지
+                    const parsedMessageId = (parsed.messageId || '').replace(/^<|>$/g, '')
+                    if (parsedMessageId && parsedMessageId !== cleanMessageId) {
+                      logger.warn('[RefreshSenderNames] message-id 불일치 - 스킵', {
+                        expected: cleanMessageId,
+                        actual: parsedMessageId,
+                      })
+                      continue
+                    }
                     if (parsed.from?.value?.[0]?.name) {
                       senderName = parsed.from.value[0].name
                       logger.info(`[RefreshSenderNames] mailparser로 발신자 이름 추출: ${senderName}`)

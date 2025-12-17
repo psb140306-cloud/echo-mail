@@ -82,25 +82,42 @@ export async function POST(request: NextRequest) {
           try {
             // Message-ID로 검색
             const cleanMessageId = email.messageId.replace(/^<|>$/g, '')
-            const searchResult = await client.search({
-              header: { 'message-id': cleanMessageId },
-            })
+            const searchResult = await client.search(
+              {
+                header: { 'message-id': cleanMessageId },
+              },
+              { uid: true }
+            )
 
             if (searchResult.length === 0) {
               notFoundCount++
               continue
             }
 
-            // UID 모드로 fetch (중요!)
-            const messages = client.fetch(searchResult[0], {
-              envelope: true,
-              source: true,
-            }, { uid: true })
+            const uidRange = searchResult.join(',')
+            const messages = client.fetch(
+              uidRange,
+              {
+                envelope: true,
+                source: true,
+              },
+              { uid: true }
+            )
 
             for await (const msg of messages) {
               if (!msg.source) continue
 
               const parsed = await simpleParser(msg.source)
+              // 안전장치: message-id가 다르면 다른 메일이므로 업데이트 금지
+              const parsedMessageId = (parsed.messageId || '').replace(/^<|>$/g, '')
+              if (parsedMessageId && parsedMessageId !== cleanMessageId) {
+                mismatchCount++
+                logger.warn('[RefetchBodies] message-id 불일치 - 스킵', {
+                  expected: cleanMessageId,
+                  actual: parsedMessageId,
+                })
+                continue
+              }
 
               // 제목 비교 (불일치 확인)
               const imapSubject = parsed.subject || ''

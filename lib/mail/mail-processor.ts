@@ -1,8 +1,6 @@
 import { ProcessedEmail } from './imap-client'
 import { logger } from '@/lib/utils/logger'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 export interface EmailMatchResult {
   isMatch: boolean

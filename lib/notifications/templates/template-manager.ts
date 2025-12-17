@@ -1,7 +1,6 @@
-import { PrismaClient, NotificationType } from '@prisma/client'
+import { NotificationType } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/db'
 
 export interface NotificationTemplate {
   id: string

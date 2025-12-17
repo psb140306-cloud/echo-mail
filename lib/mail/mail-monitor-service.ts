@@ -1,5 +1,4 @@
-import { PrismaClient } from '@prisma/client'
-import { ImapFlow } from 'imapflow'
+import { ImapFlow, SearchObject } from 'imapflow'
 import { simpleParser, ParsedMail, Attachment } from 'mailparser'
 // @ts-ignore - libmime에 타입 정의 파일이 없음
 import { decode as decodeMailHeader } from 'libmime'
@@ -10,10 +9,9 @@ import { sendOrderReceivedNotification } from '@/lib/notifications/notification-
 import { getKSTStartOfDaysAgo, isKSTToday, formatKSTDate } from '@/lib/utils/date'
 import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
+import { prisma } from '@/lib/db'
 // TODO: 미등록 업체 알림 로직 - 순환 참조 또는 런타임 에러로 인해 임시 비활성화
 // import { unregisteredCompanyHandler } from '@/lib/unregistered-company-handler'
-
-const prisma = new PrismaClient()
 
 /**
  * MIME 인코딩된 메일 헤더 디코딩 (제목, 발신자명 등)
@@ -86,6 +84,70 @@ export class MailMonitorService {
   private companyEmailsCache = new Map<string, { emails: string[]; updatedAt: Date }>()
   // 처리 완료된 UID 캐시 (테넌트별, 오늘 날짜 기준) - egress 절감용
   private processedUidsCache = new Map<string, { uids: Set<number>; date: string }>()
+
+  // IMAP 커서 (UID 기반 증분 수집)
+  private cursorCache = new Map<string, { uidValidity: number; lastSeenUid: number; updatedAt: number }>()
+  private static readonly CURSOR_CACHE_TTL_MS = 30_000
+  private static readonly CURSOR_KEYS = {
+    uidValidity: 'mailCursor.uidValidity',
+    lastSeenUid: 'mailCursor.lastSeenUid',
+  } as const
+
+  private async getMailboxCursor(tenantId: string): Promise<{ uidValidity: number | null; lastSeenUid: number | null }> {
+    const now = Date.now()
+    const cached = this.cursorCache.get(tenantId)
+    if (cached && now - cached.updatedAt < MailMonitorService.CURSOR_CACHE_TTL_MS) {
+      return { uidValidity: cached.uidValidity, lastSeenUid: cached.lastSeenUid }
+    }
+
+    const rows = await prisma.systemConfig.findMany({
+      where: {
+        tenantId,
+        key: { in: [MailMonitorService.CURSOR_KEYS.uidValidity, MailMonitorService.CURSOR_KEYS.lastSeenUid] },
+      },
+      select: { key: true, value: true },
+    })
+
+    let uidValidity: number | null = null
+    let lastSeenUid: number | null = null
+
+    for (const row of rows) {
+      const value = Number(row.value)
+      if (!Number.isFinite(value)) continue
+      if (row.key === MailMonitorService.CURSOR_KEYS.uidValidity) uidValidity = value
+      if (row.key === MailMonitorService.CURSOR_KEYS.lastSeenUid) lastSeenUid = value
+    }
+
+    if (uidValidity !== null && lastSeenUid !== null) {
+      this.cursorCache.set(tenantId, { uidValidity, lastSeenUid, updatedAt: now })
+    }
+
+    return { uidValidity, lastSeenUid }
+  }
+
+  private async setMailboxCursor(tenantId: string, uidValidity: number, lastSeenUid: number): Promise<void> {
+    await prisma.$transaction([
+      prisma.systemConfig.upsert({
+        where: { tenantId_key: { tenantId, key: MailMonitorService.CURSOR_KEYS.uidValidity } },
+        update: { value: String(uidValidity), category: 'mail' },
+        create: { tenantId, key: MailMonitorService.CURSOR_KEYS.uidValidity, value: String(uidValidity), category: 'mail' },
+      }),
+      prisma.systemConfig.upsert({
+        where: { tenantId_key: { tenantId, key: MailMonitorService.CURSOR_KEYS.lastSeenUid } },
+        update: { value: String(lastSeenUid), category: 'mail' },
+        create: { tenantId, key: MailMonitorService.CURSOR_KEYS.lastSeenUid, value: String(lastSeenUid), category: 'mail' },
+      }),
+    ])
+
+    this.cursorCache.set(tenantId, { uidValidity, lastSeenUid, updatedAt: Date.now() })
+  }
+
+  private getMailboxUidValidity(client: ImapFlow): number | null {
+    const raw = (client as any)?.mailbox?.uidValidity
+    if (typeof raw === 'bigint') return Number(raw)
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : null
+  }
 
   /**
    * 모든 활성 테넌트의 메일 확인
@@ -175,7 +237,24 @@ export class MailMonitorService {
       try {
         const messages = []
         // 3일 전(KST)부터 검색 - 워커 재시작/에러/누락 방지 (중복은 Message-ID로 필터링)
-        const since = getKSTStartOfDaysAgo(3)
+        const sinceFallback = getKSTStartOfDaysAgo(3)
+
+        // UID 커서 로드 (UIDVALIDITY가 동일할 때만 사용)
+        const mailboxUidValidity = this.getMailboxUidValidity(client)
+        let cursorLastSeenUid: number | null = null
+        if (mailboxUidValidity !== null) {
+          const cursor = await this.getMailboxCursor(config.tenantId)
+          if (
+            cursor.uidValidity !== null &&
+            cursor.lastSeenUid !== null &&
+            cursor.uidValidity === mailboxUidValidity
+          ) {
+            cursorLastSeenUid = cursor.lastSeenUid
+          }
+        }
+
+        // 이번 실행에서 확인한 최대 UID (신규 메일이 없더라도 커서 전진에 사용)
+        let maxUidSeen = cursorLastSeenUid ?? 0
 
         if (config.effectiveMailMode === 'FULL_INBOX') {
           // FULL_INBOX 모드: 모든 메일 수집 (등록된 업체 제한 없음)
@@ -183,10 +262,13 @@ export class MailMonitorService {
             tenantId: config.tenantId,
           })
 
-          const searchCriteria = {
-            since, // 3일 전부터 검색 (누락 방지, 중복은 Message-ID로 필터링)
-            // unseen 조건 제거 - 읽은 메일도 수집
-          }
+          const searchCriteria: SearchObject =
+            cursorLastSeenUid !== null
+              ? { uid: `${cursorLastSeenUid + 1}:*` }
+              : {
+                  since: sinceFallback, // 초기/리셋 시 안전 백필
+                  // unseen 조건 제거 - 읽은 메일도 수집
+                }
 
           logger.info(`[MailMonitor] IMAP 전체 검색 시작:`, { searchCriteria })
 
@@ -196,6 +278,9 @@ export class MailMonitorService {
             const searchResult = await client.search(searchCriteria, { uid: true })
             // search()가 false를 반환하거나 빈 배열일 수 있음
             const searchedUids = Array.isArray(searchResult) ? searchResult : []
+            for (const uid of searchedUids) {
+              if (typeof uid === 'number' && uid > maxUidSeen) maxUidSeen = uid
+            }
 
             logger.info(`[MailMonitor] IMAP search 완료 - ${searchedUids.length}개 UID 발견`, {
               tenantId: config.tenantId,
@@ -211,6 +296,7 @@ export class MailMonitorService {
 
               // UID 배열을 SequenceString으로 변환하여 fetch (uid: true 옵션 필수)
               const uidRange = searchedUids.join(',')
+              const shouldFilterSpam = config.effectiveMailMode === 'ORDER_ONLY'
               for await (const message of client.fetch(uidRange, {
                 envelope: true,
                 uid: true,
@@ -219,7 +305,7 @@ export class MailMonitorService {
                 // source: false (기본값) - 본문 다운로드 안 함
               }, { uid: true })) {
                 // 스팸 메일 필터링
-                const isSpam = this.checkIfSpam(message.headers)
+                const isSpam = shouldFilterSpam && this.checkIfSpam(message.headers)
                 if (isSpam) {
                   logger.debug(`[MailMonitor] 스팸 메일 스킵 (Stage 1):`, { uid: message.uid })
                   continue
@@ -315,16 +401,19 @@ export class MailMonitorService {
 
           for (const email of registeredEmails) {
             try {
-              const searchCriteria = {
-                from: email,
-                since, // 3일 전부터 검색 (누락 방지, 중복은 Message-ID로 필터링)
-              }
+              const searchCriteria: SearchObject =
+                cursorLastSeenUid !== null
+                  ? { from: email, uid: `${cursorLastSeenUid + 1}:*` }
+                  : { from: email, since: sinceFallback } // 초기/리셋 시 안전 백필
 
               logger.debug(`[MailMonitor] IMAP 헤더 검색 (Stage 1):`, { email })
 
               // Step 0: search()로 UID 목록 먼저 조회 (ImapFlow fetch 버그 방지)
               const searchResult = await client.search(searchCriteria, { uid: true })
               const searchedUids = Array.isArray(searchResult) ? searchResult : []
+              for (const uid of searchedUids) {
+                if (typeof uid === 'number' && uid > maxUidSeen) maxUidSeen = uid
+              }
 
               if (searchedUids.length === 0) {
                 logger.debug(`[MailMonitor] ${email} - 검색 결과 없음`)
@@ -334,6 +423,7 @@ export class MailMonitorService {
               logger.debug(`[MailMonitor] ${email} - ${searchedUids.length}개 UID 발견`)
 
               const uidRange = searchedUids.join(',')
+              const shouldFilterSpam = config.effectiveMailMode === 'ORDER_ONLY'
               for await (const message of client.fetch(uidRange, {
                 envelope: true,
                 uid: true,
@@ -342,7 +432,7 @@ export class MailMonitorService {
                 // source: false (기본값) - 본문 다운로드 안 함
               }, { uid: true })) {
                 // 스팸 메일 필터링
-                const isSpam = this.checkIfSpam(message.headers)
+                const isSpam = shouldFilterSpam && this.checkIfSpam(message.headers)
                 if (isSpam) {
                   logger.debug(`[MailMonitor] 스팸 메일 스킵 (Stage 1):`, { uid: message.uid })
                   continue
@@ -416,22 +506,47 @@ export class MailMonitorService {
           // ========== 2단계 Fetch 최적화 끝 (ORDER_ONLY) ==========
         }
 
+        // UID 순서로 정렬해서 처리/커서 업데이트 안정성 향상
+        messages.sort((a: any, b: any) => (a?.uid ?? 0) - (b?.uid ?? 0))
+
         newMailsCount = messages.length
         logger.info(`[MailMonitor] 테넌트 ${config.tenantId} 새 메일 ${newMailsCount}개 발견`, {
           effectiveMailMode: config.effectiveMailMode,
         })
 
         // 각 메일 처리
+        let maxSuccessfulUid = cursorLastSeenUid ?? 0
+        let minFailedUid: number | null = null
         for (const message of messages) {
           try {
             await this.processEmail(config.tenantId, message, client, config)
             processedCount++
+            if (typeof message.uid === 'number' && message.uid > maxSuccessfulUid) {
+              maxSuccessfulUid = message.uid
+            }
           } catch (error) {
             failedCount++
+            if (minFailedUid === null && typeof message.uid === 'number') {
+              minFailedUid = message.uid
+            }
             const errorMsg = error instanceof Error ? error.message : '메일 처리 실패'
             errors.push(`UID ${message.uid}: ${errorMsg}`)
             logger.error(`[MailMonitor] 메일 처리 실패 (UID: ${message.uid}):`, error)
           }
+        }
+
+        // 커서 업데이트: 실패가 있으면 실패 UID 이전까지만 진행 (다음 주기에 재시도)
+        if (mailboxUidValidity !== null && maxUidSeen > (cursorLastSeenUid ?? 0)) {
+          const nextCursorUid =
+            minFailedUid !== null ? Math.max(0, minFailedUid - 1) : Math.max(maxSuccessfulUid, maxUidSeen)
+          const candidate = Math.max(cursorLastSeenUid ?? 0, nextCursorUid)
+          await this.setMailboxCursor(config.tenantId, mailboxUidValidity, candidate)
+          logger.info('[MailMonitor] IMAP 커서 업데이트', {
+            tenantId: config.tenantId,
+            uidValidity: mailboxUidValidity,
+            lastSeenUid: candidate,
+            minFailedUid,
+          })
         }
 
         // 마지막 확인 시간 업데이트
@@ -448,7 +563,14 @@ export class MailMonitorService {
         errors,
       }
     } catch (error) {
-      logger.error(`[MailMonitor] 테넌트 ${config.tenantId} 메일 확인 실패:`, error)
+      const err =
+        error instanceof Error
+          ? { message: error.message, stack: error.stack }
+          : { message: String(error) }
+      logger.error(`[MailMonitor] 테넌트 ${config.tenantId} 메일 확인 실패`, {
+        tenantId: config.tenantId,
+        error: err,
+      })
       return {
         success: false,
         newMailsCount,

@@ -1,4 +1,4 @@
-import { NotificationType, PrismaClient } from '@prisma/client'
+import { NotificationType } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
 import { SMSProvider, createSMSProviderFromEnv, SMSMessage } from './sms/sms-provider'
 import { KakaoProvider, createKakaoProviderFromEnv, KakaoMessage } from './kakao/kakao-provider'
@@ -12,9 +12,7 @@ import {
   trackKakaoUsage,
   checkNotificationLimit,
 } from '@/lib/usage/usage-tracker'
-import { TenantContext } from '@/lib/db'
-
-const prisma = new PrismaClient()
+import { prisma, TenantContext } from '@/lib/db'
 
 export interface NotificationRequest {
   type: NotificationType

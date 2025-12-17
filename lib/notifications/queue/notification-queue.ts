@@ -1,7 +1,6 @@
 import { logger } from '@/lib/utils/logger'
-import { PrismaClient, NotificationType, NotificationStatus } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { NotificationType, NotificationStatus } from '@prisma/client'
+import { prisma } from '@/lib/db'
 
 export interface NotificationJob {
   id: string
