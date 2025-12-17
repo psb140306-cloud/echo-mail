@@ -490,8 +490,8 @@ export default function MailPage() {
                         />
                       </TableHead>
                       <TableHead className="w-[50px]"></TableHead>
-                      <TableHead>제목</TableHead>
                       <TableHead className="w-[180px]">발신자</TableHead>
+                      <TableHead>제목</TableHead>
                       <TableHead className="w-[100px]">알림</TableHead>
                       <TableHead className="w-[100px]">지역</TableHead>
                       <TableHead className="w-[120px]">수신일시</TableHead>
@@ -513,28 +513,6 @@ export default function MailPage() {
                           ) : (
                             <Mail className="h-4 w-4 text-primary" />
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <Link
-                            href={`/mail/${email.id}`}
-                            className="hover:underline"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className={email.isRead ? '' : 'font-semibold'}>
-                                {email.subject || '(제목 없음)'}
-                              </span>
-                              {email.isOrder && (
-                                <Badge variant="default" className="text-xs">
-                                  발주
-                                </Badge>
-                              )}
-                              {email.company && (
-                                <Badge variant="outline" className="text-xs">
-                                  {email.company.name}
-                                </Badge>
-                              )}
-                            </div>
-                          </Link>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {(() => {
@@ -558,6 +536,28 @@ export default function MailPage() {
                               </TooltipProvider>
                             )
                           })()}
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/mail/${email.id}`}
+                            className="hover:underline"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={email.isRead ? '' : 'font-semibold'}>
+                                {email.subject || '(제목 없음)'}
+                              </span>
+                              {email.isOrder && (
+                                <Badge variant="default" className="text-xs">
+                                  발주
+                                </Badge>
+                              )}
+                              {email.company && (
+                                <Badge variant="outline" className="text-xs">
+                                  {email.company.name}
+                                </Badge>
+                              )}
+                            </div>
+                          </Link>
                         </TableCell>
                         <TableCell>
                           {renderNotificationBadge(email.notifications)}
