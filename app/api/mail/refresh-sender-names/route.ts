@@ -106,7 +106,8 @@ export async function POST(request: NextRequest) {
 
             if (searchResult.length > 0) {
               // 첫 번째 결과의 source를 가져와서 mailparser로 파싱
-              const messages = client.fetch(searchResult[0], { envelope: true, source: true })
+              // searchResult는 UID 배열이므로 { uid: true } 옵션 필수
+              const messages = client.fetch(searchResult[0], { envelope: true, source: true }, { uid: true })
 
               for await (const msg of messages) {
                 let senderName: string | null = null
