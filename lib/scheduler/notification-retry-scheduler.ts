@@ -3,7 +3,6 @@ import { NotificationType } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
 import { notificationService } from '@/lib/notifications/notification-service'
 import { prisma } from '@/lib/db'
-import { runWithAdvisoryLock } from '@/lib/db/advisory-lock'
 
 /**
  * 알림 재발송 스케줄러
@@ -46,16 +45,6 @@ export class NotificationRetryScheduler {
    * PENDING_RETRY 상태의 알림 처리
    */
   private async processPendingRetries() {
-    const lock = await runWithAdvisoryLock({ key1: 51001, key2: 2 }, async () => {
-      await this.processPendingRetriesLocked()
-    })
-
-    if (!lock.acquired) {
-      logger.debug('[NotificationRetryScheduler] 다른 인스턴스가 실행 중, 스킵')
-    }
-  }
-
-  private async processPendingRetriesLocked() {
     // 이미 처리 중이면 스킵 (프로세스 내 중복 실행 방지)
     if (this.isProcessing) {
       logger.debug('[NotificationRetryScheduler] 이전 작업 처리 중, 스킵')

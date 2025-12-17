@@ -3,7 +3,6 @@ import { logger } from '@/lib/utils/logger'
 import { mailMonitorService } from '@/lib/mail/mail-monitor-service'
 import { processScheduledEmails } from './scheduled-email-processor'
 import { prisma } from '@/lib/db'
-import { runWithAdvisoryLock } from '@/lib/db/advisory-lock'
 
 /**
  * 메일 자동 확인 스케줄러
@@ -61,51 +60,43 @@ export class MailScheduler {
     this.globalTask = cron.schedule(
       cronExpression,
       async () => {
-        const lock = await runWithAdvisoryLock({ key1: 51001, key2: 1 }, async () => {
-          logger.info('[MailScheduler] 글로벌 스케줄 작업 실행', {
-            intervalMinutes: FIXED_INTERVAL,
-          })
-
-          try {
-            // 1. 예약된 메일 발송 처리 (모든 테넌트 대상)
-            const scheduledResult = await processScheduledEmails()
-            if (scheduledResult.processed > 0) {
-              logger.info('[MailScheduler] 예약 메일 처리 완료', {
-                processed: scheduledResult.processed,
-                sent: scheduledResult.sent,
-                failed: scheduledResult.failed,
-              })
-            }
-
-            // 2. 모든 테넌트의 수신 메일 확인 (1회 호출)
-            const results = await mailMonitorService.checkAllTenants()
-
-            // 결과 요약 로깅
-            let totalNew = 0
-            let totalProcessed = 0
-            let totalFailed = 0
-            for (const [, result] of results.entries()) {
-              totalNew += result.newMailsCount
-              totalProcessed += result.processedCount
-              totalFailed += result.failedCount
-            }
-
-            logger.info('[MailScheduler] 글로벌 스케줄 작업 완료', {
-              tenantsProcessed: results.size,
-              totalNewMails: totalNew,
-              totalProcessed,
-              totalFailed,
-            })
-          } catch (error) {
-            logger.error('[MailScheduler] 글로벌 스케줄 작업 실패:', {
-              error: error instanceof Error ? error.message : '알 수 없는 오류',
-            })
-          }
+        logger.info('[MailScheduler] 글로벌 스케줄 작업 실행', {
+          intervalMinutes: FIXED_INTERVAL,
         })
 
-        if (!lock.acquired) {
-          logger.info('[MailScheduler] 다른 인스턴스가 실행 중 - 스킵', {
-            intervalMinutes: FIXED_INTERVAL,
+        try {
+          // 1. 예약된 메일 발송 처리 (모든 테넌트 대상)
+          const scheduledResult = await processScheduledEmails()
+          if (scheduledResult.processed > 0) {
+            logger.info('[MailScheduler] 예약 메일 처리 완료', {
+              processed: scheduledResult.processed,
+              sent: scheduledResult.sent,
+              failed: scheduledResult.failed,
+            })
+          }
+
+          // 2. 모든 테넌트의 수신 메일 확인 (1회 호출)
+          const results = await mailMonitorService.checkAllTenants()
+
+          // 결과 요약 로깅
+          let totalNew = 0
+          let totalProcessed = 0
+          let totalFailed = 0
+          for (const [, result] of results.entries()) {
+            totalNew += result.newMailsCount
+            totalProcessed += result.processedCount
+            totalFailed += result.failedCount
+          }
+
+          logger.info('[MailScheduler] 글로벌 스케줄 작업 완료', {
+            tenantsProcessed: results.size,
+            totalNewMails: totalNew,
+            totalProcessed,
+            totalFailed,
+          })
+        } catch (error) {
+          logger.error('[MailScheduler] 글로벌 스케줄 작업 실패:', {
+            error: error instanceof Error ? error.message : '알 수 없는 오류',
           })
         }
       },
