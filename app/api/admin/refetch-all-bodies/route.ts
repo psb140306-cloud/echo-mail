@@ -142,6 +142,9 @@ export async function GET(request: NextRequest) {
       let processedCount = 0
 
       // 시퀀스 번호로 fetch (uid: false)
+      const sampleMsgIds: string[] = []
+      const sampleDbIds: string[] = Array.from(emailMap.keys()).slice(0, 5)
+
       for await (const msg of client.fetch(seqRange, {
         envelope: true,
         source: true,
@@ -151,6 +154,12 @@ export async function GET(request: NextRequest) {
         if (!msg.envelope?.messageId) continue
 
         const msgId = msg.envelope.messageId.replace(/^<|>$/g, '')
+
+        // 디버깅: 처음 5개 메시지ID 샘플 수집
+        if (sampleMsgIds.length < 5) {
+          sampleMsgIds.push(msgId)
+        }
+
         const emailId = emailMap.get(msgId)
 
         if (!emailId) continue // DB에 없는 메일
@@ -200,6 +209,10 @@ export async function GET(request: NextRequest) {
         nextUrl: remainingCount > 0
           ? `/api/admin/refetch-all-bodies?limit=${limit}`
           : null,
+        debug: {
+          sampleImapMsgIds: sampleMsgIds,
+          sampleDbMsgIds: sampleDbIds,
+        },
       })
     } catch (imapError) {
       await client.logout().catch(() => {})
