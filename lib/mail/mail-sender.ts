@@ -284,10 +284,11 @@ export async function sendMail(
     const startOfMonth = getKSTStartOfMonth()
 
     // metadata에 저장된 recipientCount 합산 또는 기본 1로 계산
+    // folder: 'SENT'로 보낸 메일 구분 (direction 필드 대신)
     const sentEmails = await prisma.emailLog.findMany({
       where: {
         tenantId,
-        direction: 'OUTBOUND',
+        folder: 'SENT',
         createdAt: { gte: startOfMonth },
         status: { not: 'FAILED' }, // 실패한 메일은 제외
       },
@@ -362,9 +363,7 @@ export async function sendMail(
         messageId: info.messageId,
         subject: request.subject,
         sender: smtpConfig.user, // sender 필드 사용 (목록에서 표시)
-        from: smtpConfig.user,
-        to: Array.isArray(request.to) ? request.to.join(', ') : request.to,
-        direction: 'OUTBOUND',
+        recipient: Array.isArray(request.to) ? request.to.join(', ') : request.to,
         folder: 'SENT', // 보낸 메일함에 표시
         status: 'SENT',
         isRead: true, // 발신 메일은 읽음 처리
@@ -414,9 +413,7 @@ export async function sendMail(
           messageId: `failed-${Date.now()}`,
           subject: request.subject,
           sender: '', // 발송자 정보 없음
-          from: '',
-          to: Array.isArray(request.to) ? request.to.join(', ') : request.to,
-          direction: 'OUTBOUND',
+          recipient: Array.isArray(request.to) ? request.to.join(', ') : request.to,
           folder: 'SENT', // 보낸 메일함에 실패 기록도 표시
           status: 'FAILED',
           receivedAt: new Date(),
