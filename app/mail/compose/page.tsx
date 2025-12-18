@@ -210,7 +210,7 @@ export default function ComposeMailPage() {
           })
           // 토스트가 표시된 후 이동
           setTimeout(() => {
-            router.push('/mail?folder=scheduled')
+            router.push('/mail')
           }, 500)
         } else {
           toast({
