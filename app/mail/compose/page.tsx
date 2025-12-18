@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
+import { ToastAction } from '@/components/ui/toast'
 import { ArrowLeft, Send, Loader2, Lock, Crown, Timer, BookUser } from 'lucide-react'
 import { AppHeader } from '@/components/layout/app-header'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -207,11 +208,12 @@ export default function ComposeMailPage() {
           toast({
             title: '예약 완료',
             description: `메일이 예약되었습니다.`,
+            action: (
+              <ToastAction altText="확인" onClick={() => router.push('/mail')}>
+                확인
+              </ToastAction>
+            ),
           })
-          // 토스트가 표시된 후 이동
-          setTimeout(() => {
-            router.push('/mail')
-          }, 500)
         } else {
           toast({
             title: '예약 실패',
@@ -244,11 +246,12 @@ export default function ComposeMailPage() {
           toast({
             title: '발송 완료',
             description: result.message || '메일이 성공적으로 발송되었습니다.',
+            action: (
+              <ToastAction altText="확인" onClick={() => router.push('/mail?folder=sent')}>
+                확인
+              </ToastAction>
+            ),
           })
-          // 토스트가 표시된 후 이동 (토스트 표시 시간 확보)
-          setTimeout(() => {
-            router.push('/mail?folder=sent')
-          }, 500)
         } else {
           toast({
             title: '발송 실패',
