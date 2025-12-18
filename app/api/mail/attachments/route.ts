@@ -12,7 +12,7 @@ import {
   createSuccessResponse,
 } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 import { ATTACHMENT_LIMITS } from '@/lib/subscription/attachment-limits'
 
@@ -148,8 +148,9 @@ export async function POST(request: NextRequest) {
       const uniqueFileName = `${timestamp}-${randomString}-${safeFileName}`
       const storagePath = `mail-attachments/${tenantId}/${uniqueFileName}`
 
-      // Supabase Storage에 업로드
-      const { data, error } = await supabase.storage
+      // Admin 클라이언트로 Storage 업로드 (RLS 정책 무시, API 레벨에서 이미 테넌트/사용자 검증 완료)
+      const adminSupabase = createAdminClient()
+      const { data, error } = await adminSupabase.storage
         .from('attachments')
         .upload(storagePath, buffer, {
           contentType: file.type,
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 다운로드 URL 생성 (1시간 유효)
-      const { data: urlData } = await supabase.storage
+      const { data: urlData } = await adminSupabase.storage
         .from('attachments')
         .createSignedUrl(storagePath, 3600)
 
@@ -229,8 +230,9 @@ export async function DELETE(request: NextRequest) {
         return createErrorResponse('접근 권한이 없습니다.', 403)
       }
 
-      // Supabase Storage에서 삭제
-      const { error } = await supabase.storage.from('attachments').remove([key])
+      // Admin 클라이언트로 Storage 삭제 (RLS 정책 무시, API 레벨에서 이미 테넌트/사용자 검증 완료)
+      const adminSupabase = createAdminClient()
+      const { error } = await adminSupabase.storage.from('attachments').remove([key])
 
       if (error) {
         logger.error('파일 삭제 실패:', error)
