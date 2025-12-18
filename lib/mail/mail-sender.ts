@@ -280,29 +280,18 @@ export async function sendMail(
     // 3. 플랜별 발송 제한 확인
     const plan = tenant.subscriptionPlan as SubscriptionPlan
 
-    // 이번 달 발송량 조회 (수신자 수 기준으로 집계)
+    // 이번 달 발송량 조회 (메일 수 기준으로 집계)
     const startOfMonth = getKSTStartOfMonth()
 
-    // metadata에 저장된 recipientCount 합산 또는 기본 1로 계산
-    // folder: 'SENT'로 보낸 메일 구분 (direction 필드 대신)
-    const sentEmails = await prisma.emailLog.findMany({
+    // folder: 'SENT'로 보낸 메일 구분
+    const currentUsage = await prisma.emailLog.count({
       where: {
         tenantId,
         folder: 'SENT',
         createdAt: { gte: startOfMonth },
         status: { not: 'FAILED' }, // 실패한 메일은 제외
       },
-      select: {
-        metadata: true,
-      },
     })
-
-    // 수신자 수 기반 사용량 계산
-    const currentUsage = sentEmails.reduce((total, email) => {
-      const metadata = email.metadata as Record<string, any> | null
-      const recipientCount = metadata?.recipientCount || 1
-      return total + recipientCount
-    }, 0)
 
     // 모든 수신자 수 계산 (to + cc + bcc)
     const toCount = Array.isArray(request.to) ? request.to.length : 1
@@ -368,14 +357,6 @@ export async function sendMail(
         status: 'SENT',
         isRead: true, // 발신 메일은 읽음 처리
         receivedAt: new Date(), // 발송 시간 기록
-        metadata: {
-          cc: request.cc,
-          bcc: request.bcc,
-          replyTo: request.replyTo,
-          inReplyTo: request.inReplyTo,
-          sentBy: userId,
-          recipientCount: recipientCount, // 수신자 수 기록
-        },
       },
     })
 
@@ -417,10 +398,7 @@ export async function sendMail(
           folder: 'SENT', // 보낸 메일함에 실패 기록도 표시
           status: 'FAILED',
           receivedAt: new Date(),
-          metadata: {
-            error: errorMessage,
-            sentBy: userId,
-          },
+          errorMessage: errorMessage, // 스키마의 errorMessage 필드 사용
         },
       })
     } catch (logError) {
