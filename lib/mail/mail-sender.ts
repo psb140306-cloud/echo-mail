@@ -354,7 +354,7 @@ export async function sendMail(
         sender: smtpConfig.user, // sender 필드 사용 (목록에서 표시)
         recipient: Array.isArray(request.to) ? request.to.join(', ') : request.to,
         folder: 'SENT', // 보낸 메일함에 표시
-        status: 'SENT',
+        status: 'PROCESSED', // EmailStatus enum 값 사용
         isRead: true, // 발신 메일은 읽음 처리
         receivedAt: new Date(), // 발송 시간 기록
       },
