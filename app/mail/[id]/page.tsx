@@ -204,7 +204,14 @@ export default function MailDetailPage() {
         <div className="flex items-center justify-between mb-6">
           <Button
             variant="ghost"
-            onClick={() => router.push('/mail')}
+            onClick={() => {
+              // folder에 따라 올바른 목록으로 이동
+              if (email.folder === 'SENT') {
+                router.push('/mail?folder=sent')
+              } else {
+                router.push('/mail')
+              }
+            }}
             className="gap-2"
           >
             <ArrowLeft className="h-4 w-4" />

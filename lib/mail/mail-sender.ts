@@ -357,6 +357,8 @@ export async function sendMail(
         status: 'PROCESSED', // EmailStatus enum 값 사용
         isRead: true, // 발신 메일은 읽음 처리
         receivedAt: new Date(), // 발송 시간 기록
+        body: request.text || null, // 발송 메일 본문 저장
+        bodyHtml: request.html || null, // 발송 메일 HTML 본문 저장
       },
     })
 

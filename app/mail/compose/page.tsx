@@ -208,7 +208,10 @@ export default function ComposeMailPage() {
             title: '예약 완료',
             description: `메일이 예약되었습니다.`,
           })
-          router.push('/mail')
+          // 토스트가 표시된 후 이동
+          setTimeout(() => {
+            router.push('/mail?folder=scheduled')
+          }, 500)
         } else {
           toast({
             title: '예약 실패',
@@ -242,7 +245,10 @@ export default function ComposeMailPage() {
             title: '발송 완료',
             description: result.message || '메일이 성공적으로 발송되었습니다.',
           })
-          router.push('/mail')
+          // 토스트가 표시된 후 이동 (토스트 표시 시간 확보)
+          setTimeout(() => {
+            router.push('/mail?folder=sent')
+          }, 500)
         } else {
           toast({
             title: '발송 실패',
