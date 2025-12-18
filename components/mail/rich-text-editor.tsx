@@ -45,6 +45,9 @@ export function RichTextEditor({
         heading: {
           levels: [1, 2, 3],
         },
+        // StarterKit 내장 Link/Underline 비활성화 (중복 extension 경고 방지)
+        link: false,
+        underline: false,
       }),
       Underline,
       TextStyle,

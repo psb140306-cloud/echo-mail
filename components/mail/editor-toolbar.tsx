@@ -475,6 +475,10 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             </TooltipTrigger>
             <TooltipContent side="bottom">링크 삽입</TooltipContent>
         <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>링크 삽입</DialogTitle>
+            <DialogDescription>URL과 표시할 제목을 입력하세요.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 pr-6">
             {/* 링크 제목 */}
             <div className="flex items-center gap-4">
@@ -561,6 +565,10 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             </TooltipTrigger>
             <TooltipContent side="bottom">이미지 삽입</TooltipContent>
         <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>이미지 삽입</DialogTitle>
+            <DialogDescription>파일을 업로드하거나 이미지 URL을 입력하세요.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4 pr-6">
             {/* 숨겨진 파일 input */}
             <input
