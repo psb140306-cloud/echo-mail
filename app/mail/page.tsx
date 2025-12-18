@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -103,7 +103,12 @@ interface EmailListResponse {
 
 export default function MailPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
+
+  // URL에서 folder 파라미터 읽기
+  const folderParam = searchParams.get('folder')
+  const initialFolder = folderParam === 'sent' ? 'SENT' : 'INBOX'
 
   // 상태
   const [emails, setEmails] = useState<EmailItem[]>([])
@@ -113,7 +118,7 @@ export default function MailPage() {
 
   // 필터 및 검색
   const [search, setSearch] = useState('')
-  const [folder, setFolder] = useState<'INBOX' | 'SENT'>('INBOX')
+  const [folder, setFolder] = useState<'INBOX' | 'SENT'>(initialFolder)
   const [isReadFilter, setIsReadFilter] = useState<'all' | 'true' | 'false'>('all')
   const [isOrderFilter, setIsOrderFilter] = useState<'all' | 'true' | 'false'>('all')
 
@@ -334,6 +339,14 @@ export default function MailPage() {
     fetchEmails()
     loadMailOptions()
   }, [])
+
+  // URL 파라미터 변경 시 폴더 상태 동기화
+  useEffect(() => {
+    const newFolder = folderParam === 'sent' ? 'SENT' : 'INBOX'
+    if (newFolder !== folder) {
+      setFolder(newFolder)
+    }
+  }, [folderParam])
 
   useEffect(() => {
     fetchEmails()
