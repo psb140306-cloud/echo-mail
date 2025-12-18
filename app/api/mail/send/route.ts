@@ -168,10 +168,10 @@ export async function POST(request: NextRequest) {
       logger.error('메일 발송 API 오류:', error)
 
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류'
-      const isDev = process.env.NODE_ENV === 'development'
 
+      // 디버깅을 위해 항상 상세 에러 반환 (SMTP 문제 파악용)
       return createErrorResponse(
-        isDev ? `메일 발송 실패: ${errorMessage}` : '메일 발송에 실패했습니다.'
+        `메일 발송 실패: ${errorMessage}`
       )
     }
   })
