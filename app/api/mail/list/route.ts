@@ -125,6 +125,7 @@ export async function GET(request: NextRequest) {
             subject: true,
             sender: true,
             senderName: true, // 발신자 이름
+            recipient: true, // 수신자 (보낸 메일용)
             receivedAt: true,
             isRead: true,
             isOrder: true,
