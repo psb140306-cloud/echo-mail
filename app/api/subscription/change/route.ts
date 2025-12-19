@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { TenantContext } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
-import { PLAN_PRICING } from '@/lib/subscription/plans'
+import { PLAN_LIMITS, PLAN_PRICING, SubscriptionPlan } from '@/lib/subscription/plans'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +20,10 @@ async function changePlan(request: NextRequest) {
 
     if (!newPlan) {
       return NextResponse.json({ success: false, error: 'newPlan is required' }, { status: 400 })
+    }
+
+    if (!(newPlan in PLAN_LIMITS) || !(newPlan in PLAN_PRICING)) {
+      return NextResponse.json({ success: false, error: 'invalid plan' }, { status: 400 })
     }
 
     // 현재 구독 조회
@@ -61,7 +65,7 @@ async function changePlan(request: NextRequest) {
     }
 
     // 변경 유형 결정
-    const planOrder = ['FREE_TRIAL', 'STARTER', 'PROFESSIONAL', 'ENTERPRISE']
+    const planOrder = ['FREE_TRIAL', 'STARTER', 'PROFESSIONAL', 'BUSINESS', 'ENTERPRISE']
     const oldIndex = planOrder.indexOf(oldPlan)
     const newIndex = planOrder.indexOf(newPlan)
     let changeType = 'CHANGE'
@@ -73,7 +77,8 @@ async function changePlan(request: NextRequest) {
       changeType = 'DOWNGRADE'
     }
 
-    const newStatus = newPlan === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE'
+    const newStatus = newPlan === SubscriptionPlan.FREE_TRIAL ? 'TRIAL' : 'ACTIVE'
+    const limits = PLAN_LIMITS[newPlan as SubscriptionPlan]
 
     // 플랜 변경 (subscription + tenant + history 모두 업데이트)
     const [updated] = await prisma.$transaction([
@@ -90,6 +95,10 @@ async function changePlan(request: NextRequest) {
         data: {
           subscriptionPlan: newPlan,
           subscriptionStatus: newStatus,
+          maxCompanies: limits.maxCompanies,
+          maxContacts: limits.maxContacts,
+          maxEmails: limits.maxEmailsPerMonth,
+          maxNotifications: limits.maxNotificationsPerMonth,
         }
       }),
       // 변경 이력 저장

@@ -290,7 +290,7 @@ function DashboardContent() {
       case 'PAST_DUE':
         return <Badge className="bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800">결제 지연</Badge>
       case 'canceled':
-      case 'CANCELED':
+      case 'CANCELLED':
         return <Badge className="bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800">취소됨</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>

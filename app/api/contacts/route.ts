@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logger } from '@/lib/utils/logger'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
+import { checkContactLimit } from '@/lib/subscription/limit-checker'
 
 export const dynamic = 'force-dynamic'
 
@@ -143,6 +144,23 @@ async function createContact(request: NextRequest) {
           error: 'Tenant context not found',
         },
         { status: 401 }
+      )
+    }
+
+    // 플랜별 담당자 수 제한 체크
+    const limitCheck = await checkContactLimit(tenantId)
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '담당자 수 한도 초과',
+          message: limitCheck.message,
+          upgradeRequired: limitCheck.upgradeRequired,
+          suggestedPlan: limitCheck.suggestedPlan,
+          currentUsage: limitCheck.currentUsage,
+          limit: limitCheck.limit,
+        },
+        { status: 402 } // Payment Required
       )
     }
 

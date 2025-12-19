@@ -142,12 +142,22 @@ async function handlePaymentCompleted(event: TossWebhookEvent): Promise<WebhookR
       })
 
       if (subscription) {
-        await prisma.subscription.update({
-          where: { id: subscription.id },
-          data: {
-            status: SubscriptionStatus.ACTIVE,
-          },
-        })
+        // subscription과 tenant 동시 업데이트
+        await prisma.$transaction([
+          prisma.subscription.update({
+            where: { id: subscription.id },
+            data: {
+              status: SubscriptionStatus.ACTIVE,
+            },
+          }),
+          prisma.tenant.update({
+            where: { id: tenantId },
+            data: {
+              subscriptionPlan: subscription.plan,
+              subscriptionStatus: SubscriptionStatus.ACTIVE,
+            },
+          }),
+        ])
 
         // 인보이스 생성 또는 업데이트
         await updateInvoiceStatus(paymentKey, 'PAID', paymentInfo)
@@ -195,7 +205,7 @@ async function handlePaymentCanceled(event: TossWebhookEvent): Promise<WebhookRe
           await prisma.subscription.update({
             where: { id: subscription.id },
             data: {
-              status: SubscriptionStatus.CANCELED,
+              status: SubscriptionStatus.CANCELLED,
               cancelledAt: new Date(),
             },
           })
@@ -358,7 +368,7 @@ async function handleBillingKeyDeleted(event: TossWebhookEvent): Promise<Webhook
         where: { id: subscription.id },
         data: {
           billingKey: null,
-          status: SubscriptionStatus.CANCELED,
+          status: SubscriptionStatus.CANCELLED,
         },
       })
     }

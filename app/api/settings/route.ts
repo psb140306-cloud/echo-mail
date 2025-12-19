@@ -99,6 +99,16 @@ const settingsSchema = z.object({
       contactPhone: z.string(),
     })
     .optional(),
+  smtp: z
+    .object({
+      host: z.string(),
+      port: z.number(),
+      username: z.string(),
+      password: z.string(),
+      useSSL: z.boolean(),
+      useImapCredentials: z.boolean(),
+    })
+    .optional(),
 })
 
 // 기본 설정값
@@ -155,6 +165,14 @@ const defaultSettings = {
     address: '',
     contactEmail: '',
     contactPhone: '',
+  },
+  smtp: {
+    host: '',
+    port: 465,
+    username: '',
+    password: '',
+    useSSL: true,
+    useImapCredentials: true,
   },
 }
 

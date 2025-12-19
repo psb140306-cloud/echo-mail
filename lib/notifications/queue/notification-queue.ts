@@ -1,6 +1,5 @@
 import { logger } from '@/lib/utils/logger'
 import { NotificationType, NotificationStatus } from '@prisma/client'
-import { prisma } from '@/lib/db'
 
 export interface NotificationJob {
   id: string
@@ -15,6 +14,8 @@ export interface NotificationJob {
   currentRetries: number
   companyId?: string
   contactId?: string
+  tenantId?: string
+  emailLogId?: string
   metadata?: Record<string, any>
 }
 
@@ -31,6 +32,9 @@ export class NotificationQueue {
   private processingInterval: NodeJS.Timeout | null = null
   private readonly BATCH_SIZE = 10
   private readonly PROCESS_INTERVAL = 5000 // 5초
+
+  private jobs: Map<string, NotificationJob & { status: NotificationStatus; createdAt: Date; updatedAt: Date }> =
+    new Map()
 
   constructor() {}
 
@@ -141,14 +145,14 @@ export class NotificationQueue {
       for (const job of jobs) {
         try {
           // 작업 상태를 처리 중으로 변경
-          await this.updateJobStatus(job.id, 'PROCESSING')
+          await this.updateJobStatus(job.id, NotificationStatus.SENDING)
 
           // 작업 처리
           const success = await onProcess(job)
 
           if (success) {
             // 성공 시 완료 상태로 변경
-            await this.updateJobStatus(job.id, 'SENT')
+            await this.updateJobStatus(job.id, NotificationStatus.SENT)
             logger.info(`알림 작업 완료: ${job.id}`)
           } else {
             // 실패 시 재시도 또는 실패 처리
@@ -169,27 +173,24 @@ export class NotificationQueue {
    */
   private async getPendingJobs(limit: number): Promise<NotificationJob[]> {
     try {
-      // 실제 구현에서는 데이터베이스에서 조회
-      // 현재는 테스트용 빈 배열 반환
-      return []
+      const now = new Date()
+      const pending = Array.from(this.jobs.values())
+        .filter((job) => job.status === NotificationStatus.PENDING)
+        .filter((job) => !job.scheduledAt || job.scheduledAt <= now)
+        .sort((a, b) => {
+          const priorityRank: Record<NotificationJob['priority'], number> = {
+            urgent: 4,
+            high: 3,
+            normal: 2,
+            low: 1,
+          }
+          const prio = priorityRank[b.priority] - priorityRank[a.priority]
+          if (prio !== 0) return prio
+          return a.createdAt.getTime() - b.createdAt.getTime()
+        })
+        .slice(0, limit)
 
-      // 예상 구현:
-      // const notifications = await prisma.notificationLog.findMany({
-      //   where: {
-      //     status: 'PENDING',
-      //     OR: [
-      //       { scheduledAt: { lte: new Date() } },
-      //       { scheduledAt: null }
-      //     ]
-      //   },
-      //   orderBy: [
-      //     { priority: 'desc' },
-      //     { createdAt: 'asc' }
-      //   ],
-      //   take: limit
-      // })
-      //
-      // return notifications.map(this.mapToJob)
+      return pending.map(({ status: _status, createdAt: _createdAt, updatedAt: _updatedAt, ...job }) => job)
     } catch (error) {
       logger.error('대기 중인 작업 조회 실패:', error)
       return []
@@ -205,7 +206,7 @@ export class NotificationQueue {
 
       if (newRetryCount >= job.maxRetries) {
         // 최대 재시도 횟수 초과 시 실패 처리
-        await this.updateJobStatus(job.id, 'FAILED')
+        await this.updateJobStatus(job.id, NotificationStatus.FAILED)
         logger.warn(`알림 작업 최종 실패: ${job.id} (재시도: ${newRetryCount}/${job.maxRetries})`)
       } else {
         // 재시도 스케줄링
@@ -238,13 +239,10 @@ export class NotificationQueue {
    */
   private async updateJobStatus(jobId: string, status: NotificationStatus): Promise<void> {
     try {
-      // 실제 구현에서는 데이터베이스 업데이트
       logger.debug(`작업 상태 업데이트: ${jobId} -> ${status}`)
-
-      // await prisma.notificationLog.update({
-      //   where: { id: jobId },
-      //   data: { status }
-      // })
+      const existing = this.jobs.get(jobId)
+      if (!existing) return
+      this.jobs.set(jobId, { ...existing, status, updatedAt: new Date() })
     } catch (error) {
       logger.error(`작업 상태 업데이트 실패 (${jobId}):`, error)
     }
@@ -255,17 +253,16 @@ export class NotificationQueue {
    */
   private async updateJobRetry(jobId: string, retryCount: number, retryAt: Date): Promise<void> {
     try {
-      // 실제 구현에서는 데이터베이스 업데이트
       logger.debug(`작업 재시도 정보 업데이트: ${jobId}`)
-
-      // await prisma.notificationLog.update({
-      //   where: { id: jobId },
-      //   data: {
-      //     currentRetries: retryCount,
-      //     scheduledAt: retryAt,
-      //     status: 'PENDING'
-      //   }
-      // })
+      const existing = this.jobs.get(jobId)
+      if (!existing) return
+      this.jobs.set(jobId, {
+        ...existing,
+        currentRetries: retryCount,
+        scheduledAt: retryAt,
+        status: NotificationStatus.PENDING,
+        updatedAt: new Date(),
+      })
     } catch (error) {
       logger.error(`작업 재시도 정보 업데이트 실패 (${jobId}):`, error)
     }
@@ -276,27 +273,14 @@ export class NotificationQueue {
    */
   private async saveToDatabase(job: NotificationJob): Promise<void> {
     try {
-      // 실제 구현에서는 NotificationLog 테이블에 저장
       logger.debug(`작업 데이터베이스 저장: ${job.id}`)
-
-      // await prisma.notificationLog.create({
-      //   data: {
-      //     id: job.id,
-      //     type: job.type,
-      //     recipient: job.recipient,
-      //     message: job.message,
-      //     templateCode: job.templateCode,
-      //     variables: job.variables ? JSON.stringify(job.variables) : null,
-      //     priority: job.priority,
-      //     scheduledAt: job.scheduledAt,
-      //     maxRetries: job.maxRetries,
-      //     currentRetries: job.currentRetries,
-      //     companyId: job.companyId,
-      //     contactId: job.contactId,
-      //     metadata: job.metadata ? JSON.stringify(job.metadata) : null,
-      //     status: 'PENDING'
-      //   }
-      // })
+      const now = new Date()
+      this.jobs.set(job.id, {
+        ...job,
+        status: NotificationStatus.PENDING,
+        createdAt: now,
+        updatedAt: now,
+      })
     } catch (error) {
       logger.error(`작업 데이터베이스 저장 실패 (${job.id}):`, error)
       throw error
@@ -308,43 +292,19 @@ export class NotificationQueue {
    */
   async getStats(): Promise<QueueStats> {
     try {
-      // 실제 구현에서는 데이터베이스에서 집계
-      const stats: QueueStats = {
-        pending: 0,
-        processing: 0,
-        completed: 0,
-        failed: 0,
-        total: 0,
+      const values = Array.from(this.jobs.values())
+      const pending = values.filter((j) => j.status === NotificationStatus.PENDING).length
+      const processing = values.filter((j) => j.status === NotificationStatus.SENDING).length
+      const completed = values.filter((j) => j.status === NotificationStatus.SENT).length
+      const failed = values.filter((j) => j.status === NotificationStatus.FAILED).length
+
+      return {
+        pending,
+        processing,
+        completed,
+        failed,
+        total: pending + processing + completed + failed,
       }
-
-      // const result = await prisma.notificationLog.groupBy({
-      //   by: ['status'],
-      //   _count: {
-      //     status: true
-      //   }
-      // })
-      //
-      // result.forEach(item => {
-      //   const count = item._count.status
-      //   switch (item.status) {
-      //     case 'PENDING':
-      //       stats.pending = count
-      //       break
-      //     case 'PROCESSING':
-      //       stats.processing = count
-      //       break
-      //     case 'SENT':
-      //       stats.completed = count
-      //       break
-      //     case 'FAILED':
-      //       stats.failed = count
-      //       break
-      //   }
-      // })
-      //
-      // stats.total = stats.pending + stats.processing + stats.completed + stats.failed
-
-      return stats
     } catch (error) {
       logger.error('큐 통계 조회 실패:', error)
       return {
@@ -362,7 +322,7 @@ export class NotificationQueue {
    */
   async cancelJob(jobId: string): Promise<boolean> {
     try {
-      await this.updateJobStatus(jobId, 'FAILED')
+      await this.updateJobStatus(jobId, NotificationStatus.CANCELLED)
       logger.info(`알림 작업 취소: ${jobId}`)
       return true
     } catch (error) {

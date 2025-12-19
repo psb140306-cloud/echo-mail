@@ -2,6 +2,7 @@ import cron from 'node-cron'
 import { NotificationType } from '@prisma/client'
 import { logger } from '@/lib/utils/logger'
 import { notificationService } from '@/lib/notifications/notification-service'
+import { calculateDeliveryDate } from '@/lib/utils/delivery-calculator'
 import { prisma } from '@/lib/db'
 
 /**
@@ -66,7 +67,7 @@ export class NotificationRetryScheduler {
         },
         include: {
           company: true,
-          contact: true,
+          emailLog: true,
         },
         take: 50, // 한 번에 최대 50개 처리
         orderBy: {
@@ -90,6 +91,15 @@ export class NotificationRetryScheduler {
 
       for (const notification of pendingRetries) {
         try {
+          // 중복 처리 방지: 처리 중으로 표시
+          await prisma.notificationLog.update({
+            where: { id: notification.id },
+            data: {
+              status: 'SENDING',
+              nextRetryAt: null,
+            },
+          })
+
           // 재시도 횟수 체크
           if (notification.retryCount >= notification.maxRetries) {
             // 최대 재시도 초과 - FAILED로 변경
@@ -120,12 +130,61 @@ export class NotificationRetryScheduler {
             maxRetries: notification.maxRetries,
           })
 
+          const templateName =
+            notification.type === 'SMS' ? 'ORDER_RECEIVED_SMS' : 'ORDER_RECEIVED_KAKAO'
+
+          // 원본 변수 복원이 필요하므로 (template variables가 로그에 저장되지 않음)
+          // 회사/메일로그 기반으로 ORDER_RECEIVED 변수 재구성
+          let variables: Record<string, string> = {}
+          if (notification.company && notification.emailLog) {
+            const orderDateTime = notification.emailLog.receivedAt || notification.createdAt
+            const deliveryResult = await calculateDeliveryDate({
+              region: notification.company.region,
+              orderDateTime,
+              tenantId: notification.tenantId,
+            })
+
+            const deliveryDate = deliveryResult.deliveryDate
+            const deliveryTime = deliveryResult.deliveryTime || '미정'
+
+            const kstDateString = deliveryDate.toLocaleString('en-US', {
+              timeZone: 'Asia/Seoul',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              hour12: false,
+            })
+            const parts = kstDateString.split(', ')
+            const datePart = parts[0].split('/')
+            const kstMonth = parseInt(datePart[0])
+            const kstDay = parseInt(datePart[1])
+
+            const kstWeekdayShort = new Intl.DateTimeFormat('ko-KR', {
+              timeZone: 'Asia/Seoul',
+              weekday: 'short',
+            }).format(deliveryDate)
+
+            variables = {
+              companyName: notification.company.name,
+              deliveryDate: deliveryDate.toLocaleDateString('ko-KR', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long',
+              }),
+              shortDate: `${kstMonth}/${kstDay}(${kstWeekdayShort})`,
+              deliveryTime: deliveryTime === '미정' ? '' : ` ${deliveryTime}`,
+            }
+          }
+
           // 재발송 시도 - notificationService의 sendNotification 호출
           const result = await notificationService.sendNotification({
             type: notification.type as NotificationType,
             recipient: notification.recipient,
-            templateName: notification.type === 'SMS' ? 'ORDER_RECEIVED_SMS' : 'ORDER_RECEIVED_KAKAO',
-            variables: {}, // 이미 렌더링된 메시지 사용
+            templateName,
+            variables,
             companyId: notification.companyId || undefined,
             contactId: notification.contactId || undefined,
             tenantId: notification.tenantId,

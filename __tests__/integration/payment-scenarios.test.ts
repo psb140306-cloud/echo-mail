@@ -610,7 +610,7 @@ describe('결제 성공/실패 시나리오 통합 테스트', () => {
 
       const canceledSubscription = {
         ...subscription,
-        status: SubscriptionStatus.CANCELED,
+        status: SubscriptionStatus.CANCELLED,
         cancelledAt: new Date(),
       }
 
@@ -623,7 +623,7 @@ describe('결제 성공/실패 시나리오 통합 테스트', () => {
         immediate: true,
       })
 
-      expect(result.status).toBe(SubscriptionStatus.CANCELED)
+      expect(result.status).toBe(SubscriptionStatus.CANCELLED)
     })
 
     test('환불 실패 시 구독 취소는 유지', async () => {
@@ -644,7 +644,7 @@ describe('결제 성공/실패 시나리오 통합 테스트', () => {
 
       const canceledSubscription = {
         ...subscription,
-        status: SubscriptionStatus.CANCELED,
+        status: SubscriptionStatus.CANCELLED,
       }
 
       ;(prisma.subscription.findFirst as jest.Mock).mockResolvedValue(subscription)
@@ -657,7 +657,7 @@ describe('결제 성공/실패 시나리오 통합 테스트', () => {
         immediate: true,
       })
 
-      expect(result.status).toBe(SubscriptionStatus.CANCELED)
+      expect(result.status).toBe(SubscriptionStatus.CANCELLED)
     })
   })
 

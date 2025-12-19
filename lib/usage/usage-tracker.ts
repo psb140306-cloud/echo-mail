@@ -9,6 +9,7 @@ import { redis, cache } from '@/lib/redis'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { PLAN_LIMITS, SubscriptionPlan } from '@/lib/subscription/plans'
+import { getKSTStartOfMonth } from '@/lib/utils/date'
 
 // 사용량 추적 타입
 export enum UsageType {
@@ -149,11 +150,43 @@ export class UsageTracker {
       const types = usageType ? [usageType] : Object.values(UsageType)
       const result: Record<string, number> = {}
 
-      // Redis가 없으면 모두 0 반환
+      // Redis가 없으면(month 기준) DB에서 계산하여 제한 우회 방지
       if (!redis) {
-        types.forEach((type) => {
-          result[type] = 0
-        })
+        if (period !== 'month') {
+          types.forEach((type) => {
+            result[type] = 0
+          })
+          return result
+        }
+
+        const startOfMonth = getKSTStartOfMonth()
+
+        await Promise.all(
+          types.map(async (type) => {
+            switch (type) {
+              case UsageType.EMAIL: {
+                // 월 이메일 처리량: 수신(발주 메일) 처리 기준으로 계산
+                result[type] = await prisma.emailLog.count({
+                  where: { tenantId, createdAt: { gte: startOfMonth }, isOrder: true },
+                })
+                return
+              }
+              case UsageType.SMS:
+              case UsageType.KAKAO: {
+                // SMS/카카오 알림은 동일 한도 공유: 성공 건 기준으로 계산
+                result[type] = await prisma.notificationLog.count({
+                  where: { tenantId, createdAt: { gte: startOfMonth }, status: 'SENT' },
+                })
+                return
+              }
+              case UsageType.API_CALL:
+              case UsageType.STORAGE:
+              default:
+                result[type] = 0
+            }
+          })
+        )
+
         return result
       }
 

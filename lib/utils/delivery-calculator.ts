@@ -109,7 +109,7 @@ export class DeliveryCalculator {
       let isBeforeCutoff = false
 
       if (!isWorkingDay) {
-        // 휴무일인 경우: 다음 영업일을 기준일로 설정하고, 마감 전으로 처리
+        // 휴무일인 경우: 다음 영업일을 기준일로 이월하되, 마감 판단은 주문 시각(KST)을 그대로 사용
         baseDate = await this.getNextBusinessDay(options.orderDateTime, rule, options.tenantId, options.customHolidays)
         logger.info('휴무일 주문 - 다음 영업일로 이월', {
           originalDate: this.formatDateKST(options.orderDateTime),
@@ -125,12 +125,7 @@ export class DeliveryCalculator {
         // 2차 마감 설정이 있는 경우
         const secondCutoffTime = this.parseTime(rule.secondCutoffTime)
 
-        if (!isWorkingDay) {
-          // 휴무일인 경우: 다음 영업일 00:00 기준이므로 무조건 1차 마감 전
-          isBeforeCutoff = true
-          deliveryDays = rule.beforeCutoffDays
-          deliveryTime = rule.beforeCutoffDeliveryTime
-        } else if (orderTime < cutoffTime) {
+        if (orderTime < cutoffTime) {
           // 영업일 1차 마감 전
           isBeforeCutoff = true
           deliveryDays = rule.beforeCutoffDays
@@ -148,12 +143,7 @@ export class DeliveryCalculator {
         }
       } else {
         // 기존 1차 마감 로직
-        if (!isWorkingDay) {
-          // 휴무일인 경우: 다음 영업일 00:00 기준이므로 무조건 마감 전
-          isBeforeCutoff = true
-          deliveryDays = rule.beforeCutoffDays
-          deliveryTime = rule.beforeCutoffDeliveryTime
-        } else if (orderTime < cutoffTime) {
+        if (orderTime < cutoffTime) {
           // 영업일 마감 전
           isBeforeCutoff = true
           deliveryDays = rule.beforeCutoffDays

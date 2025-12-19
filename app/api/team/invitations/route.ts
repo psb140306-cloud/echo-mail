@@ -6,6 +6,7 @@ import { logger } from '@/lib/utils/logger'
 import { sendTeamInvitationEmail } from '@/lib/email/team-invitation-email'
 import { logActivity } from '@/lib/activity/log-activity'
 import crypto from 'crypto'
+import { PLAN_LIMITS, SubscriptionPlan } from '@/lib/subscription/plans'
 
 export const dynamic = 'force-dynamic'
 
@@ -127,6 +128,29 @@ export async function POST(request: NextRequest) {
 
       if (existingMember) {
         return NextResponse.json({ error: '이미 팀 멤버입니다.' }, { status: 400 })
+      }
+
+      // 플랜별 사용자 수 제한 체크 (ACTIVE 멤버 + PENDING 초대)
+      const tenantPlan = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { subscriptionPlan: true },
+      })
+      const plan = (tenantPlan?.subscriptionPlan as SubscriptionPlan) || SubscriptionPlan.FREE_TRIAL
+      const maxUsers = PLAN_LIMITS[plan].maxUsers
+      if (maxUsers !== -1) {
+        const [activeMemberCount, pendingInvitationCount] = await Promise.all([
+          prisma.tenantMember.count({ where: { tenantId, status: 'ACTIVE' } }),
+          prisma.tenantInvitation.count({
+            where: { tenantId, status: 'PENDING', expiresAt: { gt: new Date() } },
+          }),
+        ])
+
+        if (activeMemberCount + pendingInvitationCount >= maxUsers) {
+          return NextResponse.json(
+            { error: `사용자 수 한도(${maxUsers}명)를 초과했습니다. 플랜을 업그레이드해주세요.` },
+            { status: 402 }
+          )
+        }
       }
 
       // 대기 중인 초대가 있는지 확인 (만료되지 않은 것만)

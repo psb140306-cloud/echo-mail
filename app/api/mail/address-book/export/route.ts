@@ -4,6 +4,7 @@ import { createErrorResponse } from '@/lib/utils/validation'
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { logger } from '@/lib/utils/logger'
 import { exportAddressBook, ImportedContact } from '@/lib/utils/address-book-import'
+import { PLAN_LIMITS, SubscriptionPlan } from '@/lib/subscription/plans'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,16 @@ export async function GET(request: NextRequest) {
 
       if (!tenantId) {
         return createErrorResponse('테넌트 정보를 찾을 수 없습니다.', 401)
+      }
+
+      // 플랜별 내보내기 기능 제한(exportData)
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { subscriptionPlan: true },
+      })
+      const plan = (tenant?.subscriptionPlan as SubscriptionPlan) || SubscriptionPlan.FREE_TRIAL
+      if (!PLAN_LIMITS[plan].features.exportData) {
+        return createErrorResponse('주소록 내보내기는 유료 플랜에서만 사용할 수 있습니다.', 402)
       }
 
       // 모든 연락처 조회

@@ -880,8 +880,8 @@ export class MailMonitorService {
             emailLogId: emailLog.id,
           })
 
-          // 주문 시간은 메일 처리 시점(현재 시간)을 사용
-          const results = await sendOrderReceivedNotification(company.id, new Date(), emailLog.id)
+          // 주문 시간은 메일 수신 시간을 사용 (처리 시점이 아닌 실제 수신 시간 기준으로 납기일 계산)
+          const results = await sendOrderReceivedNotification(company.id, receivedDate || new Date(), emailLog.id)
           const successCount = results.filter((r) => r.success).length
           const failedResultCount = results.filter((r) => !r.success).length
 

@@ -588,6 +588,8 @@ export class NotificationService {
         maxRetries: this.getMaxRetries(request.type),
         companyId: request.companyId,
         contactId: request.contactId,
+        tenantId: request.tenantId,
+        emailLogId: request.emailLogId,
         metadata: {
           enableFailover: request.enableFailover,
         },
@@ -732,7 +734,6 @@ export class NotificationService {
 
       // 날짜 포맷 준비 (한국 시간대 기준)
       const deliveryDate = deliveryResult.deliveryDate
-      const weekdays = ['일', '월', '화', '수', '목', '금', '토']
 
       // 한국 시간대로 날짜 컴포넌트 추출
       const kstDateString = deliveryDate.toLocaleString('en-US', {
@@ -748,12 +749,13 @@ export class NotificationService {
       const datePart = parts[0].split('/') // MM/DD/YYYY
       const kstMonth = parseInt(datePart[0])
       const kstDay = parseInt(datePart[1])
-      const kstYear = parseInt(datePart[2])
 
       // 요일 계산 - KST 타임존으로 Date를 파싱해서 정확한 요일 추출
       // UTC Date를 만들고 KST 오프셋(+9시간)을 적용한 날짜로 요일 계산
-      const kstDate = new Date(`${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDay).padStart(2, '0')}T12:00:00+09:00`)
-      const kstDayOfWeek = kstDate.getUTCDay()
+      const kstWeekdayShort = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        weekday: 'short',
+      }).format(deliveryDate)
 
       const variables = {
         companyName: company.name,
@@ -765,7 +767,7 @@ export class NotificationService {
           weekday: 'long',
         }),
         // SMS용 짧은 날짜 형식 (예: 11/18(월)) - 한국 시간 기준
-        shortDate: `${kstMonth}/${kstDay}(${weekdays[kstDayOfWeek]})`,
+        shortDate: `${kstMonth}/${kstDay}(${kstWeekdayShort})`,
         // 배송 시간대 - "미정"일 경우 공백 처리 (11/19(수) 배송 예정)
         deliveryTime: deliveryTime === '미정' ? '' : ` ${deliveryTime}`,
       }
@@ -1269,6 +1271,8 @@ export class NotificationService {
           companyId: job.companyId,
           contactId: job.contactId,
           enableFailover: job.metadata?.enableFailover,
+          tenantId: job.tenantId,
+          emailLogId: job.emailLogId,
         }
 
         const result = await this.sendNotification(request)

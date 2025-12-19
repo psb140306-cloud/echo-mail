@@ -12,6 +12,16 @@ import { SubscriptionPlan, SubscriptionStatus, PLAN_PRICING, PLAN_LIMITS } from 
 import type { Prisma, Tenant, Subscription, Invoice } from '@prisma/client'
 import { getKSTStartOfMonth } from '@/lib/utils/date'
 
+function getTenantLimitUpdate(plan: SubscriptionPlan): Prisma.TenantUpdateInput {
+  const limits = PLAN_LIMITS[plan]
+  return {
+    maxCompanies: limits.maxCompanies,
+    maxContacts: limits.maxContacts,
+    maxEmails: limits.maxEmailsPerMonth,
+    maxNotifications: limits.maxNotificationsPerMonth,
+  }
+}
+
 // 구독 생성 요청 인터페이스
 export interface CreateSubscriptionRequest {
   tenantId: string
@@ -142,7 +152,7 @@ export class SubscriptionService {
           subscriptionPlan: request.plan,
           subscriptionStatus: subscription.status,
           trialEndsAt: request.plan === SubscriptionPlan.FREE_TRIAL ? periodEnd : undefined,
-          ...PLAN_LIMITS[request.plan],
+          ...getTenantLimitUpdate(request.plan),
         },
       })
 
@@ -264,12 +274,15 @@ export class SubscriptionService {
         },
       })
 
-      // 테넌트 정보 업데이트
+      // 테넌트 정보 업데이트 (플랜 + 상태 동기화)
       await prisma.tenant.update({
         where: { id: request.tenantId },
         data: {
           subscriptionPlan: request.newPlan,
-          ...PLAN_LIMITS[request.newPlan],
+          subscriptionStatus: request.newPlan === SubscriptionPlan.FREE_TRIAL
+            ? SubscriptionStatus.TRIAL
+            : SubscriptionStatus.ACTIVE,
+          ...getTenantLimitUpdate(request.newPlan),
         },
       })
 
@@ -320,7 +333,7 @@ export class SubscriptionService {
       const updatedSubscription = await prisma.subscription.update({
         where: { id: subscription.id },
         data: {
-          status: SubscriptionStatus.CANCELED,
+          status: request.immediate ? SubscriptionStatus.CANCELLED : subscription.status,
           cancelAtPeriodEnd: !request.immediate,
           cancelledAt: new Date(),
         },
@@ -331,10 +344,10 @@ export class SubscriptionService {
         await prisma.tenant.update({
           where: { id: request.tenantId },
           data: {
-            subscriptionStatus: SubscriptionStatus.CANCELED,
+            subscriptionStatus: SubscriptionStatus.CANCELLED,
             // 무료 플랜으로 다운그레이드
             subscriptionPlan: SubscriptionPlan.FREE_TRIAL,
-            ...PLAN_LIMITS[SubscriptionPlan.FREE_TRIAL],
+            ...getTenantLimitUpdate(SubscriptionPlan.FREE_TRIAL),
           },
         })
       }

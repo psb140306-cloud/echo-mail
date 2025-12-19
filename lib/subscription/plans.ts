@@ -14,8 +14,9 @@ export enum SubscriptionStatus {
   TRIAL = 'TRIAL', // 무료 체험 중
   ACTIVE = 'ACTIVE', // 활성 구독
   PAST_DUE = 'PAST_DUE', // 결제 연체
-  CANCELED = 'CANCELED', // 취소됨
-  EXPIRED = 'EXPIRED', // 만료됨
+  CANCELLED = 'CANCELLED', // 취소됨
+  UNPAID = 'UNPAID', // 미납(최종 실패)
+  INCOMPLETE = 'INCOMPLETE', // 결제 미완료
 }
 
 // 플랜별 제한 사항 인터페이스

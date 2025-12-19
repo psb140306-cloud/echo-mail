@@ -347,7 +347,7 @@ describe('SubscriptionService', () => {
 
       const canceledSubscription = {
         ...activeSubscription,
-        status: SubscriptionStatus.CANCELED,
+        status: SubscriptionStatus.CANCELLED,
         cancelAtPeriodEnd: true,
         cancelledAt: new Date(),
       }
@@ -361,7 +361,7 @@ describe('SubscriptionService', () => {
       expect(prisma.subscription.update).toHaveBeenCalledWith({
         where: { id: activeSubscription.id },
         data: expect.objectContaining({
-          status: SubscriptionStatus.CANCELED,
+          status: SubscriptionStatus.CANCELLED,
           cancelAtPeriodEnd: true,
         }),
       })
@@ -383,7 +383,7 @@ describe('SubscriptionService', () => {
 
       const canceledSubscription = {
         ...activeSubscription,
-        status: SubscriptionStatus.CANCELED,
+        status: SubscriptionStatus.CANCELLED,
         cancelAtPeriodEnd: false,
       }
 
@@ -397,7 +397,7 @@ describe('SubscriptionService', () => {
       expect(prisma.tenant.update).toHaveBeenCalledWith({
         where: { id: request.tenantId },
         data: expect.objectContaining({
-          subscriptionStatus: SubscriptionStatus.CANCELED,
+          subscriptionStatus: SubscriptionStatus.CANCELLED,
           subscriptionPlan: SubscriptionPlan.FREE_TRIAL,
         }),
       })

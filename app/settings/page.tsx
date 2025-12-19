@@ -47,6 +47,14 @@ interface TenantSettings {
     enabled: boolean
     autoMarkAsRead: boolean
   }
+  smtp: {
+    host: string
+    port: number
+    username: string
+    password: string
+    useSSL: boolean
+    useImapCredentials: boolean // IMAP 인증 정보 사용 여부
+  }
   notification: {
     defaultSMSEnabled: boolean
     defaultKakaoEnabled: boolean
@@ -91,6 +99,14 @@ export default function SettingsPage() {
       enabled: false,
       autoMarkAsRead: true, // 기본값 true - 처리된 메일 자동 읽음 처리
     },
+    smtp: {
+      host: '',
+      port: 465,
+      username: '',
+      password: '',
+      useSSL: true,
+      useImapCredentials: true, // 기본값: IMAP 인증 정보 사용
+    },
     notification: {
       defaultSMSEnabled: true,
       defaultKakaoEnabled: false, // 기본값 false - 카카오 Provider 미설정 시 중복 발송 방지
@@ -111,6 +127,8 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(false)
   const [testingMail, setTestingMail] = useState(false)
+  const [testingSmtp, setTestingSmtp] = useState(false)
+  const [smtpTestResult, setSmtpTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [mailboxInfo, setMailboxInfo] = useState<{
     path: string
     exists: number
@@ -394,6 +412,75 @@ export default function SettingsPage() {
     }
   }
 
+  const testSmtpConnection = async () => {
+    // IMAP 인증 사용 시 IMAP 설정 확인
+    if (settings.smtp.useImapCredentials) {
+      if (!settings.mailServer.host || !settings.mailServer.username || !settings.mailServer.password) {
+        toast({
+          title: '입력 오류',
+          description: 'IMAP 인증 사용 시 메일 서버 정보를 먼저 입력해주세요',
+          variant: 'destructive',
+        })
+        return
+      }
+    } else {
+      if (!settings.smtp.host || !settings.smtp.username || !settings.smtp.password) {
+        toast({
+          title: '입력 오류',
+          description: 'SMTP 서버 정보를 모두 입력해주세요',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+
+    setTestingSmtp(true)
+    setSmtpTestResult(null)
+    try {
+      const response = await fetch('/api/settings/test/smtp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...settings.smtp,
+          // IMAP 인증 사용 시 IMAP 정보로 대체
+          ...(settings.smtp.useImapCredentials && {
+            host: settings.mailServer.host.replace('imap.', 'smtp.'),
+            username: settings.mailServer.username,
+            password: settings.mailServer.password,
+          }),
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setSmtpTestResult({ success: true, message: 'SMTP 연결 성공' })
+        toast({
+          title: '연결 성공',
+          description: 'SMTP 서버에 정상적으로 연결되었습니다',
+        })
+      } else {
+        setSmtpTestResult({ success: false, message: result.message || 'SMTP 연결 실패' })
+        toast({
+          title: '연결 실패',
+          description: result.message || 'SMTP 서버 연결에 실패했습니다',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      setSmtpTestResult({ success: false, message: '연결 테스트 중 오류 발생' })
+      toast({
+        title: '오류',
+        description: 'SMTP 연결 테스트 중 오류가 발생했습니다',
+        variant: 'destructive',
+      })
+    } finally {
+      setTestingSmtp(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <AppHeader />
@@ -611,6 +698,182 @@ export default function SettingsPage() {
                           </p>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* SMTP 설정 카드 */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Send className="h-5 w-5" />
+                  SMTP 설정 (메일 발신)
+                </CardTitle>
+                <CardDescription>
+                  메일 발신에 사용할 SMTP 서버를 설정합니다. 메일 발신 기능을 사용하려면 SMTP 설정이 필요합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>IMAP 인증 정보 사용</Label>
+                    <p className="text-sm text-gray-500">
+                      활성화 시 IMAP 설정의 인증 정보를 SMTP에도 사용합니다 (Gmail, Naver 등)
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.smtp.useImapCredentials}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        smtp: { ...settings.smtp, useImapCredentials: checked },
+                      })
+                    }
+                  />
+                </div>
+
+                <Separator />
+
+                {/* IMAP 인증 사용 시 자동 추론 정보 표시 */}
+                {settings.smtp.useImapCredentials ? (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <h4 className="font-medium mb-2">자동 추론 설정</h4>
+                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                      <p>
+                        <span className="font-medium">SMTP 호스트:</span>{' '}
+                        {settings.mailServer.host
+                          ? settings.mailServer.host.replace('imap.', 'smtp.')
+                          : '(IMAP 호스트 미설정)'}
+                      </p>
+                      <p>
+                        <span className="font-medium">포트:</span> 465 (SSL)
+                      </p>
+                      <p>
+                        <span className="font-medium">사용자:</span>{' '}
+                        {settings.mailServer.username || '(IMAP 사용자 미설정)'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-host">SMTP 서버</Label>
+                        <Input
+                          id="smtp-host"
+                          placeholder="smtp.gmail.com"
+                          value={settings.smtp.host}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              smtp: { ...settings.smtp, host: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-port">포트</Label>
+                        <Input
+                          id="smtp-port"
+                          type="number"
+                          placeholder="465"
+                          value={settings.smtp.port}
+                          onChange={(e) =>
+                            setSettings({
+                              ...settings,
+                              smtp: { ...settings.smtp, port: parseInt(e.target.value) },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-username">SMTP 사용자</Label>
+                      <Input
+                        id="smtp-username"
+                        type="email"
+                        placeholder="your@email.com"
+                        value={settings.smtp.username}
+                        onChange={(e) =>
+                          setSettings({
+                            ...settings,
+                            smtp: { ...settings.smtp, username: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-password">SMTP 비밀번호</Label>
+                      <Input
+                        id="smtp-password"
+                        type="password"
+                        placeholder="앱 비밀번호 입력"
+                        value={settings.smtp.password}
+                        onChange={(e) =>
+                          setSettings({
+                            ...settings,
+                            smtp: { ...settings.smtp, password: e.target.value },
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="smtp-ssl"
+                        checked={settings.smtp.useSSL}
+                        onCheckedChange={(checked) =>
+                          setSettings({
+                            ...settings,
+                            smtp: { ...settings.smtp, useSSL: checked },
+                          })
+                        }
+                      />
+                      <Label htmlFor="smtp-ssl">SSL/TLS 사용</Label>
+                    </div>
+                  </>
+                )}
+
+                <Separator />
+
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={testSmtpConnection}
+                    disabled={testingSmtp}
+                  >
+                    {testingSmtp ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Link2 className="mr-2 h-4 w-4" />
+                    )}
+                    SMTP 연결 테스트
+                  </Button>
+                </div>
+
+                {/* SMTP 테스트 결과 */}
+                {smtpTestResult && (
+                  <div className={`mt-4 p-4 rounded-lg border ${
+                    smtpTestResult.success
+                      ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {smtpTestResult.success ? (
+                        <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      )}
+                      <span className={smtpTestResult.success
+                        ? 'text-green-800 dark:text-green-200'
+                        : 'text-red-800 dark:text-red-200'
+                      }>
+                        {smtpTestResult.message}
+                      </span>
                     </div>
                   </div>
                 )}

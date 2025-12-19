@@ -151,71 +151,73 @@ export interface SendMailResult {
  */
 async function getSmtpConfig(tenantId: string): Promise<SmtpConfig | null> {
   try {
-    const configs = await prisma.systemConfig.findMany({
+    // SMTP 및 mailServer 설정 모두 조회
+    const allConfigs = await prisma.systemConfig.findMany({
       where: {
         tenantId,
-        key: {
-          startsWith: 'smtp.',
-        },
+        OR: [
+          { key: { startsWith: 'smtp.' } },
+          { key: { startsWith: 'mailServer.' } },
+        ],
       },
     })
 
-    if (configs.length === 0) {
-      // 기존 mailServer 설정에서 SMTP 정보 가져오기 (호환성)
-      const mailConfigs = await prisma.systemConfig.findMany({
-        where: {
-          tenantId,
-          key: {
-            startsWith: 'mailServer.',
-          },
-        },
-      })
+    // 설정을 카테고리별로 분류
+    const smtpConfigMap: Record<string, any> = {}
+    const mailConfigMap: Record<string, any> = {}
 
-      const mailConfigMap: Record<string, any> = {}
-      mailConfigs.forEach((c) => {
+    allConfigs.forEach((c) => {
+      if (c.key.startsWith('smtp.')) {
+        const key = c.key.replace('smtp.', '')
+        try {
+          smtpConfigMap[key] = JSON.parse(c.value)
+        } catch {
+          smtpConfigMap[key] = c.value
+        }
+      } else if (c.key.startsWith('mailServer.')) {
         const key = c.key.replace('mailServer.', '')
         try {
           mailConfigMap[key] = JSON.parse(c.value)
         } catch {
           mailConfigMap[key] = c.value
         }
-      })
-
-      // IMAP 설정을 SMTP로 변환 (호스트가 imap.로 시작하면 smtp.로 변경)
-      if (mailConfigMap.host) {
-        let smtpHost = mailConfigMap.host
-        if (smtpHost.startsWith('imap.')) {
-          smtpHost = smtpHost.replace('imap.', 'smtp.')
-        }
-
-        return {
-          host: smtpHost,
-          port: 465, // SMTP SSL 포트
-          secure: true,
-          user: mailConfigMap.username || '',
-          password: mailConfigMap.password || '',
-        }
-      }
-
-      return null
-    }
-
-    const configMap: Record<string, any> = {}
-    configs.forEach((c) => {
-      const key = c.key.replace('smtp.', '')
-      try {
-        configMap[key] = JSON.parse(c.value)
-      } catch {
-        configMap[key] = c.value
       }
     })
 
-    return {
-      host: configMap.host || '',
-      port: configMap.port || 465,
-      secure: configMap.secure ?? true,
-      user: configMap.user || configMap.username || '',
-      password: configMap.password || '',
+    // useImapCredentials 확인 (기본값: true - 하위 호환성)
+    const useImapCredentials = smtpConfigMap.useImapCredentials ?? true
+
+    if (useImapCredentials) {
+      // IMAP 인증 정보 사용
+      if (!mailConfigMap.host) {
+        return null
+      }
+
+      let smtpHost = mailConfigMap.host
+      if (smtpHost.startsWith('imap.')) {
+        smtpHost = smtpHost.replace('imap.', 'smtp.')
+      }
+
+      return {
+        host: smtpHost,
+        port: smtpConfigMap.port || 465,
+        secure: smtpConfigMap.useSSL ?? true,
+        user: mailConfigMap.username || '',
+        password: mailConfigMap.password || '',
+      }
+    } else {
+      // 별도 SMTP 설정 사용
+      if (!smtpConfigMap.host) {
+        return null
+      }
+
+      return {
+        host: smtpConfigMap.host,
+        port: smtpConfigMap.port || 465,
+        secure: smtpConfigMap.useSSL ?? true,
+        user: smtpConfigMap.username || '',
+        password: smtpConfigMap.password || '',
+      }
     }
   } catch (error) {
     logger.error('SMTP 설정 조회 실패', { tenantId, error })
@@ -293,12 +295,8 @@ export async function sendMail(
       },
     })
 
-    // 모든 수신자 수 계산 (to + cc + bcc)
-    const toCount = Array.isArray(request.to) ? request.to.length : 1
-    const ccCount = request.cc ? (Array.isArray(request.cc) ? request.cc.length : 1) : 0
-    const bccCount = request.bcc ? (Array.isArray(request.bcc) ? request.bcc.length : 1) : 0
-    const recipientCount = toCount + ccCount + bccCount
-    const limitCheck = checkEmailSendingLimit(plan, currentUsage, recipientCount)
+    // 발신 한도는 "발신 건수(메시지)" 기준으로 체크
+    const limitCheck = checkEmailSendingLimit(plan, currentUsage, 1)
 
     if (!limitCheck.allowed) {
       return {
@@ -363,7 +361,7 @@ export async function sendMail(
     })
 
     // 7. 사용량 추적
-    await trackEmailUsage(tenantId, recipientCount)
+    await trackEmailUsage(tenantId, 1)
 
     logger.info('메일 발송 성공', {
       tenantId,
