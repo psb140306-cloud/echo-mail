@@ -165,7 +165,11 @@ export async function PUT(request: NextRequest) {
       // 활동 로그 기록
       if (previousMailMode !== data.mailMode) {
         await logActivity({
-          type: 'SETTINGS_CHANGED',
+          tenantId,
+          userId: user.id,
+          userEmail: user.email || '',
+          userName: user.user_metadata?.full_name || null,
+          action: 'SETTINGS_UPDATED',
           description: `메일 모드가 '${previousMailMode}'에서 '${data.mailMode}'(으)로 변경되었습니다.`,
           metadata: {
             setting: 'mailMode',
@@ -177,7 +181,11 @@ export async function PUT(request: NextRequest) {
 
       if (previousMailSendingEnabled !== data.mailSendingEnabled) {
         await logActivity({
-          type: 'SETTINGS_CHANGED',
+          tenantId,
+          userId: user.id,
+          userEmail: user.email || '',
+          userName: user.user_metadata?.full_name || null,
+          action: 'SETTINGS_UPDATED',
           description: `메일 발신 기능이 '${previousMailSendingEnabled ? '활성화' : '비활성화'}'에서 '${data.mailSendingEnabled ? '활성화' : '비활성화'}'(으)로 변경되었습니다.`,
           metadata: {
             setting: 'mailSendingEnabled',

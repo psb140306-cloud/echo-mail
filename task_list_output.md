@@ -1028,7 +1028,7 @@
 - [x] `app/pricing/page.tsx` 수정 - 기능 비교표 업데이트
 
 ###### Phase 5: 감사/로깅
-- [ ] `ActivityLog`에 mailMode 변경 이벤트 기록
+- [x] `ActivityLog`에 mailMode 변경 이벤트 기록 (2025-12-19 수정 완료)
 
 ##### 예상 파일 변경
 ```
@@ -1078,7 +1078,13 @@ app/pricing/page.tsx               (수정)
   - `app/api/subscription/cancel/route.ts` - 구독 취소 API
   - `app/api/subscription/reactivate/route.ts` - 구독 재활성화 API
 
-##### 4. 기타 개선
+##### 4. ActivityLog 메일 옵션 변경 로깅 수정
+- **문제**: `logActivity` 함수 호출 시 필수 파라미터(tenantId, userId, userEmail, action) 누락
+- **수정 파일**:
+  - `app/api/settings/mail-options/route.ts` - logActivity 호출부 수정
+- **변경 내용**: mailMode, mailSendingEnabled 변경 시 ActivityLog에 정상 기록
+
+##### 5. 기타 개선
 - 알림 큐 및 재시도 스케줄러 개선
 - 배송일 계산 로직 개선
 - 사용량 추적 개선
@@ -1101,4 +1107,4 @@ a34f1fe feat: 구독 플랜 동기화 및 SMTP 설정 기능 추가
 ---
 
 **마지막 업데이트**: 2025-12-19
-**다음 작업 시작 지점**: 메일 기능 요금제별 차등 제공 구현 Phase 1 (대부분 완료됨, Phase 5 감사/로깅 남음)
+**다음 작업 시작 지점**: Phase 7 메일 기능 요금제별 차등 제공 완료 (15/15). 다음 우선순위: SOLAPI/카카오톡 연동 또는 Phase 6 대량 공지 발송
