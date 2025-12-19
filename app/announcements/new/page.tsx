@@ -58,8 +58,8 @@ export default function NewAnnouncementPage() {
       setContactsLoading(true)
       const response = await fetch('/api/contacts?limit=1000')
       const data = await response.json()
-      if (data.success) {
-        const contactsWithPhone = data.data.contacts.filter((c: Contact) => c.phone)
+      if (data.success && Array.isArray(data.data)) {
+        const contactsWithPhone = data.data.filter((c: Contact) => c.phone)
         setContacts(contactsWithPhone)
         // 기본값: 전체 선택
         setSelectedContactIds(new Set(contactsWithPhone.map((c: Contact) => c.id)))
