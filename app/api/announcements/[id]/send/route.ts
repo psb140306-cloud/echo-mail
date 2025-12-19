@@ -13,6 +13,7 @@ import {
 import { withTenantContext } from '@/lib/middleware/tenant-context'
 import { createClient } from '@/lib/supabase/server'
 import { AnnouncementStatus, NotificationStatus } from '@prisma/client'
+import { createSMSProviderFromEnv } from '@/lib/notifications/sms/sms-provider'
 
 export const dynamic = 'force-dynamic'
 
@@ -323,34 +324,53 @@ async function sendNotificationToRecipient(
   announcement: { title: string; content: string; channel: string },
   recipient: { id: string; phone: string; contactName: string },
   tenantId: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
   try {
-    // TODO: 실제 발송 로직 구현
-    // SMS, 카카오 알림톡 등 채널별 발송 처리
-    // 현재는 성공으로 시뮬레이션
-
-    logger.debug('알림 발송', {
+    logger.debug('알림 발송 시작', {
       channel: announcement.channel,
       recipient: recipient.phone,
       title: announcement.title,
     })
 
-    // 실제 발송 API 호출
-    // const result = await notificationService.send({
-    //   channel: announcement.channel,
-    //   phone: recipient.phone,
-    //   message: announcement.content,
-    // })
+    // SMS 채널로 발송
+    if (announcement.channel === 'SMS') {
+      const smsProvider = createSMSProviderFromEnv()
 
-    // 시뮬레이션: 95% 성공률
-    const isSuccess = Math.random() > 0.05
+      const result = await smsProvider.sendSMS({
+        to: recipient.phone,
+        message: announcement.content,
+        subject: announcement.title,
+      })
 
-    if (!isSuccess) {
-      return { success: false, error: '발송 실패 (시뮬레이션)' }
+      if (result.success) {
+        logger.info('공지 SMS 발송 성공', {
+          recipient: recipient.phone,
+          messageId: result.messageId,
+        })
+        return { success: true, messageId: result.messageId }
+      } else {
+        logger.warn('공지 SMS 발송 실패', {
+          recipient: recipient.phone,
+          error: result.error,
+        })
+        return { success: false, error: result.error }
+      }
     }
 
-    return { success: true }
+    // 카카오 알림톡/친구톡은 추후 구현
+    if (announcement.channel === 'KAKAO_ALIMTALK' || announcement.channel === 'KAKAO_FRIENDTALK') {
+      logger.warn('카카오 채널은 아직 구현되지 않았습니다', {
+        channel: announcement.channel,
+      })
+      return { success: false, error: '카카오 채널은 아직 지원되지 않습니다.' }
+    }
+
+    return { success: false, error: '지원하지 않는 채널입니다.' }
   } catch (error) {
+    logger.error('알림 발송 중 오류', {
+      recipient: recipient.phone,
+      error: error instanceof Error ? error.message : '알 수 없는 오류',
+    })
     return {
       success: false,
       error: error instanceof Error ? error.message : '알 수 없는 오류',
