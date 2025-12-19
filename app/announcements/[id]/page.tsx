@@ -127,6 +127,10 @@ export default function AnnouncementDetailPage() {
 
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [recipientsData, setRecipientsData] = useState<RecipientsData | null>(null)
+  const [previewData, setPreviewData] = useState<{
+    totalCount: number
+    sampleContacts: Array<{ id: string; name: string; phone: string; companyName: string; region: string }>
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
@@ -188,6 +192,22 @@ export default function AnnouncementDetailPage() {
     }
   }, [id])
 
+  const fetchPreview = useCallback(async (recipientFilter: any) => {
+    try {
+      const response = await fetch('/api/announcements/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientFilter: recipientFilter || { all: true } }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setPreviewData(data.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch preview:', error)
+    }
+  }, [])
+
   useEffect(() => {
     fetchAnnouncement()
   }, [fetchAnnouncement])
@@ -197,6 +217,12 @@ export default function AnnouncementDetailPage() {
       fetchRecipients()
     }
   }, [announcement, fetchRecipients])
+
+  useEffect(() => {
+    if (announcement && ['DRAFT', 'SCHEDULED'].includes(announcement.status)) {
+      fetchPreview(announcement.recipientFilter)
+    }
+  }, [announcement, fetchPreview])
 
   // 발송 중일 때 자동 새로고침
   useEffect(() => {
@@ -434,6 +460,56 @@ export default function AnnouncementDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* 예상 수신자 미리보기 (DRAFT/SCHEDULED) */}
+          {isEditable && previewData && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  예상 수신자
+                </CardTitle>
+                <CardDescription>
+                  총 {previewData.totalCount}명에게 발송됩니다
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {previewData.sampleContacts.length > 0 ? (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>수신자</TableHead>
+                          <TableHead>전화번호</TableHead>
+                          <TableHead>업체</TableHead>
+                          <TableHead>지역</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewData.sampleContacts.map((contact) => (
+                          <TableRow key={contact.id}>
+                            <TableCell>{contact.name}</TableCell>
+                            <TableCell>{contact.phone}</TableCell>
+                            <TableCell>{contact.companyName}</TableCell>
+                            <TableCell>{contact.region}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {previewData.totalCount > 10 && (
+                      <p className="text-sm text-muted-foreground mt-4 text-center">
+                        외 {previewData.totalCount - 10}명...
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    발송 대상이 없습니다. 필터 조건을 확인해주세요.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* 발송 현황 */}
           {['SENDING', 'COMPLETED', 'FAILED', 'CANCELLED'].includes(announcement.status) && (
