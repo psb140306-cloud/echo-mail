@@ -204,11 +204,13 @@ export default function ComposeMailPage() {
         const result = await response.json()
 
         if (response.ok) {
-          toast({
-            title: '예약 완료',
-            description: '메일이 예약되었습니다.',
+          // 발송 완료 페이지로 이동
+          const successParams = new URLSearchParams({
+            type: 'scheduled',
+            to: toEmails.join(', '),
+            subject: subject,
           })
-          setTimeout(() => router.push('/mail'), 1500)
+          router.push(`/mail/sent-success?${successParams.toString()}`)
         } else {
           toast({
             title: '예약 실패',
@@ -238,11 +240,13 @@ export default function ComposeMailPage() {
         const result = await response.json()
 
         if (response.ok) {
-          toast({
-            title: '발송 완료',
-            description: result.message || '메일이 성공적으로 발송되었습니다.',
+          // 발송 완료 페이지로 이동
+          const successParams = new URLSearchParams({
+            type: 'sent',
+            to: toEmails.join(', '),
+            subject: subject,
           })
-          setTimeout(() => router.push('/mail?folder=sent'), 1500)
+          router.push(`/mail/sent-success?${successParams.toString()}`)
         } else {
           toast({
             title: '발송 실패',
