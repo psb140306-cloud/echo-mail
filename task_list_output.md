@@ -1007,25 +1007,25 @@
 ##### 구현 단계
 
 ###### Phase 1: 기반 작업
-- [ ] `lib/subscription/plan-checker.ts` 생성 - 플랜 권한 검증 중앙화
-- [ ] `lib/subscription/plans.ts` 수정 - PlanFeatures에 fullMailboxAccess, mailSending 추가
-- [ ] `prisma/schema.prisma` 수정 - Tenant에 mailMode, mailSendingEnabled 추가
-- [ ] 마이그레이션 실행 + 기존 데이터 기본값 설정 (ORDER_ONLY, false)
+- [x] `lib/subscription/plan-checker.ts` 생성 - 플랜 권한 검증 중앙화
+- [x] `lib/subscription/plans.ts` 수정 - PlanFeatures에 fullMailboxAccess, mailSending 추가
+- [x] `prisma/schema.prisma` 수정 - Tenant에 mailMode, mailSendingEnabled 추가
+- [x] 마이그레이션 실행 + 기존 데이터 기본값 설정 (ORDER_ONLY, false)
 
 ###### Phase 2: API 보강
-- [ ] `lib/tenant/context.ts` 수정 - 역할(OWNER/ADMIN) 검증 헬퍼 추가
-- [ ] `app/api/settings/route.ts` 수정 - 메일 옵션 저장 + 플랜 검증 + 권한 검증
-- [ ] `app/api/mail/list/route.ts` 수정 - mailMode에 따른 필터링
+- [x] `lib/tenant/context.ts` 수정 - 역할(OWNER/ADMIN) 검증 헬퍼 추가
+- [x] `app/api/settings/route.ts` 수정 - 메일 옵션 저장 + 플랜 검증 + 권한 검증
+- [x] `app/api/mail/list/route.ts` 수정 - mailMode에 따른 필터링
 
 ###### Phase 3: 메일 발신 기능
-- [ ] `lib/mail/mail-sender.ts` 생성 - SMTP 발송 + 실패 재시도 + 로깅
-- [ ] `app/api/mail/send/route.ts` 생성 - 발신 API + 사용량 카운트
-- [ ] 메일함에 "메일 쓰기" 버튼 추가
-- [ ] "보낸 메일함" 메뉴 추가
+- [x] `lib/mail/mail-sender.ts` 생성 - SMTP 발송 + 실패 재시도 + 로깅
+- [x] `app/api/mail/send/route.ts` 생성 - 발신 API + 사용량 카운트
+- [x] 메일함에 "메일 쓰기" 버튼 추가
+- [x] "보낸 메일함" 메뉴 추가
 
 ###### Phase 4: UI 구현
-- [ ] `app/settings/page.tsx` 수정 - 메일 옵션 섹션 + 업그레이드 CTA
-- [ ] `app/pricing/page.tsx` 수정 - 기능 비교표 업데이트
+- [x] `app/settings/page.tsx` 수정 - 메일 옵션 섹션 + 업그레이드 CTA + SMTP 설정
+- [x] `app/pricing/page.tsx` 수정 - 기능 비교표 업데이트
 
 ###### Phase 5: 감사/로깅
 - [ ] `ActivityLog`에 mailMode 변경 이벤트 기록
@@ -1053,5 +1053,52 @@ app/pricing/page.tsx               (수정)
 
 ---
 
-**마지막 업데이트**: 2025-12-04
-**다음 작업 시작 지점**: 메일 기능 요금제별 차등 제공 구현 Phase 1
+### 2025-12-19 작업 내역
+
+#### ✅ 완료된 작업
+
+##### 1. 구독 플랜 동기화 버그 수정
+- **문제**: `subscriptions.plan`과 `tenants.subscriptionPlan`이 동기화되지 않아 플랜 기능이 제대로 적용되지 않음
+- **수정 파일**:
+  - `app/api/webhooks/toss/route.ts` - 결제 완료 시 tenant 테이블도 동시 업데이트
+  - `lib/subscription/subscription-service.ts` - 플랜 변경 시 subscriptionStatus 동기화
+  - `app/api/subscription/change/route.ts` - 플랜 변경 API에 tenant 업데이트 포함
+
+##### 2. SMTP 설정 기능 추가
+- **기능**: 메일 발신을 위한 SMTP 서버 설정 UI 및 API
+- **신규 파일**:
+  - `app/api/settings/test/smtp/route.ts` - SMTP 연결 테스트 API
+- **수정 파일**:
+  - `app/settings/page.tsx` - SMTP 설정 UI (IMAP 인증 재사용 또는 별도 설정)
+  - `app/api/settings/route.ts` - SMTP 스키마 추가
+  - `lib/mail/mail-sender.ts` - useImapCredentials 옵션 지원
+
+##### 3. 구독 관리 API 추가
+- **신규 파일**:
+  - `app/api/subscription/cancel/route.ts` - 구독 취소 API
+  - `app/api/subscription/reactivate/route.ts` - 구독 재활성화 API
+
+##### 4. 기타 개선
+- 알림 큐 및 재시도 스케줄러 개선
+- 배송일 계산 로직 개선
+- 사용량 추적 개선
+
+#### 📊 커밋 정보
+```
+a34f1fe feat: 구독 플랜 동기화 및 SMTP 설정 기능 추가
+- 22개 파일 수정
+- +765줄 / -205줄
+- 3개 신규 API 추가
+```
+
+#### 📈 프로젝트 현황 스냅샷
+- 페이지: 54개
+- API 라우트: 110개
+- DB 테이블: 20개
+- 운영 테넌트: 4개
+- 수집된 이메일: 1,366건
+
+---
+
+**마지막 업데이트**: 2025-12-19
+**다음 작업 시작 지점**: 메일 기능 요금제별 차등 제공 구현 Phase 1 (대부분 완료됨, Phase 5 감사/로깅 남음)
