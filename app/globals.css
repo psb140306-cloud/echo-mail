@@ -412,6 +412,39 @@
   height: 0;
 }
 
+/* Resizable Image Styles */
+.resizable-image-wrapper {
+  display: inline-block;
+  margin: 0.25em;
+  vertical-align: bottom;
+}
+
+.resizable-image-container {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.resizable-image-container img {
+  display: block;
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+.resizable-image-container.selected {
+  outline: none;
+}
+
+.resizable-image-container .resize-handle {
+  opacity: 1;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.resizable-image-container .resize-handle:hover {
+  transform: scale(1.2);
+  background-color: #2563eb !important;
+}
+
 @layer utilities {
   .animation-delay-200 {
     animation-delay: 200ms;

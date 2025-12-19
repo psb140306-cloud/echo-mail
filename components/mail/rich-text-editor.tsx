@@ -3,7 +3,7 @@
 import { useEditor, EditorContent, Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Link } from '@tiptap/extension-link'
-import { Image } from '@tiptap/extension-image'
+import { ResizableImage } from '@/lib/tiptap/resizable-image'
 import { Table } from '@tiptap/extension-table'
 import { CustomTableRow } from '@/lib/tiptap/custom-table-row'
 import { CustomTableCell } from '@/lib/tiptap/custom-table-cell'
@@ -61,7 +61,7 @@ export function RichTextEditor({
           class: 'text-blue-600 underline hover:text-blue-800',
         },
       }),
-      Image.configure({
+      ResizableImage.configure({
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded',
         },
