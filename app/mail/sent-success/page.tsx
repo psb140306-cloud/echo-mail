@@ -55,7 +55,7 @@ export default function SentSuccessPage() {
 
             {/* 버튼 */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-              <Link href="/mail?folder=sent">
+              <Link href="/mail/sent">
                 <Button variant="outline" className="w-full sm:w-auto gap-2">
                   <Mail className="h-4 w-4" />
                   보낸 메일함

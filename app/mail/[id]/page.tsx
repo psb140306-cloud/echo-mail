@@ -207,7 +207,7 @@ export default function MailDetailPage() {
             onClick={() => {
               // folder에 따라 올바른 목록으로 이동
               if (email.folder === 'SENT') {
-                router.push('/mail?folder=sent')
+                router.push('/mail/sent')
               } else {
                 router.push('/mail')
               }

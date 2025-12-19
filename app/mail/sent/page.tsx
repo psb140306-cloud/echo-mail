@@ -1,20 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -24,7 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
-import { Mail, MailOpen, Search, Inbox, RefreshCw, Trash2, Eye, EyeOff, MapPin, Send, Plus, SendHorizontal, Lock } from 'lucide-react'
+import { Mail, MailOpen, Search, Inbox, RefreshCw, Trash2, Eye, EyeOff, Plus, SendHorizontal, Lock } from 'lucide-react'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
 import { AppHeader } from '@/components/layout/app-header'
@@ -35,57 +28,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
-// 발신자 파싱 헬퍼 함수: "이름" <email@example.com> 또는 이름 <email@example.com> 형식에서 이름과 이메일 추출
-function parseSender(sender: string): { name: string; email: string } {
-  if (!sender) return { name: '', email: '' }
-
-  // "이름" <email@example.com> 또는 이름 <email@example.com> 형식
-  const match = sender.match(/^"?([^"<]+)"?\s*<([^>]+)>$/)
-  if (match) {
-    return { name: match[1].trim(), email: match[2].trim() }
-  }
-
-  // <email@example.com> 형식 (이름 없음)
-  const emailOnlyMatch = sender.match(/^<([^>]+)>$/)
-  if (emailOnlyMatch) {
-    return { name: '', email: emailOnlyMatch[1].trim() }
-  }
-
-  // email@example.com 형식 (이메일만)
-  if (sender.includes('@') && !sender.includes(' ')) {
-    return { name: '', email: sender.trim() }
-  }
-
-  // 그 외는 전체를 이름으로 처리
-  return { name: sender.trim(), email: sender.trim() }
-}
-
-interface NotificationInfo {
-  id: string
-  type: string
-  status: string
-  recipient: string
-}
-
 interface EmailItem {
   id: string
   messageId: string
   subject: string
   sender: string
-  senderName: string | null // 발신자 이름
+  recipient: string
   receivedAt: string
   isRead: boolean
-  isOrder: boolean
-  size: number | null
-  hasAttachment: boolean
   status: string
-  companyId: string | null
-  company: {
-    id: string
-    name: string
-    region: string
-  } | null
-  notifications: NotificationInfo[]
 }
 
 interface EmailListResponse {
@@ -101,14 +52,9 @@ interface EmailListResponse {
   }
 }
 
-export default function MailPage() {
+export default function SentMailPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { toast } = useToast()
-
-  // URL에서 folder 파라미터 읽기
-  const folderParam = searchParams.get('folder')
-  const initialFolder = folderParam === 'sent' ? 'SENT' : 'INBOX'
 
   // 상태
   const [emails, setEmails] = useState<EmailItem[]>([])
@@ -116,15 +62,11 @@ export default function MailPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
-  // 필터 및 검색
+  // 검색
   const [search, setSearch] = useState('')
-  const [folder, setFolder] = useState<'INBOX' | 'SENT'>(initialFolder)
-  const [isReadFilter, setIsReadFilter] = useState<'all' | 'true' | 'false'>('all')
-  const [isOrderFilter, setIsOrderFilter] = useState<'all' | 'true' | 'false'>('all')
 
   // 메일 발신 권한
   const [mailSendingEnabled, setMailSendingEnabled] = useState(false)
-  const [showComposeModal, setShowComposeModal] = useState(false)
 
   // 페이지네이션
   const [page, setPage] = useState(1)
@@ -132,19 +74,17 @@ export default function MailPage() {
   const [totalCount, setTotalCount] = useState(0)
   const limit = 20
 
-  // 메일 목록 조회
+  // 메일 목록 조회 (SENT 폴더 고정)
   const fetchEmails = async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
-        folder,
+        folder: 'SENT',
       })
 
       if (search) params.append('search', search)
-      if (isReadFilter !== 'all') params.append('isRead', isReadFilter)
-      if (isOrderFilter !== 'all') params.append('isOrder', isOrderFilter)
 
       const response = await fetch(`/api/mail/list?${params}`)
       const result: EmailListResponse = await response.json()
@@ -153,7 +93,7 @@ export default function MailPage() {
         setEmails(result.data.emails)
         setTotalPages(result.data.pagination.totalPages)
         setTotalCount(result.data.pagination.totalCount)
-        setSelectedIds(new Set()) // 선택 초기화
+        setSelectedIds(new Set())
       } else {
         toast({
           title: '오류',
@@ -170,38 +110,6 @@ export default function MailPage() {
       })
     } finally {
       setLoading(false)
-    }
-  }
-
-  // 읽음/안읽음 토글
-  const toggleReadStatus = async (emailId: string, currentStatus: boolean) => {
-    try {
-      const response = await fetch(`/api/mail/${emailId}/mark-read`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isRead: !currentStatus }),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        setEmails((prev) =>
-          prev.map((email) =>
-            email.id === emailId ? { ...email, isRead: !currentStatus } : email
-          )
-        )
-        toast({
-          title: '성공',
-          description: result.message || '상태가 변경되었습니다.',
-        })
-      }
-    } catch (error) {
-      console.error('읽음 상태 변경 실패:', error)
-      toast({
-        title: '오류',
-        description: '상태 변경에 실패했습니다.',
-        variant: 'destructive',
-      })
     }
   }
 
@@ -301,25 +209,6 @@ export default function MailPage() {
     })
   }
 
-  // 알림 상태 배지 렌더링
-  const renderNotificationBadge = (notifications: NotificationInfo[]) => {
-    if (!notifications || notifications.length === 0) return null
-    const notification = notifications[0]
-
-    const variant =
-      notification.status === 'SENT' || notification.status === 'DELIVERED'
-        ? 'default'
-        : notification.status === 'PENDING'
-        ? 'secondary'
-        : 'destructive'
-
-    return (
-      <Badge variant={variant} className="text-xs">
-        {notification.status}
-      </Badge>
-    )
-  }
-
   // 메일 옵션 로드
   const loadMailOptions = async () => {
     try {
@@ -334,23 +223,16 @@ export default function MailPage() {
     }
   }
 
-  // 초기 로드 및 필터 변경 시 재조회
+  // 초기 로드
   useEffect(() => {
     fetchEmails()
     loadMailOptions()
   }, [])
 
-  // URL 파라미터 변경 시 폴더 상태 동기화
-  useEffect(() => {
-    const newFolder = folderParam === 'sent' ? 'SENT' : 'INBOX'
-    if (newFolder !== folder) {
-      setFolder(newFolder)
-    }
-  }, [folderParam])
-
+  // 페이지 변경 시 재조회
   useEffect(() => {
     fetchEmails()
-  }, [page, folder, isReadFilter, isOrderFilter])
+  }, [page])
 
   // 검색어 입력 시 디바운스
   useEffect(() => {
@@ -389,23 +271,23 @@ export default function MailPage() {
 
         {/* 폴더 탭 */}
         <div className="flex gap-2 mb-4">
-          <Button variant="default">
-            <Inbox className="h-4 w-4 mr-2" />
-            받은 메일함
-          </Button>
-          <Link href="/mail/sent">
+          <Link href="/mail">
             <Button variant="outline">
-              <SendHorizontal className="h-4 w-4 mr-2" />
-              보낸 메일함
+              <Inbox className="h-4 w-4 mr-2" />
+              받은 메일함
             </Button>
           </Link>
+          <Button variant="default">
+            <SendHorizontal className="h-4 w-4 mr-2" />
+            보낸 메일함
+          </Button>
         </div>
 
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>
-                메일 목록 ({totalCount}개)
+                보낸 메일 ({totalCount}개)
               </CardTitle>
               <div className="flex gap-2">
                 {selectedIds.size > 0 && (
@@ -431,42 +313,16 @@ export default function MailPage() {
               </div>
             </div>
 
-            {/* 검색 및 필터 */}
-            <div className="space-y-3 mt-4">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="제목, 발신자, 본문 검색..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Select value={isReadFilter} onValueChange={(v: any) => setIsReadFilter(v)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">전체</SelectItem>
-                    <SelectItem value="false">안읽음</SelectItem>
-                    <SelectItem value="true">읽음</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={isOrderFilter} onValueChange={(v: any) => setIsOrderFilter(v)}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">전체 메일</SelectItem>
-                    <SelectItem value="true">발주 메일만</SelectItem>
-                    <SelectItem value="false">일반 메일만</SelectItem>
-                  </SelectContent>
-                </Select>
+            {/* 검색 */}
+            <div className="mt-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="제목, 수신자 검색..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
               </div>
             </div>
           </CardHeader>
@@ -478,8 +334,8 @@ export default function MailPage() {
               </div>
             ) : emails.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <Inbox className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                메일이 없습니다.
+                <SendHorizontal className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                보낸 메일이 없습니다.
               </div>
             ) : (
               <>
@@ -493,12 +349,10 @@ export default function MailPage() {
                         />
                       </TableHead>
                       <TableHead className="w-[50px]"></TableHead>
-                      <TableHead className="w-[180px]">발신자</TableHead>
+                      <TableHead className="w-[200px]">받는 사람</TableHead>
                       <TableHead>제목</TableHead>
-                      <TableHead className="w-[100px]">알림</TableHead>
-                      <TableHead className="w-[100px]">지역</TableHead>
-                      <TableHead className="w-[120px]">수신일시</TableHead>
-                      <TableHead className="w-[100px]">작업</TableHead>
+                      <TableHead className="w-[120px]">발송일시</TableHead>
+                      <TableHead className="w-[80px]">작업</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -511,98 +365,44 @@ export default function MailPage() {
                           />
                         </TableCell>
                         <TableCell>
-                          {email.isRead ? (
-                            <MailOpen className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Mail className="h-4 w-4 text-primary" />
-                          )}
+                          <Mail className="h-4 w-4 text-muted-foreground" />
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {(() => {
-                            // DB에 저장된 senderName 우선 사용, 없으면 sender에서 파싱
-                            const displayName = email.senderName || parseSender(email.sender).name || email.sender
-                            return (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="block max-w-[150px] truncate cursor-default">
-                                      {displayName}
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="bottom">
-                                    <div className="text-sm">
-                                      {email.senderName && <div className="font-medium">{email.senderName}</div>}
-                                      <div className="text-muted-foreground">{email.sender}</div>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )
-                          })()}
+                        <TableCell className="text-sm">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="block max-w-[180px] truncate cursor-default">
+                                  {email.recipient || '-'}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">
+                                <div className="text-sm">{email.recipient}</div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                         <TableCell>
                           <Link
                             href={`/mail/${email.id}`}
                             className="hover:underline"
                           >
-                            <div className="flex items-center gap-2">
-                              <span className={email.isRead ? '' : 'font-semibold'}>
-                                {email.subject || '(제목 없음)'}
-                              </span>
-                              {email.isOrder && (
-                                <Badge variant="default" className="text-xs">
-                                  발주
-                                </Badge>
-                              )}
-                              {email.company && (
-                                <Badge variant="outline" className="text-xs">
-                                  {email.company.name}
-                                </Badge>
-                              )}
-                            </div>
+                            <span>{email.subject || '(제목 없음)'}</span>
                           </Link>
-                        </TableCell>
-                        <TableCell>
-                          {renderNotificationBadge(email.notifications)}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {email.company?.region && (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {email.company.region}
-                            </div>
-                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {format(new Date(email.receivedAt), 'MM/dd HH:mm', { locale: ko })}
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleReadStatus(email.id, email.isRead)
-                              }}
-                            >
-                              {email.isRead ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                deleteEmail(email.id)
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteEmail(email.id)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
