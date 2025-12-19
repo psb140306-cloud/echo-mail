@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Mail, LogOut, LayoutDashboard, Building2, Settings, Inbox, BookUser } from 'lucide-react'
+import { Mail, LogOut, LayoutDashboard, Building2, Settings, Inbox, BookUser, Megaphone } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { WordMarkLink } from '@/components/ui/wordmark-link'
 import Link from 'next/link'
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/mail', label: '메일함', icon: Inbox },
   { href: '/companies', label: '업체 관리', icon: Building2 },
   { href: '/address-book', label: '주소록', icon: BookUser },
+  { href: '/announcements', label: '대량 공지', icon: Megaphone },
   { href: '/settings', label: '설정', icon: Settings },
 ]
 
