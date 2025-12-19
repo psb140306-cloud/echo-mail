@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Card,
   CardContent,
@@ -48,9 +49,20 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Search,
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { AppHeader } from '@/components/layout/app-header'
+import { ScrollArea } from '@/components/ui/scroll-area'
+
+interface Contact {
+  id: string
+  name: string
+  phone: string
+  company: {
+    name: string
+  } | null
+}
 
 interface Announcement {
   id: string
@@ -127,14 +139,17 @@ export default function AnnouncementDetailPage() {
 
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [recipientsData, setRecipientsData] = useState<RecipientsData | null>(null)
-  const [previewData, setPreviewData] = useState<{
-    totalCount: number
-    sampleContacts: Array<{ id: string; name: string; phone: string; companyName: string; region: string }>
-  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  // 연락처 선택 상태
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set())
+  const [selectAll, setSelectAll] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [editForm, setEditForm] = useState({
     title: '',
@@ -144,6 +159,60 @@ export default function AnnouncementDetailPage() {
   })
 
   const isEditable = announcement && ['DRAFT', 'SCHEDULED'].includes(announcement.status)
+
+  // 검색 필터링된 연락처
+  const filteredContacts = useMemo(() => {
+    if (!searchQuery.trim()) return contacts
+    const query = searchQuery.toLowerCase()
+    return contacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.phone.includes(query) ||
+        c.company?.name.toLowerCase().includes(query)
+    )
+  }, [contacts, searchQuery])
+
+  // 전체 선택/해제
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked)
+    if (checked) {
+      setSelectedContactIds(new Set(contacts.map((c) => c.id)))
+    } else {
+      setSelectedContactIds(new Set())
+    }
+  }
+
+  // 개별 선택/해제
+  const handleSelectContact = (contactId: string, checked: boolean) => {
+    const newSet = new Set(selectedContactIds)
+    if (checked) {
+      newSet.add(contactId)
+    } else {
+      newSet.delete(contactId)
+    }
+    setSelectedContactIds(newSet)
+    setSelectAll(newSet.size === contacts.length)
+  }
+
+  // 연락처 목록 조회
+  const fetchContacts = useCallback(async () => {
+    try {
+      setContactsLoading(true)
+      const response = await fetch('/api/contacts?limit=1000')
+      const data = await response.json()
+      if (data.success) {
+        const contactsWithPhone = data.data.contacts.filter((c: Contact) => c.phone)
+        setContacts(contactsWithPhone)
+        return contactsWithPhone
+      }
+      return []
+    } catch (error) {
+      console.error('Failed to fetch contacts:', error)
+      return []
+    } finally {
+      setContactsLoading(false)
+    }
+  }, [])
 
   const fetchAnnouncement = useCallback(async () => {
     try {
@@ -161,6 +230,29 @@ export default function AnnouncementDetailPage() {
             ? new Date(data.data.scheduledAt).toISOString().slice(0, 16)
             : '',
         })
+
+        // DRAFT/SCHEDULED일 때 연락처 목록 로드 및 선택 상태 복원
+        if (['DRAFT', 'SCHEDULED'].includes(data.data.status)) {
+          const contactsList = await fetchContacts()
+          const filter = data.data.recipientFilter as {
+            all?: boolean
+            contactIds?: string[]
+          } | null
+
+          if (filter?.all !== false) {
+            // 전체 선택
+            setSelectAll(true)
+            setSelectedContactIds(new Set(contactsList.map((c: Contact) => c.id)))
+          } else if (filter?.contactIds && filter.contactIds.length > 0) {
+            // 개별 선택 복원
+            setSelectAll(false)
+            setSelectedContactIds(new Set(filter.contactIds))
+          } else {
+            // 기본값: 전체 선택
+            setSelectAll(true)
+            setSelectedContactIds(new Set(contactsList.map((c: Contact) => c.id)))
+          }
+        }
       } else {
         toast({
           title: '오류',
@@ -178,7 +270,7 @@ export default function AnnouncementDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [id, router, toast])
+  }, [id, router, toast, fetchContacts])
 
   const fetchRecipients = useCallback(async () => {
     try {
@@ -192,22 +284,6 @@ export default function AnnouncementDetailPage() {
     }
   }, [id])
 
-  const fetchPreview = useCallback(async (recipientFilter: any) => {
-    try {
-      const response = await fetch('/api/announcements/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipientFilter: recipientFilter || { all: true } }),
-      })
-      const data = await response.json()
-      if (data.success) {
-        setPreviewData(data.data)
-      }
-    } catch (error) {
-      console.error('Failed to fetch preview:', error)
-    }
-  }, [])
-
   useEffect(() => {
     fetchAnnouncement()
   }, [fetchAnnouncement])
@@ -217,12 +293,6 @@ export default function AnnouncementDetailPage() {
       fetchRecipients()
     }
   }, [announcement, fetchRecipients])
-
-  useEffect(() => {
-    if (announcement && ['DRAFT', 'SCHEDULED'].includes(announcement.status)) {
-      fetchPreview(announcement.recipientFilter)
-    }
-  }, [announcement, fetchPreview])
 
   // 발송 중일 때 자동 새로고침
   useEffect(() => {
@@ -236,8 +306,19 @@ export default function AnnouncementDetailPage() {
   }, [announcement?.status, fetchAnnouncement, fetchRecipients])
 
   const handleSave = async () => {
+    if (selectedContactIds.size === 0) {
+      toast({ title: '오류', description: '수신자를 선택해주세요.', variant: 'destructive' })
+      return
+    }
+
     try {
       setSaving(true)
+
+      // recipientFilter 구성
+      const recipientFilter = selectAll
+        ? { all: true }
+        : { all: false, contactIds: Array.from(selectedContactIds) }
+
       const response = await fetch(`/api/announcements/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -248,6 +329,7 @@ export default function AnnouncementDetailPage() {
           scheduledAt: editForm.scheduledAt
             ? new Date(editForm.scheduledAt).toISOString()
             : null,
+          recipientFilter,
         }),
       })
 
@@ -461,51 +543,107 @@ export default function AnnouncementDetailPage() {
             </CardContent>
           </Card>
 
-          {/* 예상 수신자 미리보기 (DRAFT/SCHEDULED) */}
-          {isEditable && previewData && (
+          {/* 수신자 설정 (DRAFT/SCHEDULED) */}
+          {isEditable && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  예상 수신자
+                  수신자 설정
                 </CardTitle>
-                <CardDescription>
-                  총 {previewData.totalCount}명에게 발송됩니다
-                </CardDescription>
+                <CardDescription>공지를 받을 대상을 선택하세요.</CardDescription>
               </CardHeader>
-              <CardContent>
-                {previewData.sampleContacts.length > 0 ? (
-                  <>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>수신자</TableHead>
-                          <TableHead>전화번호</TableHead>
-                          <TableHead>업체</TableHead>
-                          <TableHead>지역</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {previewData.sampleContacts.map((contact) => (
-                          <TableRow key={contact.id}>
-                            <TableCell>{contact.name}</TableCell>
-                            <TableCell>{contact.phone}</TableCell>
-                            <TableCell>{contact.companyName}</TableCell>
-                            <TableCell>{contact.region}</TableCell>
-                          </TableRow>
+              <CardContent className="space-y-4">
+                {/* 전체 선택 체크박스 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="allRecipients"
+                      checked={selectAll}
+                      onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+                    />
+                    <Label htmlFor="allRecipients" className="font-medium">
+                      전체 연락처에게 발송 ({contacts.length}명)
+                    </Label>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    선택됨: {selectedContactIds.size}명
+                  </span>
+                </div>
+
+                {/* 검색 */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="이름, 전화번호, 업체명으로 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* 연락처 목록 */}
+                <div className="border rounded-lg">
+                  {contactsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-muted-foreground">연락처 로딩 중...</span>
+                    </div>
+                  ) : contacts.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      발송 가능한 연락처가 없습니다.
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[300px]">
+                      <div className="divide-y">
+                        {filteredContacts.map((contact) => (
+                          <div
+                            key={contact.id}
+                            className="flex items-center px-4 py-3 hover:bg-muted/50"
+                          >
+                            <Checkbox
+                              id={`contact-${contact.id}`}
+                              checked={selectedContactIds.has(contact.id)}
+                              onCheckedChange={(checked) =>
+                                handleSelectContact(contact.id, checked as boolean)
+                              }
+                            />
+                            <label
+                              htmlFor={`contact-${contact.id}`}
+                              className="flex-1 ml-3 cursor-pointer"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="font-medium">{contact.name}</span>
+                                  {contact.company && (
+                                    <span className="text-muted-foreground ml-2">
+                                      ({contact.company.name})
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-sm text-muted-foreground">
+                                  {contact.phone}
+                                </span>
+                              </div>
+                            </label>
+                          </div>
                         ))}
-                      </TableBody>
-                    </Table>
-                    {previewData.totalCount > 10 && (
-                      <p className="text-sm text-muted-foreground mt-4 text-center">
-                        외 {previewData.totalCount - 10}명...
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    발송 대상이 없습니다. 필터 조건을 확인해주세요.
-                  </p>
+                      </div>
+                    </ScrollArea>
+                  )}
+                </div>
+
+                {/* 선택 현황 */}
+                {!contactsLoading && contacts.length > 0 && (
+                  <div className="flex items-center justify-between text-sm border-t pt-4">
+                    <span className="text-muted-foreground">
+                      {searchQuery && `검색 결과: ${filteredContacts.length}명 / `}
+                      전체: {contacts.length}명
+                    </span>
+                    <span className="font-medium text-primary">
+                      발송 대상: {selectedContactIds.size}명
+                    </span>
+                  </div>
                 )}
               </CardContent>
             </Card>

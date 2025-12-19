@@ -123,6 +123,7 @@ export class AnnouncementScheduler {
       // 수신자 필터에 따라 연락처 조회
       const filter = announcement.recipientFilter as {
         all?: boolean
+        contactIds?: string[]
         regions?: string[]
         companyIds?: string[]
       } | null
@@ -133,11 +134,17 @@ export class AnnouncementScheduler {
       }
 
       if (filter && !filter.all) {
+        // 개별 연락처 선택 (contactIds)
+        if (filter.contactIds && filter.contactIds.length > 0) {
+          whereCondition.id = { in: filter.contactIds }
+        }
+        // 지역 필터 (레거시)
         if (filter.regions && filter.regions.length > 0) {
           whereCondition.company = {
             region: { in: filter.regions }
           }
         }
+        // 업체 필터 (레거시)
         if (filter.companyIds && filter.companyIds.length > 0) {
           whereCondition.companyId = { in: filter.companyIds }
         }
