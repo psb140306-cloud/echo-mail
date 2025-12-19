@@ -128,7 +128,7 @@ export class AnnouncementScheduler {
 
       const whereCondition: any = {
         tenantId,
-        phone: { not: null },
+        phone: { not: '' },
       }
 
       if (filter && !filter.all) {

@@ -73,7 +73,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       const whereCondition: any = {
         tenantId,
-        phone: { not: null },
+        phone: { not: '' },
       }
 
       // 필터 적용
