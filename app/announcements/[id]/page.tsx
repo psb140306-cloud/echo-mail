@@ -158,6 +158,12 @@ export default function AnnouncementDetailPage() {
     scheduledAt: '',
   })
 
+  // 수신자 필터 및 페이지네이션 상태
+  const [recipientFilter, setRecipientFilter] = useState<string>('all')
+  const [recipientSearch, setRecipientSearch] = useState('')
+  const [recipientPage, setRecipientPage] = useState(1)
+  const recipientLimit = 20
+
   const isEditable = announcement && ['DRAFT', 'SCHEDULED'].includes(announcement.status)
 
   // 검색 필터링된 연락처
@@ -272,9 +278,16 @@ export default function AnnouncementDetailPage() {
     }
   }, [id, router, toast, fetchContacts])
 
-  const fetchRecipients = useCallback(async () => {
+  const fetchRecipients = useCallback(async (status?: string, page?: number) => {
     try {
-      const response = await fetch(`/api/announcements/${id}/recipients`)
+      const params = new URLSearchParams({
+        page: String(page || recipientPage),
+        limit: String(recipientLimit),
+      })
+      if (status && status !== 'all') {
+        params.set('status', status)
+      }
+      const response = await fetch(`/api/announcements/${id}/recipients?${params}`)
       const data = await response.json()
       if (data.success) {
         setRecipientsData(data.data)
@@ -282,7 +295,7 @@ export default function AnnouncementDetailPage() {
     } catch (error) {
       console.error('Failed to fetch recipients:', error)
     }
-  }, [id])
+  }, [id, recipientPage, recipientLimit])
 
   useEffect(() => {
     fetchAnnouncement()
@@ -290,9 +303,9 @@ export default function AnnouncementDetailPage() {
 
   useEffect(() => {
     if (announcement && ['SENDING', 'COMPLETED', 'FAILED'].includes(announcement.status)) {
-      fetchRecipients()
+      fetchRecipients(recipientFilter, recipientPage)
     }
-  }, [announcement, fetchRecipients])
+  }, [announcement, fetchRecipients, recipientFilter, recipientPage])
 
   // 발송 중일 때 자동 새로고침
   useEffect(() => {
@@ -663,62 +676,145 @@ export default function AnnouncementDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {/* 통계 카드 - 클릭하여 필터링 */}
                 <div className="grid grid-cols-4 gap-4 mb-6">
-                  <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold">{announcement.totalRecipients}</p>
-                    <p className="text-sm text-muted-foreground">전체</p>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">{announcement.sentCount}</p>
-                    <p className="text-sm text-muted-foreground">성공</p>
-                  </div>
-                  <div className="text-center p-4 bg-red-50 dark:bg-red-950 rounded-lg">
-                    <p className="text-2xl font-bold text-red-600">{announcement.failedCount}</p>
-                    <p className="text-sm text-muted-foreground">실패</p>
-                  </div>
-                  <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {announcement.totalRecipients - announcement.sentCount - announcement.failedCount}
+                  <button
+                    onClick={() => { setRecipientFilter('all'); setRecipientPage(1) }}
+                    className={`text-center p-4 rounded-lg transition-all ${
+                      recipientFilter === 'all'
+                        ? 'bg-primary text-primary-foreground ring-2 ring-primary'
+                        : 'bg-muted hover:bg-muted/80'
+                    }`}
+                  >
+                    <p className="text-2xl font-bold">{recipientsData?.stats?.total || announcement.totalRecipients}</p>
+                    <p className="text-sm opacity-80">전체</p>
+                  </button>
+                  <button
+                    onClick={() => { setRecipientFilter('SENT'); setRecipientPage(1) }}
+                    className={`text-center p-4 rounded-lg transition-all ${
+                      recipientFilter === 'SENT'
+                        ? 'bg-green-600 text-white ring-2 ring-green-600'
+                        : 'bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900'
+                    }`}
+                  >
+                    <p className={`text-2xl font-bold ${recipientFilter === 'SENT' ? '' : 'text-green-600'}`}>
+                      {recipientsData?.stats?.sent || announcement.sentCount}
                     </p>
-                    <p className="text-sm text-muted-foreground">대기</p>
-                  </div>
+                    <p className={`text-sm ${recipientFilter === 'SENT' ? 'opacity-80' : 'text-muted-foreground'}`}>성공</p>
+                  </button>
+                  <button
+                    onClick={() => { setRecipientFilter('FAILED'); setRecipientPage(1) }}
+                    className={`text-center p-4 rounded-lg transition-all ${
+                      recipientFilter === 'FAILED'
+                        ? 'bg-red-600 text-white ring-2 ring-red-600'
+                        : 'bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900'
+                    }`}
+                  >
+                    <p className={`text-2xl font-bold ${recipientFilter === 'FAILED' ? '' : 'text-red-600'}`}>
+                      {recipientsData?.stats?.failed || announcement.failedCount}
+                    </p>
+                    <p className={`text-sm ${recipientFilter === 'FAILED' ? 'opacity-80' : 'text-muted-foreground'}`}>실패</p>
+                  </button>
+                  <button
+                    onClick={() => { setRecipientFilter('PENDING'); setRecipientPage(1) }}
+                    className={`text-center p-4 rounded-lg transition-all ${
+                      recipientFilter === 'PENDING'
+                        ? 'bg-yellow-600 text-white ring-2 ring-yellow-600'
+                        : 'bg-yellow-50 dark:bg-yellow-950 hover:bg-yellow-100 dark:hover:bg-yellow-900'
+                    }`}
+                  >
+                    <p className={`text-2xl font-bold ${recipientFilter === 'PENDING' ? '' : 'text-yellow-600'}`}>
+                      {recipientsData?.stats?.pending || (announcement.totalRecipients - announcement.sentCount - announcement.failedCount)}
+                    </p>
+                    <p className={`text-sm ${recipientFilter === 'PENDING' ? 'opacity-80' : 'text-muted-foreground'}`}>대기</p>
+                  </button>
                 </div>
 
-                {recipientsData && recipientsData.recipients.length > 0 && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>수신자</TableHead>
-                        <TableHead>전화번호</TableHead>
-                        <TableHead>업체</TableHead>
-                        <TableHead>상태</TableHead>
-                        <TableHead>발송 시간</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recipientsData.recipients.map((recipient) => {
-                        const statusInfo = recipientStatusLabels[recipient.status]
-                        const StatusIcon = statusInfo.icon
-                        return (
-                          <TableRow key={recipient.id}>
-                            <TableCell>{recipient.contactName}</TableCell>
-                            <TableCell>{recipient.phone}</TableCell>
-                            <TableCell>{recipient.companyName}</TableCell>
-                            <TableCell>
-                              <div className={`flex items-center gap-1 ${statusInfo.color}`}>
-                                <StatusIcon className="h-4 w-4" />
-                                {statusInfo.label}
-                              </div>
-                              {recipient.errorMessage && (
-                                <p className="text-xs text-red-500 mt-1">{recipient.errorMessage}</p>
-                              )}
-                            </TableCell>
-                            <TableCell>{formatDate(recipient.sentAt)}</TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
+                {/* 수신자 목록 */}
+                {recipientsData && (
+                  <>
+                    {recipientsData.recipients.length > 0 ? (
+                      <>
+                        <div className="border rounded-lg">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>수신자</TableHead>
+                                <TableHead>전화번호</TableHead>
+                                <TableHead>업체</TableHead>
+                                <TableHead>상태</TableHead>
+                                <TableHead>발송 시간</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {recipientsData.recipients.map((recipient) => {
+                                const statusInfo = recipientStatusLabels[recipient.status]
+                                const StatusIcon = statusInfo.icon
+                                return (
+                                  <TableRow key={recipient.id}>
+                                    <TableCell className="font-medium">{recipient.contactName}</TableCell>
+                                    <TableCell>{recipient.phone}</TableCell>
+                                    <TableCell>{recipient.companyName || '-'}</TableCell>
+                                    <TableCell>
+                                      <div className={`flex items-center gap-1 ${statusInfo.color}`}>
+                                        <StatusIcon className="h-4 w-4" />
+                                        {statusInfo.label}
+                                      </div>
+                                      {recipient.errorMessage && (
+                                        <p className="text-xs text-red-500 mt-1 max-w-[200px] truncate" title={recipient.errorMessage}>
+                                          {recipient.errorMessage}
+                                        </p>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                      {formatDate(recipient.sentAt)}
+                                    </TableCell>
+                                  </TableRow>
+                                )
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {/* 페이지네이션 */}
+                        {recipientsData.pagination.totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-sm text-muted-foreground">
+                              {recipientsData.pagination.total}건 중 {((recipientPage - 1) * recipientLimit) + 1}-
+                              {Math.min(recipientPage * recipientLimit, recipientsData.pagination.total)}건
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setRecipientPage(p => Math.max(1, p - 1))}
+                                disabled={recipientPage === 1}
+                              >
+                                이전
+                              </Button>
+                              <span className="text-sm">
+                                {recipientPage} / {recipientsData.pagination.totalPages}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setRecipientPage(p => Math.min(recipientsData.pagination.totalPages, p + 1))}
+                                disabled={recipientPage === recipientsData.pagination.totalPages}
+                              >
+                                다음
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                        {recipientFilter === 'all'
+                          ? '수신자 정보가 없습니다.'
+                          : `${recipientStatusLabels[recipientFilter]?.label || recipientFilter} 상태의 수신자가 없습니다.`}
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
