@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +22,6 @@ import {
   Cell
 } from 'recharts'
 import {
-  ArrowLeft,
   Mail,
   MessageCircle,
   TrendingUp,
@@ -36,6 +34,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { AppHeader } from '@/components/layout/app-header'
 
 interface LogEntry {
   id: string
@@ -303,38 +302,27 @@ export default function LogsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/40">
-      {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <div className="mr-4 flex">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="text-sm">대시보드</span>
-            </Link>
-          </div>
-          <div className="flex flex-1 items-center justify-between space-x-2">
-            <h1 className="text-lg font-semibold">로그 및 통계</h1>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => loadAllData()}
-                disabled={loading}
-              >
-                {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                )}
-                새로고침
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
-      <main className="container py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Page Title */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">로그 및 통계</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadAllData()}
+            disabled={loading}
+          >
+            {loading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
+            새로고침
+          </Button>
+        </div>
         {/* Date Range Filter */}
         <Card className="mb-6">
           <CardHeader>
