@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default async function SubscriptionsPage() {
   const supabase = createAdminClient();
 
-  const { data: subscriptions } = await supabase
+  const { data: subscriptions, error } = await supabase
     .from('subscriptions')
     .select(`
       *,
@@ -17,6 +17,10 @@ export default async function SubscriptionsPage() {
     `)
     .order('created_at', { ascending: false });
 
+  if (error) {
+    console.error('Subscriptions query error:', error);
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -24,9 +28,19 @@ export default async function SubscriptionsPage() {
         <p className="text-gray-500 mt-2">모든 구독을 모니터링합니다</p>
       </div>
 
+      {error && (
+        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+          <CardContent className="p-6">
+            <p className="text-red-600 dark:text-red-400">
+              데이터 로드 실패: {error.message}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle>구독 목록</CardTitle>
+          <CardTitle>구독 목록 ({subscriptions?.length || 0}개)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -42,7 +56,8 @@ export default async function SubscriptionsPage() {
                 </tr>
               </thead>
               <tbody>
-                {subscriptions?.map((subscription) => (
+                {subscriptions && subscriptions.length > 0 ? (
+                  subscriptions.map((subscription) => (
                   <tr key={subscription.id} className="border-b hover:bg-gray-50">
                     <td className="p-2">{subscription.tenants?.name || 'N/A'}</td>
                     <td className="p-2">{subscription.plan_id}</td>
@@ -80,7 +95,14 @@ export default async function SubscriptionsPage() {
                       </Link>
                     </td>
                   </tr>
-                ))}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-gray-500">
+                      등록된 구독이 없습니다.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
