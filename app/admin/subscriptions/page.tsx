@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
-import { createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 
 export default async function SubscriptionsPage() {
-  const supabase = createServerClient();
+  const supabase = createAdminClient();
 
   const { data: subscriptions } = await supabase
     .from('subscriptions')

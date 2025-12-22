@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
@@ -12,7 +12,7 @@ interface SubscriptionDetailPageProps {
 
 export default async function SubscriptionDetailPage({ params }: SubscriptionDetailPageProps) {
   const { id } = await params;
-  const supabase = createServerClient();
+  const supabase = createAdminClient();
 
   const { data: subscription } = await supabase
     .from('subscriptions')
