@@ -3,8 +3,7 @@
 import { useAuth } from '@/components/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { LogOut, LayoutDashboard, Settings, BookUser, Megaphone, Activity } from 'lucide-react'
-import Image from 'next/image'
+import { Mail, LogOut, LayoutDashboard, Settings, BookUser, Megaphone, Activity } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { WordMarkLink } from '@/components/ui/wordmark-link'
 import Link from 'next/link'
@@ -45,13 +44,9 @@ export function AppHeader() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
             <WordMarkLink className="flex items-center text-gray-900 dark:text-foreground no-underline">
-              <Image
-                src="/echologo.png"
-                alt="Echo Mail Logo"
-                width={32}
-                height={32}
-                className="mr-3 rounded-lg"
-              />
+              <div className="w-8 h-8 bg-blue-600 dark:bg-primary rounded-lg flex items-center justify-center mr-3">
+                <Mail className="w-5 h-5 text-white" />
+              </div>
               <span className="text-xl font-semibold">Echo Mail</span>
             </WordMarkLink>
 
