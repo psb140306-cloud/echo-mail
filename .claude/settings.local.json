@@ -72,7 +72,8 @@
       "Bash(node scripts/fix-dynamic-export-v2.js:*)",
       "Bash(npx ts-node:*)",
       "Bash(curl -X POST \"https://echo-mail-blush.vercel.app/api/mail/refetch-bodies\" -H \"Content-Type: application/json\")",
-      "Bash(curl -s https://echo-mail-blush.vercel.app/api/admin/refetch-all-bodies)"
+      "Bash(curl -s https://echo-mail-blush.vercel.app/api/admin/refetch-all-bodies)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nrefactor: SMS 테스트 버튼 위치 변경\n\n- 대시보드에서 SMS 테스트 버튼 제거\n- 설정 > 알림 탭에 SMS 테스트 링크 추가\n- 아이콘을 Link2로 변경\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []

@@ -33,7 +33,20 @@ import {
   Search,
   Plus,
   X,
+  Edit3,
+  Eye,
+  RotateCcw,
+  MessageSquare,
 } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { UsageDisplay } from '@/components/subscription/usage-display'
 
@@ -86,6 +99,19 @@ interface MailOptions {
 interface KeywordSettings {
   keywords: string[]
   keywordsDisabled: boolean
+}
+
+interface MessageTemplate {
+  id: string
+  name: string
+  type: 'SMS' | 'KAKAO_ALIMTALK' | 'EMAIL'
+  subject?: string
+  content: string
+  variables: string[]
+  isDefault: boolean
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export default function SettingsPage() {
@@ -150,12 +176,22 @@ export default function SettingsPage() {
   })
   const [newKeyword, setNewKeyword] = useState('')
   const [savingKeywords, setSavingKeywords] = useState(false)
+
+  // 템플릿 관련 state
+  const [templates, setTemplates] = useState<MessageTemplate[]>([])
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null)
+  const [savingTemplate, setSavingTemplate] = useState(false)
+  const [previewTemplate, setPreviewTemplate] = useState<MessageTemplate | null>(null)
+  const [previewContent, setPreviewContent] = useState<string>('')
+
   const { toast } = useToast()
 
   useEffect(() => {
     loadSettings()
     loadMailOptions()
     loadKeywordSettings()
+    loadTemplates()
   }, [])
 
   const loadSettings = async () => {
@@ -213,6 +249,113 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('키워드 설정 로드 실패:', error)
+    }
+  }
+
+  const loadTemplates = async () => {
+    setLoadingTemplates(true)
+    try {
+      const response = await fetch('/api/notifications/templates')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setTemplates(result.data)
+        }
+      }
+    } catch (error) {
+      console.error('템플릿 로드 실패:', error)
+    } finally {
+      setLoadingTemplates(false)
+    }
+  }
+
+  const saveTemplate = async () => {
+    if (!editingTemplate) return
+
+    setSavingTemplate(true)
+    try {
+      const response = await fetch('/api/notifications/templates', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingTemplate.id,
+          subject: editingTemplate.subject,
+          content: editingTemplate.content,
+          variables: editingTemplate.variables,
+          isActive: editingTemplate.isActive,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: '저장 완료',
+          description: '템플릿이 저장되었습니다.',
+        })
+        setEditingTemplate(null)
+        loadTemplates()
+      } else {
+        toast({
+          title: '저장 실패',
+          description: result.error || '템플릿 저장에 실패했습니다.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: '오류',
+        description: '템플릿 저장 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
+  const handlePreview = (template: MessageTemplate) => {
+    // 샘플 변수로 미리보기 생성
+    const sampleVars: Record<string, string> = {
+      companyName: '대한상사',
+      deliveryDate: '2025년 1월 20일',
+      shortDate: '1/20',
+      deliveryTime: '오전',
+      contactNumber: '010-1234-5678',
+      message: '긴급 공지사항입니다.',
+    }
+
+    let preview = template.content
+    Object.entries(sampleVars).forEach(([key, value]) => {
+      preview = preview.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value)
+    })
+
+    setPreviewContent(preview)
+    setPreviewTemplate(template)
+  }
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'SMS':
+        return 'SMS'
+      case 'KAKAO_ALIMTALK':
+        return '카카오 알림톡'
+      case 'EMAIL':
+        return '이메일'
+      default:
+        return type
+    }
+  }
+
+  const getTypeBadgeColor = (type: string) => {
+    switch (type) {
+      case 'SMS':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+      case 'KAKAO_ALIMTALK':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+      case 'EMAIL':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
   }
 
@@ -1407,36 +1550,241 @@ export default function SettingsPage() {
           <TabsContent value="template">
             <Card>
               <CardHeader>
-                <CardTitle>메시지 템플릿</CardTitle>
-                <CardDescription>
-                  알림 메시지 템플릿을 관리합니다
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>메시지 템플릿</CardTitle>
+                    <CardDescription>
+                      알림 메시지 템플릿을 관리합니다. 변수는 {'{{'}<span className="text-blue-600">변수명</span>{'}}'}  형식으로 사용합니다.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadTemplates}
+                    disabled={loadingTemplates}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${loadingTemplates ? 'animate-spin' : ''}`} />
+                    새로고침
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <h3 className="font-medium mb-2">현재 템플릿</h3>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium">SMS:</span>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          [발주접수] {'{{companyName}}'}님 발주확인. 납품:{'{{shortDate}}'} {'{{deliveryTime}}'}
+                {/* 변수 도움말 */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    사용 가능한 변수
+                  </h4>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{companyName}}'}</code>
+                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{deliveryDate}}'}</code>
+                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{shortDate}}'}</code>
+                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{deliveryTime}}'}</code>
+                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{contactNumber}}'}</code>
+                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{message}}'}</code>
+                  </div>
+                </div>
+
+                {/* 템플릿 목록 */}
+                {loadingTemplates ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-500">템플릿 로딩 중...</span>
+                  </div>
+                ) : templates.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>등록된 템플릿이 없습니다</p>
+                    <p className="text-sm mt-1">관리자에게 문의하여 기본 템플릿을 생성하세요</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {templates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="border rounded-lg p-4 hover:border-blue-300 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(template.type)}`}>
+                              {getTypeLabel(template.type)}
+                            </span>
+                            <h4 className="font-medium">{template.name}</h4>
+                            {template.isDefault && (
+                              <Badge variant="secondary" className="text-xs">기본</Badge>
+                            )}
+                            {!template.isActive && (
+                              <Badge variant="outline" className="text-xs text-gray-500">비활성</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handlePreview(template)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingTemplate({ ...template })}
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-2">
+                          {template.content}
                         </p>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {template.variables.map((v) => (
+                            <span
+                              key={v}
+                              className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-400"
+                            >
+                              {v}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-medium">카카오톡:</span>
-                        <p className="text-gray-600 dark:text-gray-400">
-                          안녕하세요, {'{{companyName}}'}님. 발주가 접수되었습니다...
-                        </p>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 템플릿 편집 다이얼로그 */}
+            <Dialog open={!!editingTemplate} onOpenChange={(open) => !open && setEditingTemplate(null)}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>템플릿 편집</DialogTitle>
+                  <DialogDescription>
+                    {editingTemplate?.name} ({getTypeLabel(editingTemplate?.type || '')})
+                  </DialogDescription>
+                </DialogHeader>
+                {editingTemplate && (
+                  <div className="space-y-4">
+                    {editingTemplate.type === 'EMAIL' && (
+                      <div className="space-y-2">
+                        <Label>제목</Label>
+                        <Input
+                          value={editingTemplate.subject || ''}
+                          onChange={(e) =>
+                            setEditingTemplate({ ...editingTemplate, subject: e.target.value })
+                          }
+                          placeholder="이메일 제목"
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label>내용</Label>
+                      <Textarea
+                        value={editingTemplate.content}
+                        onChange={(e) =>
+                          setEditingTemplate({ ...editingTemplate, content: e.target.value })
+                        }
+                        className="min-h-[200px] font-mono text-sm"
+                        placeholder="템플릿 내용을 입력하세요"
+                      />
+                      <p className="text-xs text-gray-500">
+                        SMS는 90자(한글 기준) 이내로 작성하세요. 현재: {editingTemplate.content.length}자
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={editingTemplate.isActive}
+                          onCheckedChange={(checked) =>
+                            setEditingTemplate({ ...editingTemplate, isActive: checked })
+                          }
+                        />
+                        <Label>활성화</Label>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <h5 className="text-sm font-medium mb-2">사용 변수</h5>
+                      <div className="flex flex-wrap gap-1">
+                        {editingTemplate.variables.map((v) => (
+                          <code
+                            key={v}
+                            className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border cursor-pointer hover:bg-blue-50"
+                            onClick={() => {
+                              const textarea = document.querySelector('textarea')
+                              if (textarea) {
+                                const pos = textarea.selectionStart
+                                const before = editingTemplate.content.substring(0, pos)
+                                const after = editingTemplate.content.substring(pos)
+                                setEditingTemplate({
+                                  ...editingTemplate,
+                                  content: `${before}{{${v}}}${after}`,
+                                })
+                              }
+                            }}
+                          >
+                            {`{{${v}}}`}
+                          </code>
+                        ))}
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    템플릿 수정은 관리자에게 문의하세요
-                  </p>
+                )}
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditingTemplate(null)}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    onClick={saveTemplate}
+                    disabled={savingTemplate}
+                  >
+                    {savingTemplate ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    저장
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* 미리보기 다이얼로그 */}
+            <Dialog open={!!previewTemplate} onOpenChange={(open) => !open && setPreviewTemplate(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>템플릿 미리보기</DialogTitle>
+                  <DialogDescription>
+                    {previewTemplate?.name} - 샘플 데이터로 렌더링된 결과
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="text-sm text-gray-500 mb-2">적용된 변수:</div>
+                    <div className="text-xs space-y-1 text-gray-600 dark:text-gray-400">
+                      <div>companyName → 대한상사</div>
+                      <div>deliveryDate → 2025년 1월 20일</div>
+                      <div>shortDate → 1/20</div>
+                      <div>deliveryTime → 오전</div>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm font-medium mb-2">렌더링 결과:</div>
+                    <p className="whitespace-pre-wrap text-gray-800 dark:text-gray-200">
+                      {previewContent}
+                    </p>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+                <DialogFooter>
+                  <Button onClick={() => setPreviewTemplate(null)}>
+                    닫기
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
 

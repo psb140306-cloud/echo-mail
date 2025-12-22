@@ -386,11 +386,19 @@
   - [x] 납기일 계산기 구현
 
 - [x] **시스템 설정 화면**
-  - [x] Tabs 컴포넌트로 설정 섹션 구분 (메일, SMS, 카카오톡, 시스템, 템플릿)
+  - [x] Tabs 컴포넌트로 설정 섹션 구분 (메일, 키워드, 알림, 사업자 정보, 템플릿)
   - [x] Switch로 서비스 활성화/비활성화 설정
-  - [x] Textarea로 알림 템플릿 편집
   - [x] Input + 연결 테스트로 API 키 관리
   - [x] Badge로 시스템 상태 표시
+
+- [x] **메시지 템플릿 관리 UI** (`/settings` 템플릿 탭)
+  - [x] 템플릿 API 구현 (`/api/notifications/templates` - CRUD)
+  - [x] TemplateManager 클래스 (변수 치환, 캐싱, 검증)
+  - [x] 템플릿 목록 조회 UI (테넌트별 템플릿 표시)
+  - [x] 템플릿 편집 기능 (Dialog + Textarea + 저장)
+  - [x] 변수 도움말 표시 (`{{companyName}}`, `{{deliveryDate}}` 등)
+  - [x] 템플릿 미리보기 기능 (샘플 데이터로 렌더링)
+  - [ ] 기본 템플릿 복원 기능 (향후 구현 예정)
 
 - [x] **로그 및 통계 화면**
   - [x] Table로 발송 내역 조회
