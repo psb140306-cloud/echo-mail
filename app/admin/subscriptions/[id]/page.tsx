@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { SubscriptionActions } from '@/components/super-admin/subscription-actions';
 
 interface SubscriptionDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function SubscriptionDetailPage({ params }: SubscriptionDetailPageProps) {
+  const { id } = await params;
   const supabase = createServerClient();
 
   const { data: subscription } = await supabase
@@ -24,7 +25,7 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
         status
       )
     `)
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!subscription) {
@@ -35,7 +36,7 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
   const { data: payments } = await supabase
     .from('payments')
     .select('*')
-    .eq('subscription_id', params.id)
+    .eq('subscription_id', id)
     .order('created_at', { ascending: false })
     .limit(10);
 
@@ -43,7 +44,7 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
   const { data: invoices } = await supabase
     .from('invoices')
     .select('*')
-    .eq('subscription_id', params.id)
+    .eq('subscription_id', id)
     .order('created_at', { ascending: false })
     .limit(10);
 

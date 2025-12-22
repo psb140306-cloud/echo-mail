@@ -58,7 +58,7 @@ export default function AdminNav() {
 
   return (
     <nav className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 flex flex-col">
-      <div className="p-4 flex-1">
+      <div className="p-4 flex-1 overflow-y-auto">
         <h2 className="text-xl font-bold text-red-600 dark:text-red-500 mb-8">
           🛡️ 슈퍼어드민
         </h2>
