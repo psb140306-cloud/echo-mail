@@ -326,12 +326,6 @@ function DashboardContent() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="outline" asChild>
-                <Link href="/notifications/test">
-                  <TestTube className="w-4 h-4 mr-2" />
-                  SMS 테스트
-                </Link>
-              </Button>
               {subscription && (
                 <div className="text-right">
                   <div className="flex items-center space-x-2 mb-1">

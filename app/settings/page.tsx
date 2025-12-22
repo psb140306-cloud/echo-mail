@@ -1130,10 +1130,20 @@ export default function SettingsPage() {
           <TabsContent value="notification">
             <Card>
               <CardHeader>
-                <CardTitle>알림 설정</CardTitle>
-                <CardDescription>
-                  알림 발송 관련 기본 설정을 관리합니다
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>알림 설정</CardTitle>
+                    <CardDescription>
+                      알림 발송 관련 기본 설정을 관리합니다
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/notifications/test">
+                      <Link2 className="w-4 h-4 mr-2" />
+                      SMS 테스트
+                    </Link>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
