@@ -22,57 +22,42 @@ export async function GET(request: NextRequest) {
       const { searchParams } = new URL(req.url)
       const page = parseInt(searchParams.get('page') || '1')
       const limit = parseInt(searchParams.get('limit') || '50')
-      const level = searchParams.get('level') // error, warn, info, debug
-      const category = searchParams.get('category') // email, sms, kakao, system
       const search = searchParams.get('search')
       const startDate = searchParams.get('startDate')
       const endDate = searchParams.get('endDate')
 
       const skip = (page - 1) * limit
 
-      // 시스템 로그는 ActivityLog를 사용하거나, 별도 로그 테이블이 없으면 NotificationLog 기반으로 생성
-      // 여기서는 NotificationLog와 EmailLog를 조합하여 시스템 로그로 표시
-
-      const where: any = {
+      // where 조건 구성
+      const whereConditions: any = {
         tenantId,
       }
 
       if (startDate) {
-        where.createdAt = {
-          ...where.createdAt,
+        whereConditions.createdAt = {
+          ...whereConditions.createdAt,
           gte: new Date(startDate),
         }
       }
 
       if (endDate) {
-        where.createdAt = {
-          ...where.createdAt,
+        whereConditions.createdAt = {
+          ...whereConditions.createdAt,
           lte: new Date(endDate + 'T23:59:59.999Z'),
         }
+      }
+
+      if (search) {
+        whereConditions.OR = [
+          { action: { contains: search } },
+          { description: { contains: search } },
+        ]
       }
 
       // ActivityLog에서 시스템 로그 조회
       const [activityLogs, total] = await Promise.all([
         prisma.activityLog.findMany({
-          where: {
-            tenantId,
-            ...(startDate && {
-              createdAt: {
-                gte: new Date(startDate),
-              },
-            }),
-            ...(endDate && {
-              createdAt: {
-                lte: new Date(endDate + 'T23:59:59.999Z'),
-              },
-            }),
-            ...(search && {
-              OR: [
-                { action: { contains: search, mode: 'insensitive' } },
-                { details: { contains: search, mode: 'insensitive' } },
-              ],
-            }),
-          },
+          where: whereConditions,
           orderBy: {
             createdAt: 'desc',
           },
@@ -80,19 +65,7 @@ export async function GET(request: NextRequest) {
           take: limit,
         }),
         prisma.activityLog.count({
-          where: {
-            tenantId,
-            ...(startDate && {
-              createdAt: {
-                gte: new Date(startDate),
-              },
-            }),
-            ...(endDate && {
-              createdAt: {
-                lte: new Date(endDate + 'T23:59:59.999Z'),
-              },
-            }),
-          },
+          where: whereConditions,
         }),
       ])
 
@@ -102,7 +75,7 @@ export async function GET(request: NextRequest) {
         timestamp: log.createdAt.toISOString(),
         level: 'info' as const,
         category: 'system' as const,
-        message: `${log.action}: ${log.details || ''}`,
+        message: `${log.action}: ${log.description || ''}`,
         details: log.metadata,
         companyName: undefined,
         contactName: undefined,
