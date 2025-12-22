@@ -55,31 +55,43 @@ export async function GET(request: NextRequest) {
       }
 
       // ActivityLog에서 시스템 로그 조회
-      const [activityLogs, total] = await Promise.all([
-        prisma.activityLog.findMany({
-          where: whereConditions,
-          orderBy: {
-            createdAt: 'desc',
-          },
-          skip,
-          take: limit,
-        }),
-        prisma.activityLog.count({
-          where: whereConditions,
-        }),
-      ])
+      let logs: any[] = []
+      let total = 0
 
-      // ActivityLog를 LogEntry 형식으로 변환
-      const logs = activityLogs.map((log) => ({
-        id: log.id,
-        timestamp: log.createdAt.toISOString(),
-        level: 'info' as const,
-        category: 'system' as const,
-        message: `${log.action}: ${log.description || ''}`,
-        details: log.metadata,
-        companyName: undefined,
-        contactName: undefined,
-      }))
+      try {
+        const [activityLogs, count] = await Promise.all([
+          prisma.activityLog.findMany({
+            where: whereConditions,
+            orderBy: {
+              createdAt: 'desc',
+            },
+            skip,
+            take: limit,
+          }),
+          prisma.activityLog.count({
+            where: whereConditions,
+          }),
+        ])
+
+        total = count
+
+        // ActivityLog를 LogEntry 형식으로 변환
+        logs = activityLogs.map((log) => ({
+          id: log.id,
+          timestamp: log.createdAt.toISOString(),
+          level: 'info' as const,
+          category: 'system' as const,
+          message: `${log.action}: ${log.description || ''}`,
+          details: log.metadata,
+          companyName: undefined,
+          contactName: undefined,
+        }))
+      } catch (dbError) {
+        // ActivityLog 테이블에 tenantId 컬럼이 없는 경우 빈 배열 반환
+        logger.warn('ActivityLog 조회 실패 (마이그레이션 필요):', dbError)
+        logs = []
+        total = 0
+      }
 
       return NextResponse.json({
         success: true,
