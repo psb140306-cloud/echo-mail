@@ -76,7 +76,7 @@ export function AppHeader() {
 
           <div className="flex items-center space-x-4">
             <span className="hidden sm:inline text-sm text-gray-700 dark:text-gray-300">
-              {user?.email}님 안녕하세요
+              {user?.email?.split('@')[0]}님
             </span>
             <ThemeToggle />
             <Button variant="outline" size="sm" onClick={handleSignOut}>
