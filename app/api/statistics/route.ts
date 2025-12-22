@@ -36,32 +36,97 @@ export async function GET(request: NextRequest) {
       )
       today.setTime(today.getTime() - kstOffset)
 
-      // 1. 기간 내 일별 통계 계산
-      const dailyStats = await prisma.$queryRaw<
-        Array<{
-          date: Date
-          emailsProcessed: bigint
-          smsSuccess: bigint
-          smsFailed: bigint
-          kakaoSuccess: bigint
-          kakaoFailed: bigint
-        }>
-      >`
-        SELECT
-          DATE("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Seoul') as date,
-          COUNT(CASE WHEN type = 'EMAIL' THEN 1 END)::bigint as "emailsProcessed",
-          COUNT(CASE WHEN type = 'SMS' AND status IN ('SENT', 'DELIVERED') THEN 1 END)::bigint as "smsSuccess",
-          COUNT(CASE WHEN type = 'SMS' AND status = 'FAILED' THEN 1 END)::bigint as "smsFailed",
-          COUNT(CASE WHEN type = 'KAKAO_ALIMTALK' AND status IN ('SENT', 'DELIVERED') THEN 1 END)::bigint as "kakaoSuccess",
-          COUNT(CASE WHEN type = 'KAKAO_ALIMTALK' AND status = 'FAILED' THEN 1 END)::bigint as "kakaoFailed"
-        FROM "NotificationLog"
-        WHERE "tenantId" = ${tenantId}
-          AND "createdAt" >= ${start}
-          AND "createdAt" <= ${end}
-        GROUP BY DATE("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Seoul')
-        ORDER BY date DESC
-        LIMIT 30
-      `
+      // 1. 일별 통계 - Prisma를 사용하여 안전하게 조회
+      // 날짜 범위 내 NotificationLog를 가져와서 JavaScript에서 집계
+      const notificationLogs = await prisma.notificationLog.findMany({
+        where: {
+          tenantId,
+          createdAt: { gte: start, lte: end },
+        },
+        select: {
+          type: true,
+          status: true,
+          createdAt: true,
+        },
+      })
+
+      const emailLogs = await prisma.emailLog.findMany({
+        where: {
+          tenantId,
+          createdAt: { gte: start, lte: end },
+        },
+        select: {
+          createdAt: true,
+        },
+      })
+
+      // 일별 집계
+      const dailyMap = new Map<string, {
+        emailsProcessed: number
+        smsSuccess: number
+        smsFailed: number
+        kakaoSuccess: number
+        kakaoFailed: number
+      }>()
+
+      // 이메일 로그 집계
+      for (const log of emailLogs) {
+        // KST 기준으로 날짜 계산
+        const kstDate = new Date(log.createdAt.getTime() + kstOffset)
+        const dateKey = kstDate.toISOString().split('T')[0]
+
+        if (!dailyMap.has(dateKey)) {
+          dailyMap.set(dateKey, {
+            emailsProcessed: 0,
+            smsSuccess: 0,
+            smsFailed: 0,
+            kakaoSuccess: 0,
+            kakaoFailed: 0,
+          })
+        }
+        dailyMap.get(dateKey)!.emailsProcessed++
+      }
+
+      // 알림 로그 집계
+      for (const log of notificationLogs) {
+        // KST 기준으로 날짜 계산
+        const kstDate = new Date(log.createdAt.getTime() + kstOffset)
+        const dateKey = kstDate.toISOString().split('T')[0]
+
+        if (!dailyMap.has(dateKey)) {
+          dailyMap.set(dateKey, {
+            emailsProcessed: 0,
+            smsSuccess: 0,
+            smsFailed: 0,
+            kakaoSuccess: 0,
+            kakaoFailed: 0,
+          })
+        }
+
+        const stats = dailyMap.get(dateKey)!
+        if (log.type === 'SMS') {
+          if (log.status === 'SENT' || log.status === 'DELIVERED') {
+            stats.smsSuccess++
+          } else if (log.status === 'FAILED') {
+            stats.smsFailed++
+          }
+        } else if (log.type === 'KAKAO_ALIMTALK') {
+          if (log.status === 'SENT' || log.status === 'DELIVERED') {
+            stats.kakaoSuccess++
+          } else if (log.status === 'FAILED') {
+            stats.kakaoFailed++
+          }
+        }
+      }
+
+      // 날짜순 정렬 (최신순)
+      const dailyStats = Array.from(dailyMap.entries())
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .slice(0, 30)
+        .map(([date, stats]) => ({
+          date,
+          ...stats,
+        }))
 
       // 2. 요약 통계
       const [totalEmails, totalNotifications, successNotifications, todayEmails, todayNotifications] =
@@ -175,14 +240,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          daily: dailyStats.map((d) => ({
-            date: d.date.toISOString().split('T')[0],
-            emailsProcessed: Number(d.emailsProcessed),
-            smsSuccess: Number(d.smsSuccess),
-            smsFailed: Number(d.smsFailed),
-            kakaoSuccess: Number(d.kakaoSuccess),
-            kakaoFailed: Number(d.kakaoFailed),
-          })),
+          daily: dailyStats,
           summary: {
             totalEmails,
             totalNotifications,

@@ -52,6 +52,7 @@ interface NotificationLog {
   id: string
   timestamp: string
   type: 'sms' | 'kakao'
+  source: 'order' | 'announcement' // 발주알림 vs 대량공지
   companyName: string
   contactName: string
   phone: string
@@ -99,6 +100,7 @@ export default function LogsPage() {
   const [loading, setLoading] = useState(true)
   const [filterLevel, setFilterLevel] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [filterSource, setFilterSource] = useState('') // 발주알림/대량공지 필터
   const [searchTerm, setSearchTerm] = useState('')
   const [dateRange, setDateRange] = useState({
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -159,13 +161,14 @@ export default function LogsPage() {
       })
 
       if (searchTerm) params.append('search', searchTerm)
+      if (filterSource) params.append('source', filterSource)
 
       const response = await fetch(`/api/notifications/logs?${params}`)
       const data = await response.json()
 
       if (data.success) {
-        setNotifications(data.data)
-        setTotalPages(data.pagination.pages)
+        setNotifications(data.data || [])
+        setTotalPages(data.pagination?.pages || 1)
       } else {
         toast({
           title: '오류',
@@ -296,7 +299,7 @@ export default function LogsPage() {
       loadAllData()
     }, 500)
     return () => clearTimeout(timer)
-  }, [searchTerm, filterLevel, filterCategory])
+  }, [searchTerm, filterLevel, filterCategory, filterSource])
 
   return (
     <div className="min-h-screen bg-gray-50/40">
@@ -506,6 +509,15 @@ export default function LogsPage() {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
+                  <select
+                    value={filterSource}
+                    onChange={(e) => setFilterSource(e.target.value)}
+                    className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  >
+                    <option value="">전체</option>
+                    <option value="order">발주 알림</option>
+                    <option value="announcement">대량 공지</option>
+                  </select>
                   <Button
                     variant="outline"
                     size="sm"
@@ -541,6 +553,7 @@ export default function LogsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>시간</TableHead>
+                          <TableHead>분류</TableHead>
                           <TableHead>유형</TableHead>
                           <TableHead>업체명</TableHead>
                           <TableHead>담당자</TableHead>
@@ -558,6 +571,11 @@ export default function LogsPage() {
                                 <Clock className="h-4 w-4 text-muted-foreground" />
                                 {new Date(notification.timestamp).toLocaleString('ko-KR')}
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={notification.source === 'order' ? 'default' : 'secondary'}>
+                                {notification.source === 'order' ? '발주알림' : '대량공지'}
+                              </Badge>
                             </TableCell>
                             <TableCell>
                               <Badge variant="outline">
