@@ -12,7 +12,12 @@ import {
   KeyIcon,
   ServerIcon,
   ArrowRightOnRectangleIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  HeartIcon,
+  DocumentTextIcon,
+  ComputerDesktopIcon,
+  BoltIcon,
+  CreditCardIcon
 } from '@heroicons/react/24/outline'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -22,8 +27,13 @@ const navigation = [
   { name: '대시보드', href: '/admin', icon: HomeIcon },
   { name: '테넌트 관리', href: '/admin/tenants', icon: UserGroupIcon },
   { name: '사용자 관리', href: '/admin/users', icon: UserGroupIcon },
+  { name: '구독 관리', href: '/admin/subscriptions', icon: CreditCardIcon },
   { name: '사용량 통계', href: '/admin/usage', icon: ChartBarIcon },
   { name: '비용 통계', href: '/admin/costs', icon: BanknotesIcon },
+  { name: '시스템 헬스', href: '/admin/health', icon: HeartIcon },
+  { name: '모니터링', href: '/admin/monitoring', icon: ComputerDesktopIcon },
+  { name: '성능', href: '/admin/performance', icon: BoltIcon },
+  { name: '에러 로그', href: '/admin/logs', icon: DocumentTextIcon },
   { name: 'SMS 설정', href: '/admin/sms', icon: ChatBubbleLeftIcon },
   { name: '카카오톡 설정', href: '/admin/kakao', icon: EnvelopeIcon },
   { name: 'API 키 관리', href: '/admin/api-keys', icon: KeyIcon },

@@ -52,7 +52,7 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
       <div className="flex items-center justify-between">
         <div>
           <Link
-            href="/super-admin/subscriptions"
+            href="/admin/subscriptions"
             className="text-sm text-blue-600 hover:text-blue-800 mb-2 inline-block"
           >
             ← 구독 목록으로
@@ -139,7 +139,7 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">테넌트</span>
                 <Link
-                  href={`/super-admin/tenants/${subscription.tenants?.id}`}
+                  href={`/admin/tenants/${subscription.tenants?.id}`}
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   {subscription.tenants?.name}

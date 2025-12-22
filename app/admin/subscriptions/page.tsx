@@ -73,7 +73,7 @@ export default async function SubscriptionsPage() {
                     </td>
                     <td className="p-2">
                       <Link
-                        href={`/super-admin/subscriptions/${subscription.id}`}
+                        href={`/admin/subscriptions/${subscription.id}`}
                         className="text-blue-600 hover:text-blue-800 text-sm"
                       >
                         관리
