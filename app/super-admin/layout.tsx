@@ -45,6 +45,12 @@ export default async function SuperAdminLayout({
                   사용량
                 </Link>
                 <Link
+                  href="/super-admin/costs"
+                  className="border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 hover:text-gray-700 dark:hover:text-gray-200 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  비용
+                </Link>
+                <Link
                   href="/super-admin/monitoring"
                   className="border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 hover:text-gray-700 dark:hover:text-gray-200 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                 >
