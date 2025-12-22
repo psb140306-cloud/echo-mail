@@ -1861,9 +1861,9 @@ export default function SettingsPage() {
                           </div>
                         </div>
                         <p className="text-xs text-gray-500 mb-2">{dt.description}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-2 bg-gray-50 dark:bg-gray-800 p-2 rounded font-mono">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap bg-gray-50 dark:bg-gray-800 p-2 rounded font-mono max-h-24 overflow-y-auto">
                           {dt.content}
-                        </p>
+                        </div>
                         <div className="mt-3 flex gap-2">
                           {!isRegistered && (
                             <Button
