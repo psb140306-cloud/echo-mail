@@ -3,7 +3,7 @@
 import { useAuth } from '@/components/providers/auth-provider'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Mail, LogOut, LayoutDashboard, Building2, Settings, Inbox, BookUser, Megaphone, Activity } from 'lucide-react'
+import { Mail, LogOut, LayoutDashboard, Settings, BookUser, Megaphone, Activity } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { WordMarkLink } from '@/components/ui/wordmark-link'
 import Link from 'next/link'
@@ -11,8 +11,6 @@ import { usePathname } from 'next/navigation'
 
 const navItems = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
-  { href: '/mail', label: '메일함', icon: Inbox },
-  { href: '/companies', label: '업체 관리', icon: Building2 },
   { href: '/address-book', label: '주소록', icon: BookUser },
   { href: '/announcements', label: '대량 공지', icon: Megaphone },
   { href: '/logs', label: '로그', icon: Activity },
@@ -76,7 +74,7 @@ export function AppHeader() {
 
           <div className="flex items-center space-x-4">
             <span className="hidden sm:inline text-sm text-gray-700 dark:text-gray-300">
-              {user?.email?.split('@')[0]}님
+              {user?.email?.split('@')[0]}님 안녕하세요
             </span>
             <ThemeToggle />
             <Button variant="outline" size="sm" onClick={handleSignOut}>
