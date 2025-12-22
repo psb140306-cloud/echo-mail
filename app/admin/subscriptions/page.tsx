@@ -1,24 +1,41 @@
 export const dynamic = 'force-dynamic';
-import { createAdminClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 
 export default async function SubscriptionsPage() {
-  const supabase = createAdminClient();
+  let subscriptions: any[] = [];
+  let error: Error | null = null;
 
-  const { data: subscriptions, error } = await supabase
-    .from('subscriptions')
-    .select(`
-      *,
-      tenants (
-        name,
-        slug
-      )
-    `)
-    .order('created_at', { ascending: false });
+  try {
+    const dbSubscriptions = await prisma.subscription.findMany({
+      include: {
+        tenant: {
+          select: {
+            name: true,
+            subdomain: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
 
-  if (error) {
-    console.error('Subscriptions query error:', error);
+    subscriptions = dbSubscriptions.map((sub) => ({
+      id: sub.id,
+      plan_id: sub.plan,
+      status: sub.status.toLowerCase(),
+      current_period_end: sub.currentPeriodEnd,
+      price_per_month: sub.priceAmount,
+      tenants: {
+        name: sub.tenant.name,
+        slug: sub.tenant.subdomain,
+      },
+    }));
+  } catch (err) {
+    error = err as Error;
+    console.error('Subscriptions query error:', err);
   }
 
   return (
