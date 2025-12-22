@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
 
       if (search) {
         whereConditions.OR = [
-          { action: { contains: search } },
-          { description: { contains: search } },
+          { action: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
         ]
       }
 
@@ -92,11 +92,13 @@ export async function GET(request: NextRequest) {
         },
       })
     } catch (error) {
-      logger.error('시스템 로그 조회 실패:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      const errorStack = error instanceof Error ? error.stack : undefined
+      logger.error('시스템 로그 조회 실패:', { error: errorMessage, stack: errorStack })
       return NextResponse.json(
         {
           success: false,
-          error: '시스템 로그를 불러오는데 실패했습니다.',
+          error: `시스템 로그를 불러오는데 실패했습니다: ${errorMessage}`,
         },
         { status: 500 }
       )
