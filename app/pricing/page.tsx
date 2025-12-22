@@ -65,7 +65,6 @@ export default function PricingPage() {
   const features = [
     { name: '업체 관리', key: 'companies' as const, icon: Building },
     { name: '담당자 관리', key: 'contacts' as const, icon: Users },
-    { name: '월 이메일 처리', key: 'emails' as const, icon: Mail },
     { name: '월 알림 발송', key: 'notifications' as const, icon: MessageCircle },
     { name: 'SMS 알림', feature: 'smsNotifications' as const, icon: MessageCircle },
     { name: '카카오톡 알림', feature: 'kakaoNotifications' as const, icon: MessageCircle },
@@ -103,8 +102,6 @@ export default function PricingPage() {
           return formatLimit(limits.maxCompanies, '개')
         case 'contacts':
           return formatLimit(limits.maxContacts, '명')
-        case 'emails':
-          return formatLimit(limits.maxEmailsPerMonth, '건')
         case 'notifications':
           return formatLimit(limits.maxNotificationsPerMonth, '건')
       }
@@ -255,12 +252,8 @@ export default function PricingPage() {
                         <span>담당자 {formatLimit(limits.maxContacts, '명')}</span>
                       </li>
                       <li className="flex items-center text-sm text-gray-700 dark:text-gray-300">
-                        <Mail className="w-4 h-4 mr-2 text-purple-500" />
-                        <span>월 이메일 {formatLimit(limits.maxEmailsPerMonth, '건')}</span>
-                      </li>
-                      <li className="flex items-center text-sm text-gray-700 dark:text-gray-300">
                         <MessageCircle className="w-4 h-4 mr-2 text-orange-500" />
-                        <span>월 알림 {formatLimit(limits.maxNotificationsPerMonth, '건')}</span>
+                        <span>알림 발송 {formatLimit(limits.maxNotificationsPerMonth, '건/월')}</span>
                       </li>
                     </ul>
 

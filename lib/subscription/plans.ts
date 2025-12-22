@@ -125,8 +125,8 @@ export const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
   [SubscriptionPlan.BUSINESS]: {
     maxCompanies: -1, // 무제한
     maxContacts: -1, // 무제한
-    maxEmailsPerMonth: 10000,
-    maxNotificationsPerMonth: 10000,
+    maxEmailsPerMonth: 5000,
+    maxNotificationsPerMonth: 5000,
     maxUsers: 20,
     retentionDays: 365,
     features: {

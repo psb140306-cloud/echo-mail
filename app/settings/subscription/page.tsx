@@ -423,22 +423,6 @@ export default function SubscriptionPage() {
                 )}
               </div>
 
-              {/* 월 이메일 */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-purple-500" />
-                    <span className="font-medium">월 이메일 처리</span>
-                  </div>
-                  <span className={`text-sm font-medium ${getUsageColor(getUsagePercentage(usage.emails.current, usage.emails.limit))}`}>
-                    {usage.emails.current} / {usage.emails.limit === -1 ? '무제한' : usage.emails.limit.toLocaleString()}
-                  </span>
-                </div>
-                {usage.emails.limit !== -1 && (
-                  <Progress value={getUsagePercentage(usage.emails.current, usage.emails.limit)} />
-                )}
-              </div>
-
               {/* 월 알림 */}
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -515,7 +499,7 @@ export default function SubscriptionPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           <Check className="h-3 w-3 text-green-500" />
-                          <span>이메일 {limits.maxEmailsPerMonth === -1 ? '무제한' : `${limits.maxEmailsPerMonth.toLocaleString()}건/월`}</span>
+                          <span>알림 발송 {limits.maxNotificationsPerMonth === -1 ? '무제한' : `${limits.maxNotificationsPerMonth.toLocaleString()}건/월`}</span>
                         </div>
                       </div>
 
