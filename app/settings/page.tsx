@@ -37,7 +37,25 @@ import {
   Eye,
   RotateCcw,
   MessageSquare,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Trash2,
+  Sparkles,
 } from 'lucide-react'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
@@ -184,6 +202,49 @@ export default function SettingsPage() {
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [previewTemplate, setPreviewTemplate] = useState<MessageTemplate | null>(null)
   const [previewContent, setPreviewContent] = useState<string>('')
+  const [showGuide, setShowGuide] = useState(true)
+  const [showNewTemplateDialog, setShowNewTemplateDialog] = useState(false)
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    type: 'SMS' as 'SMS' | 'KAKAO_ALIMTALK' | 'EMAIL',
+    content: '',
+    subject: '',
+  })
+  const [creatingTemplate, setCreatingTemplate] = useState(false)
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
+
+  // 기본 템플릿 정의
+  const defaultTemplates = [
+    {
+      name: 'ORDER_RECEIVED_SMS',
+      type: 'SMS' as const,
+      content: '[발주접수] {{companyName}} 납품:{{shortDate}}{{deliveryTime}}',
+      variables: ['companyName', 'shortDate', 'deliveryTime'],
+      description: '발주 접수 시 SMS로 발송되는 기본 알림',
+    },
+    {
+      name: 'ORDER_RECEIVED_KAKAO',
+      type: 'KAKAO_ALIMTALK' as const,
+      subject: '발주 접수 확인',
+      content: '{{companyName}}님의 발주가 정상적으로 접수되었습니다.\n\n📦 납품 예정일: {{deliveryDate}}{{deliveryTime}}\n\n문의사항이 있으시면 언제든 연락 주세요.\n감사합니다.',
+      variables: ['companyName', 'deliveryDate', 'deliveryTime'],
+      description: '발주 접수 시 카카오 알림톡으로 발송되는 알림',
+    },
+    {
+      name: 'DELIVERY_REMINDER_SMS',
+      type: 'SMS' as const,
+      content: '[배송안내] {{companyName}}님 오늘 {{deliveryTime}} 배송예정. 문의:{{contactNumber}}',
+      variables: ['companyName', 'deliveryTime', 'contactNumber'],
+      description: '배송 당일 발송되는 안내 SMS',
+    },
+    {
+      name: 'URGENT_NOTICE_SMS',
+      type: 'SMS' as const,
+      content: '[긴급공지] {{message}} 문의:{{contactNumber}}',
+      variables: ['message', 'contactNumber'],
+      description: '긴급 공지 발송용 SMS',
+    },
+  ]
 
   const { toast } = useToast()
 
@@ -357,6 +418,160 @@ export default function SettingsPage() {
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
+  }
+
+  // 콘텐츠에서 변수 추출
+  const extractVariables = (content: string): string[] => {
+    const matches = content.match(/\{\{([^}]+)\}\}/g) || []
+    const variables = matches.map(m => m.replace(/\{\{|\}\}/g, ''))
+    return [...new Set(variables)]
+  }
+
+  // 새 템플릿 생성
+  const createNewTemplate = async () => {
+    if (!newTemplate.name || !newTemplate.content) {
+      toast({
+        title: '입력 오류',
+        description: '템플릿 이름과 내용을 입력해주세요.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setCreatingTemplate(true)
+    try {
+      const variables = extractVariables(newTemplate.content)
+
+      const response = await fetch('/api/notifications/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newTemplate.name,
+          type: newTemplate.type,
+          subject: newTemplate.subject || undefined,
+          content: newTemplate.content,
+          variables,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: '생성 완료',
+          description: '새 템플릿이 생성되었습니다.',
+        })
+        setShowNewTemplateDialog(false)
+        setNewTemplate({ name: '', type: 'SMS', content: '', subject: '' })
+        loadTemplates()
+      } else {
+        toast({
+          title: '생성 실패',
+          description: result.error || '템플릿 생성에 실패했습니다.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: '오류',
+        description: '템플릿 생성 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      })
+    } finally {
+      setCreatingTemplate(false)
+    }
+  }
+
+  // 템플릿 삭제
+  const deleteTemplate = async (templateId: string) => {
+    setDeletingTemplateId(templateId)
+    try {
+      const response = await fetch(`/api/notifications/templates?id=${templateId}`, {
+        method: 'DELETE',
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: '삭제 완료',
+          description: '템플릿이 삭제되었습니다.',
+        })
+        loadTemplates()
+      } else {
+        toast({
+          title: '삭제 실패',
+          description: result.error || '템플릿 삭제에 실패했습니다.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: '오류',
+        description: '템플릿 삭제 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      })
+    } finally {
+      setDeletingTemplateId(null)
+    }
+  }
+
+  // 기본 템플릿 복사하여 내 템플릿으로 추가
+  const copyFromDefault = (defaultTemplate: typeof defaultTemplates[0]) => {
+    setNewTemplate({
+      name: defaultTemplate.name + '_CUSTOM',
+      type: defaultTemplate.type,
+      content: defaultTemplate.content,
+      subject: defaultTemplate.subject || '',
+    })
+    setShowNewTemplateDialog(true)
+  }
+
+  // 기본 템플릿 DB에 등록 (기존 없는 경우)
+  const restoreDefaultTemplate = async (defaultTemplate: typeof defaultTemplates[0]) => {
+    setCreatingTemplate(true)
+    try {
+      const response = await fetch('/api/notifications/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: defaultTemplate.name,
+          type: defaultTemplate.type,
+          subject: defaultTemplate.subject || undefined,
+          content: defaultTemplate.content,
+          variables: defaultTemplate.variables,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: '복원 완료',
+          description: `${defaultTemplate.name} 템플릿이 복원되었습니다.`,
+        })
+        loadTemplates()
+      } else {
+        toast({
+          title: '복원 실패',
+          description: result.error || '템플릿 복원에 실패했습니다.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: '오류',
+        description: '템플릿 복원 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      })
+    } finally {
+      setCreatingTemplate(false)
+    }
+  }
+
+  // 기본 템플릿이 이미 등록되어 있는지 확인
+  const isDefaultTemplateRegistered = (name: string) => {
+    return templates.some(t => t.name === name)
   }
 
   const saveKeywordSettings = async () => {
@@ -1548,44 +1763,169 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="template">
+            {/* 사용 가이드 섹션 */}
+            <Card className="mb-6">
+              <Collapsible open={showGuide} onOpenChange={setShowGuide}>
+                <CardHeader className="pb-3">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <HelpCircle className="w-5 h-5 text-blue-500" />
+                      <CardTitle className="text-lg">템플릿 사용 가이드</CardTitle>
+                    </div>
+                    {showGuide ? (
+                      <ChevronUp className="w-5 h-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-500" />
+                    )}
+                  </CollapsibleTrigger>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="pt-0 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <h4 className="font-medium mb-2 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4" />
+                          변수 사용법
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                          템플릿에서 {'{{'}<span className="text-blue-600 font-mono">변수명</span>{'}}'}  형식으로 변수를 사용하면 발송 시 실제 값으로 치환됩니다.
+                        </p>
+                        <div className="flex flex-wrap gap-2 text-sm">
+                          <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border text-xs">{'{{companyName}}'}</code>
+                          <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border text-xs">{'{{deliveryDate}}'}</code>
+                          <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border text-xs">{'{{shortDate}}'}</code>
+                          <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border text-xs">{'{{deliveryTime}}'}</code>
+                          <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border text-xs">{'{{contactNumber}}'}</code>
+                          <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border text-xs">{'{{message}}'}</code>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                        <h4 className="font-medium mb-2 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600" />
+                          SMS 작성 시 주의사항
+                        </h4>
+                        <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                          <li>• SMS는 <strong>90자(한글 기준)</strong> 이내로 작성</li>
+                          <li>• 90자 초과 시 LMS로 발송되어 추가 요금 발생</li>
+                          <li>• 변수가 치환된 후의 최종 길이 고려 필요</li>
+                          <li>• 미리보기로 실제 발송될 내용 확인 권장</li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <h4 className="font-medium mb-2">템플릿 편집 방법</h4>
+                      <ol className="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-decimal list-inside">
+                        <li><strong>기본 템플릿 사용:</strong> 아래 기본 템플릿 중 필요한 것을 선택하여 &quot;복원&quot; 버튼으로 등록</li>
+                        <li><strong>템플릿 수정:</strong> 등록된 템플릿의 <Edit3 className="inline w-4 h-4" /> 버튼을 클릭하여 내용 편집</li>
+                        <li><strong>새 템플릿 생성:</strong> &quot;새 템플릿 만들기&quot; 버튼으로 사용자 정의 템플릿 생성</li>
+                        <li><strong>미리보기:</strong> <Eye className="inline w-4 h-4" /> 버튼으로 샘플 데이터 적용 결과 확인</li>
+                      </ol>
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+
+            {/* 기본 템플릿 섹션 */}
+            <Card className="mb-6">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-500" />
+                  <CardTitle>기본 템플릿</CardTitle>
+                </div>
+                <CardDescription>
+                  자주 사용되는 알림 템플릿입니다. 복원하여 바로 사용하거나 복사하여 수정할 수 있습니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {defaultTemplates.map((dt) => {
+                    const isRegistered = isDefaultTemplateRegistered(dt.name)
+                    return (
+                      <div
+                        key={dt.name}
+                        className={`border rounded-lg p-4 ${isRegistered ? 'border-green-300 bg-green-50/50 dark:bg-green-900/10' : 'border-gray-200 dark:border-gray-700'}`}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(dt.type)}`}>
+                              {getTypeLabel(dt.type)}
+                            </span>
+                            <h4 className="font-medium text-sm">{dt.name}</h4>
+                            {isRegistered && (
+                              <Badge variant="outline" className="text-xs text-green-600 border-green-400">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                등록됨
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">{dt.description}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-2 bg-gray-50 dark:bg-gray-800 p-2 rounded font-mono">
+                          {dt.content}
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          {!isRegistered && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => restoreDefaultTemplate(dt)}
+                              disabled={creatingTemplate}
+                            >
+                              <RotateCcw className="w-3 h-3 mr-1" />
+                              복원
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyFromDefault(dt)}
+                          >
+                            <Copy className="w-3 h-3 mr-1" />
+                            복사하여 새로 만들기
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 내 템플릿 섹션 */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>메시지 템플릿</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      내 템플릿
+                    </CardTitle>
                     <CardDescription>
-                      알림 메시지 템플릿을 관리합니다. 변수는 {'{{'}<span className="text-blue-600">변수명</span>{'}}'}  형식으로 사용합니다.
+                      등록된 템플릿을 관리합니다. 편집하거나 새 템플릿을 만들 수 있습니다.
                     </CardDescription>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={loadTemplates}
-                    disabled={loadingTemplates}
-                  >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${loadingTemplates ? 'animate-spin' : ''}`} />
-                    새로고침
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={loadTemplates}
+                      disabled={loadingTemplates}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${loadingTemplates ? 'animate-spin' : ''}`} />
+                      새로고침
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowNewTemplateDialog(true)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      새 템플릿 만들기
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {/* 변수 도움말 */}
-                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    사용 가능한 변수
-                  </h4>
-                  <div className="flex flex-wrap gap-2 text-sm">
-                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{companyName}}'}</code>
-                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{deliveryDate}}'}</code>
-                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{shortDate}}'}</code>
-                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{deliveryTime}}'}</code>
-                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{contactNumber}}'}</code>
-                    <code className="px-2 py-1 bg-white dark:bg-gray-800 rounded border">{'{{message}}'}</code>
-                  </div>
-                </div>
-
-                {/* 템플릿 목록 */}
                 {loadingTemplates ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -1595,7 +1935,7 @@ export default function SettingsPage() {
                   <div className="text-center py-8 text-gray-500">
                     <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                     <p>등록된 템플릿이 없습니다</p>
-                    <p className="text-sm mt-1">관리자에게 문의하여 기본 템플릿을 생성하세요</p>
+                    <p className="text-sm mt-1">위의 기본 템플릿을 복원하거나 새 템플릿을 만들어보세요</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -1617,11 +1957,12 @@ export default function SettingsPage() {
                               <Badge variant="outline" className="text-xs text-gray-500">비활성</Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handlePreview(template)}
+                              title="미리보기"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -1629,9 +1970,26 @@ export default function SettingsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setEditingTemplate({ ...template })}
+                              title="편집"
                             >
                               <Edit3 className="w-4 h-4" />
                             </Button>
+                            {!template.isDefault && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteTemplate(template.id)}
+                                disabled={deletingTemplateId === template.id}
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                title="삭제"
+                              >
+                                {deletingTemplateId === template.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </Button>
+                            )}
                           </div>
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-2">
@@ -1781,6 +2139,119 @@ export default function SettingsPage() {
                 <DialogFooter>
                   <Button onClick={() => setPreviewTemplate(null)}>
                     닫기
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* 새 템플릿 생성 다이얼로그 */}
+            <Dialog open={showNewTemplateDialog} onOpenChange={setShowNewTemplateDialog}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>새 템플릿 만들기</DialogTitle>
+                  <DialogDescription>
+                    새로운 메시지 템플릿을 생성합니다. 변수는 {'{{'}변수명{'}}'}  형식으로 입력하세요.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>템플릿 이름</Label>
+                      <Input
+                        value={newTemplate.name}
+                        onChange={(e) =>
+                          setNewTemplate({ ...newTemplate, name: e.target.value })
+                        }
+                        placeholder="MY_CUSTOM_TEMPLATE"
+                      />
+                      <p className="text-xs text-gray-500">영문 대문자, 숫자, 언더스코어(_) 사용 권장</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>메시지 유형</Label>
+                      <Select
+                        value={newTemplate.type}
+                        onValueChange={(value: 'SMS' | 'KAKAO_ALIMTALK' | 'EMAIL') =>
+                          setNewTemplate({ ...newTemplate, type: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SMS">SMS</SelectItem>
+                          <SelectItem value="KAKAO_ALIMTALK">카카오 알림톡</SelectItem>
+                          <SelectItem value="EMAIL">이메일</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {(newTemplate.type === 'KAKAO_ALIMTALK' || newTemplate.type === 'EMAIL') && (
+                    <div className="space-y-2">
+                      <Label>제목</Label>
+                      <Input
+                        value={newTemplate.subject}
+                        onChange={(e) =>
+                          setNewTemplate({ ...newTemplate, subject: e.target.value })
+                        }
+                        placeholder="메시지 제목"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label>내용</Label>
+                    <Textarea
+                      value={newTemplate.content}
+                      onChange={(e) =>
+                        setNewTemplate({ ...newTemplate, content: e.target.value })
+                      }
+                      className="min-h-[150px] font-mono text-sm"
+                      placeholder="템플릿 내용을 입력하세요. 변수는 {{변수명}} 형식으로 입력합니다."
+                    />
+                    <p className="text-xs text-gray-500">
+                      {newTemplate.type === 'SMS' && 'SMS는 90자(한글 기준) 이내로 작성하세요. '}
+                      현재: {newTemplate.content.length}자
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <h5 className="text-sm font-medium mb-2">사용 가능한 변수 (클릭하여 삽입)</h5>
+                    <div className="flex flex-wrap gap-1">
+                      {['companyName', 'deliveryDate', 'shortDate', 'deliveryTime', 'contactNumber', 'message'].map((v) => (
+                        <code
+                          key={v}
+                          className="text-xs px-2 py-1 bg-white dark:bg-gray-700 rounded border cursor-pointer hover:bg-blue-100"
+                          onClick={() => {
+                            setNewTemplate({
+                              ...newTemplate,
+                              content: newTemplate.content + `{{${v}}}`,
+                            })
+                          }}
+                        >
+                          {`{{${v}}}`}
+                        </code>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowNewTemplateDialog(false)
+                      setNewTemplate({ name: '', type: 'SMS', content: '', subject: '' })
+                    }}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    onClick={createNewTemplate}
+                    disabled={creatingTemplate || !newTemplate.name || !newTemplate.content}
+                  >
+                    {creatingTemplate ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4 mr-2" />
+                    )}
+                    생성
                   </Button>
                 </DialogFooter>
               </DialogContent>
