@@ -212,6 +212,13 @@ export default function SettingsPage() {
   })
   const [creatingTemplate, setCreatingTemplate] = useState(false)
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null)
+  const [switchingToTemplateId, setSwitchingToTemplateId] = useState<string | null>(null)
+
+  // 발송에 사용되는 템플릿 이름 (시스템에서 사용)
+  const ACTIVE_TEMPLATE_NAMES = {
+    SMS: 'ORDER_RECEIVED_SMS',
+    KAKAO_ALIMTALK: 'ORDER_RECEIVED_KAKAO',
+  } as const
 
   // 기본 템플릿 정의
   const defaultTemplates = [
@@ -572,6 +579,85 @@ export default function SettingsPage() {
   // 기본 템플릿이 이미 등록되어 있는지 확인
   const isDefaultTemplateRegistered = (name: string) => {
     return templates.some(t => t.name === name)
+  }
+
+  // 현재 발송에 사용 중인 템플릿인지 확인
+  const isActiveTemplate = (template: MessageTemplate) => {
+    return template.name === ACTIVE_TEMPLATE_NAMES.SMS ||
+           template.name === ACTIVE_TEMPLATE_NAMES.KAKAO_ALIMTALK
+  }
+
+  // 해당 타입의 활성 템플릿 이름 가져오기
+  const getActiveTemplateName = (type: 'SMS' | 'KAKAO_ALIMTALK' | 'EMAIL') => {
+    if (type === 'SMS') return ACTIVE_TEMPLATE_NAMES.SMS
+    if (type === 'KAKAO_ALIMTALK') return ACTIVE_TEMPLATE_NAMES.KAKAO_ALIMTALK
+    return null
+  }
+
+  // 템플릿 전환 (선택한 템플릿으로 발송 템플릿 변경)
+  const switchToTemplate = async (template: MessageTemplate) => {
+    const activeTemplateName = getActiveTemplateName(template.type)
+    if (!activeTemplateName) {
+      toast({
+        title: '지원하지 않는 타입',
+        description: '이메일 템플릿은 전환 기능을 지원하지 않습니다.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setSwitchingToTemplateId(template.id)
+    try {
+      // 1. 기존 활성 템플릿 찾기
+      const currentActive = templates.find(t => t.name === activeTemplateName)
+
+      // 2. 기존 활성 템플릿이 있으면 이름 변경 (백업)
+      if (currentActive) {
+        const backupName = `${activeTemplateName}_BACKUP_${Date.now()}`
+        await fetch('/api/notifications/templates', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: currentActive.id,
+            name: backupName,
+          }),
+        })
+      }
+
+      // 3. 선택한 템플릿 이름을 활성 템플릿 이름으로 변경
+      const response = await fetch('/api/notifications/templates', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: template.id,
+          name: activeTemplateName,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: '전환 완료',
+          description: `"${template.name}" 템플릿이 발송 템플릿으로 설정되었습니다.`,
+        })
+        loadTemplates()
+      } else {
+        toast({
+          title: '전환 실패',
+          description: result.error || '템플릿 전환에 실패했습니다.',
+          variant: 'destructive',
+        })
+      }
+    } catch (error) {
+      toast({
+        title: '오류',
+        description: '템플릿 전환 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      })
+    } finally {
+      setSwitchingToTemplateId(null)
+    }
   }
 
   const saveKeywordSettings = async () => {
@@ -1939,74 +2025,119 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {templates.map((template) => (
-                      <div
-                        key={template.id}
-                        className="border rounded-lg p-4 hover:border-blue-300 transition-colors"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(template.type)}`}>
-                              {getTypeLabel(template.type)}
-                            </span>
-                            <h4 className="font-medium">{template.name}</h4>
-                            {template.isDefault && (
-                              <Badge variant="secondary" className="text-xs">기본</Badge>
-                            )}
-                            {!template.isActive && (
-                              <Badge variant="outline" className="text-xs text-gray-500">비활성</Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handlePreview(template)}
-                              title="미리보기"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingTemplate({ ...template })}
-                              title="편집"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </Button>
-                            {!template.isDefault && (
+                    {templates.map((template) => {
+                      const isActive = isActiveTemplate(template)
+                      const activeLabel = template.type === 'SMS' ? 'SMS 발주 알림' :
+                                         template.type === 'KAKAO_ALIMTALK' ? '카카오 발주 알림' : null
+                      const canSwitchTo = !isActive && (template.type === 'SMS' || template.type === 'KAKAO_ALIMTALK')
+
+                      return (
+                        <div
+                          key={template.id}
+                          className={`border rounded-lg p-4 transition-colors ${
+                            isActive
+                              ? 'border-green-400 bg-green-50/50 dark:bg-green-900/10'
+                              : 'hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(template.type)}`}>
+                                {getTypeLabel(template.type)}
+                              </span>
+                              <h4 className="font-medium">{template.name}</h4>
+                              {template.isDefault && (
+                                <Badge variant="secondary" className="text-xs">기본</Badge>
+                              )}
+                              {!template.isActive && (
+                                <Badge variant="outline" className="text-xs text-gray-500">비활성</Badge>
+                              )}
+                              {isActive && (
+                                <Badge className="text-xs bg-green-500 hover:bg-green-600">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  {activeLabel} 사용 중
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => deleteTemplate(template.id)}
-                                disabled={deletingTemplateId === template.id}
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                title="삭제"
+                                onClick={() => handlePreview(template)}
+                                title="미리보기"
                               >
-                                {deletingTemplateId === template.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
+                                <Eye className="w-4 h-4" />
                               </Button>
-                            )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingTemplate({ ...template })}
+                                title="편집"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </Button>
+                              {!template.isDefault && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteTemplate(template.id)}
+                                  disabled={deletingTemplateId === template.id}
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                  title="삭제"
+                                >
+                                  {deletingTemplateId === template.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </div>
+
+                          {/* 사용 중 설명 또는 전환 버튼 */}
+                          {isActive && (
+                            <div className="mb-2 px-2 py-1 bg-green-100 dark:bg-green-900/30 rounded text-xs text-green-700 dark:text-green-300">
+                              📌 이 템플릿이 {activeLabel}에 사용됩니다. 내용을 편집하면 실제 발송에 반영됩니다.
+                            </div>
+                          )}
+
+                          <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-2">
+                            {template.content}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {template.variables.map((v) => (
+                              <span
+                                key={v}
+                                className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-400"
+                              >
+                                {v}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* 이 템플릿으로 사용하기 버튼 */}
+                          {canSwitchTo && (
+                            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => switchToTemplate(template)}
+                                disabled={switchingToTemplateId === template.id}
+                                className="w-full sm:w-auto"
+                              >
+                                {switchingToTemplateId === template.id ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                )}
+                                이 템플릿을 {template.type === 'SMS' ? 'SMS' : '카카오'} 발송에 사용하기
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap line-clamp-2">
-                          {template.content}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {template.variables.map((v) => (
-                            <span
-                              key={v}
-                              className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-400"
-                            >
-                              {v}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>

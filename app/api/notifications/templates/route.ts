@@ -118,7 +118,7 @@ async function updateTemplate(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, subject, content, variables, isActive } = body
+    const { id, name, subject, content, variables, isActive } = body
 
     if (!id) {
       return NextResponse.json({ success: false, error: '템플릿 ID가 필요합니다.' }, { status: 400 })
@@ -135,9 +135,28 @@ async function updateTemplate(request: NextRequest) {
       return NextResponse.json({ success: false, error: '템플릿을 찾을 수 없습니다.' }, { status: 404 })
     }
 
+    // 이름 변경 시 중복 확인 (자기 자신 제외)
+    if (name && name !== template.name) {
+      const existingWithName = await prisma.messageTemplate.findFirst({
+        where: {
+          tenantId,
+          name,
+          id: { not: id },
+        },
+      })
+
+      if (existingWithName) {
+        return NextResponse.json(
+          { success: false, error: '이미 같은 이름의 템플릿이 존재합니다.' },
+          { status: 400 }
+        )
+      }
+    }
+
     const updated = await prisma.messageTemplate.update({
       where: { id },
       data: {
+        ...(name && { name }),
         subject,
         content,
         variables,
