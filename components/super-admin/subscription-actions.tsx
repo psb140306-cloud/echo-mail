@@ -58,7 +58,8 @@ export function SubscriptionActions({
         throw new Error('구독 취소 실패');
       }
 
-      router.refresh();
+      // 페이지 새로고침으로 변경된 데이터 반영
+      window.location.reload();
     } catch (error) {
       alert('구독 취소 중 오류가 발생했습니다.');
     } finally {
@@ -81,7 +82,8 @@ export function SubscriptionActions({
         throw new Error('구독 재개 실패');
       }
 
-      router.refresh();
+      // 페이지 새로고침으로 변경된 데이터 반영
+      window.location.reload();
     } catch (error) {
       alert('구독 재개 중 오류가 발생했습니다.');
     } finally {
@@ -110,7 +112,8 @@ export function SubscriptionActions({
 
       setIsPlanModalOpen(false);
       setSelectedPlan('');
-      router.refresh();
+      // 페이지 새로고침으로 변경된 데이터 반영
+      window.location.reload();
     } catch (error) {
       alert(error instanceof Error ? error.message : '플랜 변경 중 오류가 발생했습니다.');
     } finally {
