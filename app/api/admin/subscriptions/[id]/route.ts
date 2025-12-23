@@ -36,6 +36,19 @@ export async function GET(
       )
     }
 
+    // Tenant null check - 데이터 무결성 확인
+    if (!dbSubscription.tenant) {
+      console.error('[Admin Subscription Detail API] Tenant not found for subscription:', id)
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Subscription data is corrupted: tenant not found',
+          subscriptionId: id
+        },
+        { status: 500 }
+      )
+    }
+
     const subscription = {
       id: dbSubscription.id,
       plan_id: dbSubscription.plan,
