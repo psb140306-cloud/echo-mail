@@ -1,23 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { superAdminGuard } from '@/lib/api/super-admin-guard';
+import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { getSystemHealth } from '@/lib/monitoring/health-check';
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const guardResult = await superAdminGuard();
-    if (guardResult.error) {
-      return guardResult.error;
-    }
+    // 슈퍼어드민 권한 확인
+    const authError = await requireSuperAdmin();
+    if (authError) return authError;
 
     const health = await getSystemHealth();
 
     return NextResponse.json(health);
   } catch (error) {
-    console.error('Error checking system health:', error);
+    console.error('[Super Admin Health API] Error:', error);
     return NextResponse.json(
-      { error: 'Failed to check system health' },
+      {
+        success: false,
+        error: 'Failed to check system health',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

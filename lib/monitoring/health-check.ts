@@ -115,13 +115,27 @@ export async function checkApiHealth(): Promise<HealthStatus> {
   try {
     const startTime = Date.now();
 
-    // Simple health check
+    // Check process memory usage
+    const memUsage = process.memoryUsage();
+    const heapUsedMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    const heapTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+    const heapUsagePercent = (heapUsedMB / heapTotalMB) * 100;
+
     const responseTime = Date.now() - startTime;
+
+    // Check if memory usage is critical
+    if (heapUsagePercent > 90) {
+      return {
+        status: 'degraded',
+        responseTime,
+        message: `High memory usage: ${heapUsedMB}MB / ${heapTotalMB}MB (${heapUsagePercent.toFixed(1)}%)`,
+      };
+    }
 
     return {
       status: 'healthy',
       responseTime,
-      message: 'API is responding',
+      message: `API server healthy • Memory: ${heapUsedMB}MB / ${heapTotalMB}MB`,
     };
   } catch (error) {
     return {
