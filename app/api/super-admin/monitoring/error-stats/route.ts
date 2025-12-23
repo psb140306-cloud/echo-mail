@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/middleware/super-admin';
+import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { metricsCollector } from '@/lib/monitoring/metrics-collector';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireSuperAdmin();
+    const authError = await requireSuperAdmin();
+    if (authError) return authError;
 
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '24h';

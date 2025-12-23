@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/middleware/super-admin';
+import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { metricsCollector } from '@/lib/monitoring/metrics-collector';
 import { prisma } from '@/lib/db';
 
@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireSuperAdmin();
+    const authError = await requireSuperAdmin();
+    if (authError) return authError;
 
     // 알림 로그에서 최근 통계 가져오기
     const oneHourAgo = new Date(Date.now() - 3600000);

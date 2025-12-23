@@ -76,7 +76,12 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nrefactor: SMS 테스트 버튼 위치 변경\n\n- 대시보드에서 SMS 테스트 버튼 제거\n- 설정 > 알림 탭에 SMS 테스트 링크 추가\n- 아이콘을 Link2로 변경\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 템플릿 관리 UI 구현\n\n- 설정 > 템플릿 탭에 템플릿 목록 조회 UI 추가\n- 템플릿 편집 다이얼로그 구현 \\(내용 편집, 활성화 토글\\)\n- 변수 도움말 표시 \\(사용 가능한 변수 목록\\)\n- 템플릿 미리보기 기능 \\(샘플 데이터로 렌더링\\)\n- API 연동 \\(/api/notifications/templates\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 템플릿 관리 UI 개선\n\n- 접기/펼치기 가능한 사용 가이드 섹션 추가\n- 기본 템플릿 4종 제공 \\(ORDER_RECEIVED_SMS, ORDER_RECEIVED_KAKAO 등\\)\n- 기본 템플릿 복원 및 복사하여 새로 만들기 기능\n- 새 템플릿 생성 다이얼로그 구현\n- 사용자 템플릿 삭제 기능 추가\n- UI 구조 개선 \\(가이드 → 기본 템플릿 → 내 템플릿\\)\n- @radix-ui/react-collapsible 패키지 추가\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(npx vercel logs:*)"
+      "Bash(npx vercel logs:*)",
+      "Bash(for file in api-stats/route.ts database-performance/route.ts error-logs/route.ts error-stats/route.ts metrics/route.ts performance/route.ts queue-status/route.ts)",
+      "Bash(do sed -i \"s|from ''@/lib/middleware/super-admin''|from ''@/lib/auth/super-admin''|g\" \"$file\")",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

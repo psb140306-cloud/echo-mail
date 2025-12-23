@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/middleware/super-admin';
+import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireSuperAdmin();
+    const authError = await requireSuperAdmin();
+    if (authError) return authError;
 
     // Mock 쿼리 성능 데이터 (실제로는 PostgreSQL의 pg_stat_statements 사용)
     const queryPerformance = [

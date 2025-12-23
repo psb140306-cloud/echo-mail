@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/middleware/super-admin'
+import { requireSuperAdmin } from '@/lib/auth/super-admin'
 import { prisma } from '@/lib/db'
 
 // SMS/카카오 API 단가 (원)
@@ -12,7 +12,8 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     // 슈퍼 어드민 권한 확인
-    await requireSuperAdmin()
+    const authError = await requireSuperAdmin()
+    if (authError) return authError
 
     // 이번 달 시작일
     const now = new Date()

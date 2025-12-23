@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireSuperAdmin } from '@/lib/middleware/super-admin';
+import { requireSuperAdmin } from '@/lib/auth/super-admin';
 import { metricsCollector } from '@/lib/monitoring/metrics-collector';
 import os from 'os';
 
@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    await requireSuperAdmin();
+    const authError = await requireSuperAdmin();
+    if (authError) return authError;
 
     // 시스템 메트릭 수집
     const cpus = os.cpus();
