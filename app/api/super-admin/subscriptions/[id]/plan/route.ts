@@ -51,33 +51,40 @@ export async function PATCH(
       )
     }
 
+    // 플랜에 따른 상태 결정: 유료 플랜이면 ACTIVE, 무료 체험이면 TRIAL
+    const newStatus = planEnum === 'FREE_TRIAL' ? 'TRIAL' : 'ACTIVE'
+
     // 트랜잭션으로 모든 업데이트 처리
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Subscription 테이블 업데이트
+      // 1. Subscription 테이블 업데이트 (플랜 + 가격 + 상태)
       const updatedSubscription = await tx.subscription.update({
         where: { id },
         data: {
           plan: planEnum,
           priceAmount: PLAN_PRICES[planEnum],
+          status: newStatus,
           updatedAt: new Date(),
         },
       })
 
-      // 2. Tenant 테이블 업데이트
+      // 2. Tenant 테이블 업데이트 (플랜 + 상태)
       await tx.tenant.update({
         where: { id: currentSubscription.tenantId },
         data: {
           subscriptionPlan: planEnum,
+          subscriptionStatus: newStatus,
           updatedAt: new Date(),
         },
       })
 
-      // 3. SubscriptionHistory 레코드 생성
+      // 3. SubscriptionHistory 레코드 생성 (플랜 + 상태 변경 기록)
       await tx.subscriptionHistory.create({
         data: {
           subscriptionId: id,
           previousPlan: currentSubscription.plan,
           newPlan: planEnum,
+          previousStatus: currentSubscription.status,
+          newStatus: newStatus,
           changeType: 'ADMIN_CHANGE',
           reason: 'Super admin manual plan change',
           changedAt: new Date(),
@@ -91,6 +98,8 @@ export async function PATCH(
       subscriptionId: id,
       previousPlan: currentSubscription.plan,
       newPlan: planEnum,
+      previousStatus: currentSubscription.status,
+      newStatus: newStatus,
       tenantId: currentSubscription.tenantId,
     })
 
