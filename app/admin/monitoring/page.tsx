@@ -19,6 +19,12 @@ interface SystemOverview {
   status: 'healthy' | 'degraded' | 'critical';
 }
 
+interface DatabaseStatus {
+  status: 'healthy' | 'degraded' | 'down';
+  responseTime?: number;
+  message?: string;
+}
+
 export default function MonitoringPage() {
   const [overview, setOverview] = useState<SystemOverview>({
     uptime: 0,
@@ -27,6 +33,11 @@ export default function MonitoringPage() {
     avgResponseTime: 0,
     errorRate: 0,
     status: 'healthy',
+  });
+
+  const [dbStatus, setDbStatus] = useState<DatabaseStatus>({
+    status: 'healthy',
+    message: 'Checking...',
   });
 
   useEffect(() => {
@@ -53,8 +64,27 @@ export default function MonitoringPage() {
       }
     };
 
+    const fetchDbStatus = async () => {
+      try {
+        const response = await fetch('/api/super-admin/db-status');
+        if (!response.ok) throw new Error('DB 상태 조회 실패');
+        const data = await response.json();
+        setDbStatus(data);
+      } catch (err) {
+        setDbStatus({
+          status: 'down',
+          message: 'Failed to check database status',
+        });
+      }
+    };
+
     fetchOverview();
-    const interval = setInterval(fetchOverview, 10000); // 10초마다 업데이트
+    fetchDbStatus();
+
+    const interval = setInterval(() => {
+      fetchOverview();
+      fetchDbStatus();
+    }, 30000); // 30초마다 업데이트
 
     return () => clearInterval(interval);
   }, []);
@@ -82,6 +112,48 @@ export default function MonitoringPage() {
         </div>
         {getStatusBadge()}
       </div>
+
+      {/* DB 연결 상태 */}
+      <Card className={
+        dbStatus.status === 'healthy' ? 'border-green-200 bg-green-50' :
+        dbStatus.status === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
+        'border-red-200 bg-red-50'
+      }>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${
+                dbStatus.status === 'healthy' ? 'bg-green-600' :
+                dbStatus.status === 'degraded' ? 'bg-yellow-600' :
+                'bg-red-600'
+              }`} />
+              <div>
+                <h3 className="font-semibold">데이터베이스</h3>
+                <p className={`text-sm ${
+                  dbStatus.status === 'healthy' ? 'text-green-700' :
+                  dbStatus.status === 'degraded' ? 'text-yellow-700' :
+                  'text-red-700'
+                }`}>
+                  {dbStatus.message}
+                  {dbStatus.responseTime && ` • ${dbStatus.responseTime}ms`}
+                </p>
+              </div>
+            </div>
+            <Badge variant={
+              dbStatus.status === 'healthy' ? 'outline' :
+              dbStatus.status === 'degraded' ? 'outline' :
+              'destructive'
+            } className={
+              dbStatus.status === 'healthy' ? 'text-green-600 border-green-600' :
+              dbStatus.status === 'degraded' ? 'text-yellow-600 border-yellow-600' :
+              ''
+            }>
+              {dbStatus.status === 'healthy' ? '정상' :
+               dbStatus.status === 'degraded' ? '저하' : '중단'}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 시스템 개요 */}
       <div className="grid gap-4 md:grid-cols-4">
