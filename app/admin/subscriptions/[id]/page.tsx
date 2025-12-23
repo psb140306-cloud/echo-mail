@@ -19,7 +19,6 @@ interface Subscription {
     id: string;
     name: string;
     slug: string;
-    status: string;
   };
 }
 

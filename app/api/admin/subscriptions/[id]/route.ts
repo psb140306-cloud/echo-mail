@@ -23,7 +23,6 @@ export async function GET(
             id: true,
             name: true,
             subdomain: true,
-            status: true,
           },
         },
       },
@@ -62,7 +61,6 @@ export async function GET(
         id: dbSubscription.tenant.id,
         name: dbSubscription.tenant.name,
         slug: dbSubscription.tenant.subdomain,
-        status: dbSubscription.tenant.status,
       },
     }
 
