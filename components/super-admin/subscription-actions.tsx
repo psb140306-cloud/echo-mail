@@ -64,11 +64,14 @@ export function SubscriptionActions({
   };
 
   const handleChangePlan = async () => {
-    const newPlan = prompt('새 플랜을 입력하세요 (starter, professional, enterprise):');
+    const newPlan = prompt('새 플랜을 입력하세요 (FREE_TRIAL, STARTER, PROFESSIONAL, BUSINESS, ENTERPRISE):');
     if (!newPlan) return;
 
-    if (!['starter', 'professional', 'enterprise'].includes(newPlan)) {
-      alert('유효하지 않은 플랜입니다.');
+    const validPlans = ['FREE_TRIAL', 'STARTER', 'PROFESSIONAL', 'BUSINESS', 'ENTERPRISE'];
+    const planUpper = newPlan.toUpperCase();
+
+    if (!validPlans.includes(planUpper)) {
+      alert(`유효하지 않은 플랜입니다. 사용 가능한 플랜: ${validPlans.join(', ')}`);
       return;
     }
 
@@ -77,7 +80,7 @@ export function SubscriptionActions({
       const response = await fetch(`/api/super-admin/subscriptions/${subscriptionId}/plan`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_id: newPlan }),
+        body: JSON.stringify({ plan_id: planUpper }),
       });
 
       if (!response.ok) {
