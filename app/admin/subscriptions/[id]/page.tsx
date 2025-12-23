@@ -1,58 +1,90 @@
-import { prisma } from '@/lib/db';
+'use client'
+
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { SubscriptionActions } from '@/components/super-admin/subscription-actions';
 
-interface SubscriptionDetailPageProps {
-  params: Promise<{
+interface Subscription {
+  id: string;
+  plan_id: string;
+  status: string;
+  current_period_start: Date | null;
+  current_period_end: Date | null;
+  cancel_at_period_end: boolean;
+  price_per_month: number | null;
+  tenant_id: string;
+  tenants: {
     id: string;
-  }>;
+    name: string;
+    slug: string;
+    status: string;
+  };
 }
 
-export default async function SubscriptionDetailPage({ params }: SubscriptionDetailPageProps) {
-  const { id } = await params;
+export default function SubscriptionDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params?.id as string;
 
-  const dbSubscription = await prisma.subscription.findUnique({
-    where: { id },
-    include: {
-      tenant: {
-        select: {
-          id: true,
-          name: true,
-          subdomain: true,
-          status: true,
-        },
-      },
-    },
-  });
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!dbSubscription) {
-    notFound();
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchSubscription = async () => {
+      try {
+        const response = await fetch(`/api/admin/subscriptions/${id}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            router.push('/admin/subscriptions');
+            return;
+          }
+          throw new Error('Failed to fetch subscription');
+        }
+        const data = await response.json();
+        setSubscription(data.subscription);
+        setPayments(data.payments || []);
+        setInvoices(data.invoices || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.error('Subscription detail error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubscription();
+  }, [id, router]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">로딩 중...</h2>
+        </div>
+      </div>
+    );
   }
 
-  const subscription = {
-    id: dbSubscription.id,
-    plan_id: dbSubscription.plan,
-    status: dbSubscription.status.toLowerCase(),
-    current_period_start: dbSubscription.currentPeriodStart,
-    current_period_end: dbSubscription.currentPeriodEnd,
-    cancel_at_period_end: dbSubscription.cancelAtPeriodEnd,
-    price_per_month: dbSubscription.priceAmount,
-    tenant_id: dbSubscription.tenantId,
-    tenants: {
-      id: dbSubscription.tenant.id,
-      name: dbSubscription.tenant.name,
-      slug: dbSubscription.tenant.subdomain,
-      status: dbSubscription.tenant.status,
-    },
-  };
-
-  // Get payment history - using empty array for now as Payment model may not exist
-  const payments: any[] = [];
-
-  // Get invoices - using empty array for now as Invoice model may not exist
-  const invoices: any[] = [];
+  if (error || !subscription) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <p className="text-red-600">
+              {error || '구독 정보를 찾을 수 없습니다.'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

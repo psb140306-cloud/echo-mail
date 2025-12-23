@@ -1,41 +1,55 @@
-export const dynamic = 'force-dynamic';
-import { prisma } from '@/lib/db';
+'use client'
+
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 
-export default async function SubscriptionsPage() {
-  let subscriptions: any[] = [];
-  let error: Error | null = null;
+interface Subscription {
+  id: string;
+  plan_id: string;
+  status: string;
+  current_period_end: Date | null;
+  price_per_month: number | null;
+  tenants: {
+    name: string;
+    slug: string;
+  };
+}
 
-  try {
-    const dbSubscriptions = await prisma.subscription.findMany({
-      include: {
-        tenant: {
-          select: {
-            name: true,
-            subdomain: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+export default function SubscriptionsPage() {
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    subscriptions = dbSubscriptions.map((sub) => ({
-      id: sub.id,
-      plan_id: sub.plan,
-      status: sub.status.toLowerCase(),
-      current_period_end: sub.currentPeriodEnd,
-      price_per_month: sub.priceAmount,
-      tenants: {
-        name: sub.tenant.name,
-        slug: sub.tenant.subdomain,
-      },
-    }));
-  } catch (err) {
-    error = err as Error;
-    console.error('Subscriptions query error:', err);
+  useEffect(() => {
+    const fetchSubscriptions = async () => {
+      try {
+        const response = await fetch('/api/admin/subscriptions');
+        if (!response.ok) {
+          throw new Error('Failed to fetch subscriptions');
+        }
+        const data = await response.json();
+        setSubscriptions(data.subscriptions || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.error('Subscriptions query error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubscriptions();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">구독 현황</h2>
+          <p className="text-gray-500 mt-2">로딩 중...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
