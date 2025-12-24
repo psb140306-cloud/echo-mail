@@ -10,6 +10,7 @@ import { getKSTStartOfDaysAgo, isKSTToday, formatKSTDate } from '@/lib/utils/dat
 import { canAccessFullMailbox } from '@/lib/subscription/plan-checker'
 import { SubscriptionPlan } from '@/lib/subscription/plans'
 import { prisma } from '@/lib/db'
+import { decodeEmailHeader, decodeEmailAddress, getSafeDisplayName } from './email-decoder'
 // TODO: 미등록 업체 알림 로직 - 순환 참조 또는 런타임 에러로 인해 임시 비활성화
 // import { unregisteredCompanyHandler } from '@/lib/unregistered-company-handler'
 
@@ -17,21 +18,25 @@ import { prisma } from '@/lib/db'
  * MIME 인코딩된 메일 헤더 디코딩 (제목, 발신자명 등)
  * 예: =?UTF-8?B?7ZWc6riA7YWM7Iqk7Yq4?= → 한글테스트
  * 예: =?euc-kr?Q?=C7=D1=B1=DB?= → 한글
+ * 강화된 디코더 사용 (특수문자 정규화 포함)
  */
 function decodeMimeHeader(header: string | undefined): string {
   if (!header) return ''
 
-  try {
-    // libmime의 decode 함수 사용
-    const decoded = decodeMailHeader(header)
-    return decoded || header
-  } catch (error) {
-    logger.warn('[MailMonitor] MIME 헤더 디코딩 실패, 원본 반환:', {
-      header: header.substring(0, 100),
-      error: error instanceof Error ? error.message : 'Unknown error',
+  // 강화된 디코더 사용 (여러 인코딩 시도 + 특수문자 정규화)
+  const result = decodeEmailHeader(header)
+
+  // 디코딩 결과 로깅 (특수문자 변환 또는 디코딩 실패 시)
+  if (result.hasSpecialChars || result.decodingMethod === 'fallback') {
+    logger.info('[MailMonitor] 헤더 디코딩 완료', {
+      original: header.substring(0, 50),
+      decoded: result.decoded.substring(0, 50),
+      method: result.decodingMethod,
+      hasSpecialChars: result.hasSpecialChars,
     })
-    return header
   }
+
+  return result.decoded
 }
 
 // 파싱된 이메일 정보 인터페이스
@@ -811,7 +816,18 @@ export class MailMonitorService {
 
         // 발신자 이름: mailparser에서 추출 (MIME 자동 디코딩) → IMAP envelope fallback
         // mailparser가 MIME 인코딩을 제대로 디코딩하므로 우선 사용
-        const senderName = parsedEmail.fromName || decodeMimeHeader(from?.name || '') || null
+        // 강화된 디코더로 특수문자(∧ 등) 정규화
+        let senderName: string | null = null
+
+        if (parsedEmail.fromName) {
+          // mailparser가 이미 디코딩했지만, 특수문자 정규화를 위해 추가 처리
+          const decoded = decodeEmailHeader(parsedEmail.fromName)
+          senderName = decoded.decoded
+        } else if (from?.name) {
+          // IMAP envelope fallback
+          const decoded = decodeEmailHeader(from.name)
+          senderName = decoded.decoded
+        }
 
         // 디버그: senderName 로그
         logger.info('[MailMonitor] 발신자 정보', {
