@@ -1682,6 +1682,14 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* 안내 문구 */}
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>💡 안내:</strong> 재시도 기능은 활성화한 시점 이후 발생하는 알림 실패에만 적용됩니다.
+                    이전에 실패한 알림은 재시도되지 않습니다.
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <Label>자동 재시도 활성화</Label>
