@@ -306,10 +306,14 @@ export default function HolidaysPage() {
       const holiday = getHolidayForDate(date)
       if (holiday) {
         return (
-          <div className="flex flex-col items-center mt-1">
-            <div
-              className={`w-1.5 h-1.5 rounded-full ${holiday.isLunar ? 'bg-purple-500' : 'bg-red-500'}`}
-            />
+          <div className="flex flex-col items-center mt-0.5">
+            <span
+              className={`text-[10px] font-medium truncate max-w-full px-0.5 leading-tight ${
+                holiday.isLunar ? 'text-purple-600 dark:text-purple-400' : 'text-red-600 dark:text-red-400'
+              }`}
+            >
+              {holiday.name}
+            </span>
           </div>
         )
       }
@@ -321,7 +325,10 @@ export default function HolidaysPage() {
     if (view === 'month') {
       const holiday = getHolidayForDate(date)
       if (holiday) {
-        return 'bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40'
+        // 음력: 보라색 배경/텍스트, 양력: 빨간색 배경/텍스트
+        return holiday.isLunar
+          ? 'holiday-lunar bg-purple-50 dark:bg-purple-950/20 hover:bg-purple-100 dark:hover:bg-purple-950/40'
+          : 'holiday-solar bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40'
       }
     }
     return ''

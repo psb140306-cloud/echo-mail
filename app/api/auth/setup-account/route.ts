@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { logger } from '@/lib/utils/logger'
 import { templateManager } from '@/lib/notifications/templates/template-manager'
 import { PLAN_PRICING } from '@/lib/subscription/plans'
+import { generateHolidays } from '@/lib/utils/holiday-calculator'
 
 export const dynamic = 'force-dynamic'
 
@@ -140,6 +141,39 @@ export async function POST(request: NextRequest) {
         error: templateError,
       })
       // 템플릿 생성 실패해도 계정 생성은 성공으로 처리
+    }
+
+    // 기본 공휴일 자동 생성 (현재 연도 + 다음 연도)
+    try {
+      const currentYear = new Date().getFullYear()
+      const yearsToGenerate = [currentYear, currentYear + 1]
+
+      for (const year of yearsToGenerate) {
+        const holidays = generateHolidays(year)
+
+        if (holidays.length > 0) {
+          await prisma.holiday.createMany({
+            data: holidays.map((h) => ({
+              name: h.name,
+              date: new Date(h.date),
+              isRecurring: false,
+              tenantId: tenant.id,
+            })),
+            skipDuplicates: true,
+          })
+        }
+      }
+
+      logger.info('Default holidays created for new tenant', {
+        tenantId: tenant.id,
+        years: yearsToGenerate,
+      })
+    } catch (holidayError) {
+      logger.error('Failed to create default holidays', {
+        tenantId: tenant.id,
+        error: holidayError,
+      })
+      // 공휴일 생성 실패해도 계정 생성은 성공으로 처리
     }
 
     return NextResponse.json({
