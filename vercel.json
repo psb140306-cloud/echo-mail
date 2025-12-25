@@ -37,10 +37,6 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/daily-tasks",
-      "schedule": "0 9 * * *"
-    },
-    {
       "path": "/api/cron/generate-holidays",
       "schedule": "0 0 1 12 *"
     }
