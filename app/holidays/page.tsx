@@ -337,9 +337,9 @@ export default function HolidaysPage() {
   return (
     <>
       <AppHeader />
-      <div className="min-h-screen bg-gray-50/40">
+      <div className="min-h-screen bg-gray-50 dark:bg-background">
         <main className="container mx-auto py-6 space-y-6">
-          <h1 className="text-2xl font-bold">공휴일 관리</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-foreground">공휴일 관리</h1>
         {/* 연도 선택 및 액션 버튼 */}
         <Card>
           <CardHeader>

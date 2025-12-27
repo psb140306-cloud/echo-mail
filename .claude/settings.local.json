@@ -81,7 +81,9 @@
       "Bash(do sed -i \"s|from ''@/lib/middleware/super-admin''|from ''@/lib/auth/super-admin''|g\" \"$file\")",
       "Bash(echo:*)",
       "Bash(done)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git revert:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 공휴일 자동 생성 및 캘린더 UI 개선\n\n- 테넌트 생성 시 현재/다음 연도 공휴일 자동 생성\n- 매년 12월 1일 크론으로 다음 연도 공휴일 자동 생성\n- 캘린더에 공휴일 이름 표시\n- 양력 공휴일: 빨간색, 음력 공휴일: 보라색 구분\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []
