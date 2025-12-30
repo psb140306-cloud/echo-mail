@@ -108,21 +108,23 @@ export class DeliveryCalculator {
       let baseDate = options.orderDateTime
       let isBeforeCutoff = false
 
-      if (!isWorkingDay) {
-        // 휴무일인 경우: 다음 영업일을 기준일로 이월하되, 마감 판단은 주문 시각(KST)을 그대로 사용
-        baseDate = await this.getNextBusinessDay(options.orderDateTime, rule, options.tenantId, options.customHolidays)
-        logger.info('휴무일 주문 - 다음 영업일로 이월', {
-          originalDate: this.formatDateKST(options.orderDateTime),
-          nextBusinessDay: this.formatDateKST(baseDate),
-        })
-      }
-
       // 배송일수 및 시간 결정
       let deliveryDays: number
       let deliveryTime: string
 
-      if (rule.cutoffCount === 2 && rule.secondCutoffTime) {
-        // 2차 마감 설정이 있는 경우
+      if (!isWorkingDay) {
+        // 휴무일 주문: 다음 영업일 마감 전 접수로 취급
+        baseDate = await this.getNextBusinessDay(options.orderDateTime, rule, options.tenantId, options.customHolidays)
+        isBeforeCutoff = true
+        deliveryDays = rule.beforeCutoffDays
+        deliveryTime = rule.beforeCutoffDeliveryTime
+        logger.info('휴무일 주문 - 다음 영업일 마감 전 접수로 처리', {
+          originalDate: this.formatDateKST(options.orderDateTime),
+          nextBusinessDay: this.formatDateKST(baseDate),
+          deliveryDays,
+        })
+      } else if (rule.cutoffCount === 2 && rule.secondCutoffTime) {
+        // 영업일 + 2차 마감 설정이 있는 경우
         const secondCutoffTime = this.parseTime(rule.secondCutoffTime)
 
         if (orderTime < cutoffTime) {
@@ -142,7 +144,7 @@ export class DeliveryCalculator {
           deliveryTime = rule.afterSecondCutoffDeliveryTime ?? rule.afterCutoffDeliveryTime
         }
       } else {
-        // 기존 1차 마감 로직
+        // 영업일 + 기존 1차 마감 로직
         if (orderTime < cutoffTime) {
           // 영업일 마감 전
           isBeforeCutoff = true
@@ -519,12 +521,15 @@ export class DeliveryCalculator {
 
   /**
    * 특정 연도의 공휴일을 미리 캐시에 로드
+   * @param year 연도
+   * @param tenantId 테넌트 ID (필수 - 멀티테넌트 지원)
    */
-  async preloadHolidays(year: number): Promise<void> {
-    const cacheKey = `holidays_${year}`
+  async preloadHolidays(year: number, tenantId: string): Promise<void> {
+    const cacheKey = `holidays_${tenantId}_${year}`
 
     const holidayRecords = await prisma.holiday.findMany({
       where: {
+        tenantId,
         date: {
           gte: new Date(year, 0, 1),
           lt: new Date(year + 1, 0, 1),
@@ -535,7 +540,7 @@ export class DeliveryCalculator {
     const holidays = holidayRecords.map((h) => h.date)
     this.holidayCache.set(cacheKey, holidays)
 
-    logger.info(`${year}년 공휴일 캐시 로드 완료: ${holidays.length}개`)
+    logger.info(`${year}년 공휴일 캐시 로드 완료: ${holidays.length}개`, { tenantId })
   }
 }
 

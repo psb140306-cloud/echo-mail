@@ -83,7 +83,8 @@
       "Bash(done)",
       "Bash(grep:*)",
       "Bash(git revert:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 공휴일 자동 생성 및 캘린더 UI 개선\n\n- 테넌트 생성 시 현재/다음 연도 공휴일 자동 생성\n- 매년 12월 1일 크론으로 다음 연도 공휴일 자동 생성\n- 캘린더에 공휴일 이름 표시\n- 양력 공휴일: 빨간색, 음력 공휴일: 보라색 구분\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: 공휴일 자동 생성 및 캘린더 UI 개선\n\n- 테넌트 생성 시 현재/다음 연도 공휴일 자동 생성\n- 매년 12월 1일 크론으로 다음 연도 공휴일 자동 생성\n- 캘린더에 공휴일 이름 표시\n- 양력 공휴일: 빨간색, 음력 공휴일: 보라색 구분\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: 휴무일 주문 납기일 계산 오류 수정\n\n- 휴무일\\(주말/공휴일\\) 주문 시 \"다음 영업일 마감 전 접수\"로 취급\n- 기존: 휴무일 주문도 원래 주문 시각으로 마감 판단 → 잘못된 납기일\n- 수정: 휴무일 주문은 무조건 beforeCutoffDays 적용\n- 예: 일요일 10시 주문 → 화요일 납품 \\(기존 수요일에서 수정\\)\n\n- preloadHolidays 캐시 키 불일치 수정\n- 기존: holidays_$year \\(tenantId 누락\\)\n- 수정: holidays_$tenantId_$year \\(isHoliday와 일치\\)\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []
