@@ -443,6 +443,11 @@ export default function HolidaysPage() {
                   onActiveStartDateChange={({ activeStartDate }) => {
                     if (activeStartDate) {
                       setActiveStartDate(activeStartDate)
+                      // 캘린더 네비게이션으로 연도가 바뀌면 selectedYear도 업데이트
+                      const newYear = activeStartDate.getFullYear()
+                      if (newYear !== selectedYear) {
+                        setSelectedYear(newYear)
+                      }
                     }
                   }}
                 />
